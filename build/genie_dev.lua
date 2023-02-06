@@ -9,8 +9,7 @@ project "dev"
 	{
 		path.join(PROJ_DIR, "src/**.h"),
 		path.join(PROJ_DIR, "src/**.cpp"),
-		
-		--path.join(ROOT_DIR, "vendor/hlslpp/include/**.h"),
+		path.join(ROOT_DIR, "vendor/hlslpp/include/**.h"),
 		path.join(ROOT_DIR, "vendor/spdlog/include/**.h"),
 	}
 	
@@ -19,6 +18,7 @@ project "dev"
 		path.join(PROJ_DIR, "src"),
 		path.join(ROOT_DIR, "src"),
 		path.join(ROOT_DIR, "vendor"),
+		path.join(ROOT_DIR, "vendor/hlslpp/include"),
 		path.join(ROOT_DIR, "vendor/spdlog/include"),
 	}
 	

@@ -11,17 +11,17 @@ project "vast"
 	{
 		path.join(ROOT_DIR, "src/**.h"),
 		path.join(ROOT_DIR, "src/**.cpp"),
-		-- Libraries only used within this project also go here (e.g. stb_image)!
 		path.join(ROOT_DIR, "vendor/hlslpp/include/**.h"),
 		path.join(ROOT_DIR, "vendor/spdlog/include/**.h"),
+		-- Libraries only used within this project also go here (e.g. stb_image)!
 	}
 	
 	includedirs
 	{
 		path.join(ROOT_DIR, "src"),
 		path.join(ROOT_DIR, "vendor"),
-		path.join(ROOT_DIR, "vendor/spdlog/include"),
 		path.join(ROOT_DIR, "vendor/hlslpp/include"),
+		path.join(ROOT_DIR, "vendor/spdlog/include"),
 	}
 	
 	libdirs

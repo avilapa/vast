@@ -7,5 +7,8 @@ public:
 	Dev() {}
 	~Dev() {}
 
+	void OnWindowClose();
+	void OnWindowResize(const vast::EventData& event);
+
 	void Run() override;
 };
