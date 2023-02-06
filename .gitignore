@@ -1,0 +1,12 @@
+# Binaries
+**/bin/
+build/obj/
+
+# Visual Studio
+build/vs/
+.vs/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+**.csproj
