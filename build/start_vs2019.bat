@@ -1,0 +1,1 @@
+start "" "vs/vast.sln"

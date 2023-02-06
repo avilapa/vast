@@ -1,0 +1,6 @@
+[submodule "vendor/imgui"]
+	path = vendor/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "vendor/hlslpp"]
+	path = vendor/hlslpp
+	url = https://github.com/redorav/hlslpp
