@@ -4,3 +4,6 @@
 [submodule "vendor/hlslpp"]
 	path = vendor/hlslpp
 	url = https://github.com/redorav/hlslpp
+[submodule "vendor/spdlog"]
+	path = vendor/spdlog
+	url = https://github.com/gabime/spdlog.git

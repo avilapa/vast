@@ -7,7 +7,7 @@ solution "vast"
 	platforms { "x64" }
 		
 	language "C++"
-	flags { "CppLatest" }
+	flags { "Cpp17" }
 	
 	-- TODO: Cannot figure out how to make folders for each project inside bin, .lib files from StaticLib projects stop generating for some reason.
 	-- TODO: Add platform specific folders

@@ -1,8 +1,6 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <array>
-
+#include "Core/app.h"
 #include "Core/core.h"
+#include "Core/log.h"
 #include "Core/types.h"

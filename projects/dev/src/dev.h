@@ -1,5 +1,5 @@
 
-#include "Core/app.h"
+#include "vast.h"
 
 class Dev : public vast::IApp
 {
