@@ -1,14 +1,16 @@
 
 #include "vast.h"
 
-class Dev : public vast::IApp
+using namespace vast;
+
+class Dev : public IApp
 {
 public:
 	Dev() {}
 	~Dev() {}
 
 	void OnWindowClose();
-	void OnWindowResize(const vast::EventData& event);
+	void OnWindowResize(const EventData& event);
 
 	void Run() override;
 };

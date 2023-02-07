@@ -5,7 +5,7 @@
 #include <variant>
 #include <functional>
 
-#define VAST_EVENT_HANDLER(func)						[this](const vast::EventData& data) { func(); }
+#define VAST_EVENT_HANDLER(func)						[this](const vast::EventData& data) { (void)data; func(); }
 #define VAST_EVENT_HANDLER_DATA(func)					[this](const vast::EventData& data) { func(data); }
 
 #define VAST_SUBSCRIBE_TO_EVENT(eventType, callback)	::vast::SubscribeToEvent<eventType>(callback)
@@ -45,25 +45,10 @@ namespace vast
 
 // Add data types as needed by the callback functions.
 #define EVENT_DATA_TYPES	\
-	int8,					\
-	int16,					\
-	int32,					\
-	int64,					\
-	int2,					\
-	int3,					\
-	int4,					\
-	uint8,					\
-	uint16,					\
-	uint32,					\
-	uint64,					\
-	uint2,					\
-	uint3,					\
-	uint4,					\
-	float,					\
-	float2,					\
-	float3,					\
-	float4					
+	uint2
 
+	// TODO: std::variant seems to throw a lot of warnings, annoying.
+	// TODO: Could make a wrapper for std::variant to make the intended usage more obvious.
 	using EventData = std::variant<EVENT_DATA_TYPES>;
 	using EventSubscriber = std::function<void(const EventData&)>;
 
