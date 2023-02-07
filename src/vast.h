@@ -5,3 +5,5 @@
 #include "Core/event.h"
 #include "Core/log.h"
 #include "Core/types.h"
+
+#include "Graphics/window.h"

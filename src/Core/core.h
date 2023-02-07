@@ -1,8 +1,19 @@
 #pragma once
 
+#include "Core/log.h"
 #include <filesystem>
 
-#include "Core/log.h"
+// - Platform ---------------------------------------------------------------------------------- //
+
+#ifdef _WIN32
+#ifdef _WIN64
+#define VAST_PLATFORM_WINDOWS
+#else
+#error "Invalid Platform: x86 builds not supported"
+#endif // _WIN64
+#else
+#error "Invalid Platform: Unknown Platform"
+#endif
 
 // - Asserts ----------------------------------------------------------------------------------- //
 
@@ -13,7 +24,7 @@
 #define VAST_DEBUGBREAK()
 #endif // VAST_DEBUG
 
-// Don't allow VAST_ASSERT to be called with too many arguments.
+// Don't allow VAST_ASSERT to be called with too many arguments to catch missing F in compile time.
 #pragma warning(error: 4002)
 
 #ifdef VAST_ENABLE_ASSERTS
@@ -25,17 +36,17 @@
 			VAST_ERROR("Assert '{}' FAILED ({}, line {}). " fmt,						\
 				STR(expr),																\
 				std::filesystem::path(__FILE__).filename().string().c_str(),			\
-				__LINE__,																\
 				__VA_ARGS__);															\
 			VAST_DEBUGBREAK();															\
 		}																				\
 	}
 
-#define VAST_ASSERT(expr)				__VAST_ASSERT_IMPL(expr)
-#define VAST_ASSERTF(expr, fmt, ...)	__VAST_ASSERT_IMPL(expr, fmt, __VA_ARGS__)
+// Passing __LINE__ into the macro to avoid trailing comma from __VA_ARGS__.
+#define VAST_ASSERT(expr)				__VAST_ASSERT_IMPL(expr, "", __LINE__)
+#define VAST_ASSERTF(expr, fmt, ...)	__VAST_ASSERT_IMPL(expr, fmt, __LINE__, __VA_ARGS__)
 #else
 #define VAST_ASSERT(expr)
-#define VAST_ASSERTF(expr, fmt, ...)
+#define VAST_ASSERTF(expr, fmt...)
 #endif // VAST_ENABLE_ASSERTS
 
 // - Utility ----------------------------------------------------------------------------------- //

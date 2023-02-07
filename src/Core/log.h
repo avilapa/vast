@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 // TODO: Unable to compile this library using any version higher than C++17.
 #include "spdlog/include/spdlog/spdlog.h"
 

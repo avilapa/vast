@@ -3,14 +3,9 @@
 
 using namespace vast;
 
-class Dev : public IApp
+class Dev : public WindowedApp
 {
 public:
-	Dev() {}
-	~Dev() {}
-
-	void OnWindowClose();
-	void OnWindowResize(const EventData& event);
-
-	void Run() override;
+	Dev(int argc, char** argv);
+	~Dev();
 };

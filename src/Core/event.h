@@ -1,16 +1,17 @@
 #pragma once
 
+#include "Core/log.h"
 #include "Core/types.h"
 
-#include <variant>
 #include <functional>
+#include <variant>
 
 #define VAST_EVENT_HANDLER(func)						[this](const vast::EventData& data) { (void)data; func(); }
 #define VAST_EVENT_HANDLER_DATA(func)					[this](const vast::EventData& data) { func(data); }
 
-#define VAST_SUBSCRIBE_TO_EVENT(eventType, callback)	::vast::SubscribeToEvent<eventType>(callback)
-#define VAST_FIRE_EVENT_DATA(eventType, eventData)		::vast::FireEvent<eventType>(eventData)
-#define VAST_FIRE_EVENT(eventType)						::vast::FireEvent<eventType>()
+#define VAST_SUBSCRIBE_TO_EVENT(eventType, callback)	::vast::EventSystem::SubscribeToEvent<eventType>(callback)
+#define VAST_FIRE_EVENT_DATA(eventType, eventData)		::vast::EventSystem::FireEvent<eventType>(eventData)
+#define VAST_FIRE_EVENT(eventType)						::vast::EventSystem::FireEvent<eventType>()
 
 namespace vast
 {
@@ -27,8 +28,6 @@ namespace vast
 	public:
 		virtual ~IEvent() = default;
 		virtual EventType GetType() const = 0;
-		
-		bool m_Consumed = false;
 	};
 
 #define CREATE_EVENT_TYPE(className)											\
@@ -38,6 +37,7 @@ namespace vast
 		className##Event() = default;											\
 		static EventType GetStaticType() { return EventType::className; }		\
 		virtual EventType GetType() const override { return GetStaticType(); }	\
+		static std::string GetName() { return STR(className##Event); }			\
 	};
 
 	CREATE_EVENT_TYPE(WindowClose);
@@ -50,24 +50,38 @@ namespace vast
 	// TODO: std::variant seems to throw a lot of warnings, annoying.
 	// TODO: Could make a wrapper for std::variant to make the intended usage more obvious.
 	using EventData = std::variant<EVENT_DATA_TYPES>;
-	using EventSubscriber = std::function<void(const EventData&)>;
 
-	static std::array<std::vector<EventSubscriber>, static_cast<uint32>(EventType::COUNT)> s_EventsSubscribers;
-
-	template<typename T>
-	static void SubscribeToEvent(EventSubscriber&& func)
+	class EventSystem
 	{
-		const uint32 eventId = static_cast<uint32>(T::GetStaticType());
-		s_EventsSubscribers[eventId].push_back(std::forward<EventSubscriber>(std::forward<EventSubscriber>(func)));
-	}
+	public:
+		using EventCallback = std::function<void(const EventData&)>;
 
-	template<typename T>
-	static void FireEvent(const EventData& data = 0)
-	{
-		const uint32 eventId = static_cast<uint32>(T::GetStaticType());
-		for (const auto& sub : s_EventsSubscribers[eventId])
+		template<typename T>
+		static void SubscribeToEvent(EventCallback&& func)
 		{
-			sub(data);
+			uint32 eventIdx = static_cast<uint32>(T::GetStaticType());
+			VAST_TRACE("[events] {} registered new subscriber ({})", T::GetName(), GetSubscriberCount(eventIdx));
+			s_EventsSubscribers[eventIdx].push_back(std::forward<EventCallback>(func));
+
 		}
-	}
+
+		template<typename T>
+		static void FireEvent(const EventData& data = 0)
+		{
+			uint32 eventIdx = static_cast<uint32>(T::GetStaticType());
+			VAST_TRACE("[events] {} fired. Executing {} subscriber callbacks...", T::GetName(), GetSubscriberCount(eventIdx));
+			for (const auto& sub : s_EventsSubscribers[eventIdx])
+			{
+				sub(data);
+			}
+		}
+
+		static uint32 GetSubscriberCount(uint32 eventIdx)
+		{
+			return s_EventsSubscribers[eventIdx].size();
+		}
+
+	private:
+		static std::array<std::vector<EventSystem::EventCallback>, static_cast<uint32>(EventType::COUNT)> s_EventsSubscribers;
+	};
 }
