@@ -67,6 +67,8 @@ namespace vast
 		template<typename T>
 		static void SubscribeToEvent(EventCallback&& func)
 		{
+			VAST_PROFILE_SCOPE("Events", "EventSystem::SubscribeToEvent");
+
 			uint32 eventIdx = static_cast<uint32>(T::GetStaticType());
 			VAST_TRACE("[events] {} registered new subscriber ({})", T::GetName(), (GetSubscriberCount(eventIdx) + 1));
 			SubscribeToEvent(eventIdx, std::move(func));
@@ -82,6 +84,8 @@ namespace vast
 		template<typename T>
 		static void FireEvent(IEvent& data)
 		{
+			VAST_PROFILE_SCOPE("Events", "EventSystem::FireEvent");
+
 			uint32 eventIdx = static_cast<uint32>(T::GetStaticType());
 			VAST_TRACE("[events] {} fired. Executing {} subscriber callbacks...", T::GetName(), GetSubscriberCount(eventIdx));
 			FireEvent(eventIdx, data);

@@ -33,3 +33,15 @@ project "vast"
 	{
 		"imgui",
 	}
+	
+	configuration "Debug"
+		links 
+		{  
+			"minitrace" 
+		}
+		
+		defines
+		{
+			"MTR_ENABLED"
+		}
+	

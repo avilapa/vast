@@ -10,6 +10,8 @@ namespace vast
 
 	void Log::Init()
 	{
+		VAST_PROFILE_SCOPE("Log", "Log::Init");
+
 		std::string logOutputFileName = "vast.log";
 		std::vector<spdlog::sink_ptr> logSinks;
 		logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());

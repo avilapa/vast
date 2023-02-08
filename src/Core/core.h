@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/log.h"
-#include <filesystem>
 
 // - Utility ----------------------------------------------------------------------------------- //
 
@@ -47,6 +46,9 @@
 #pragma warning(error: 4002)
 
 #ifdef VAST_ENABLE_ASSERTS
+
+#include <filesystem>
+
 // TODO: Look into likely/unlikely for asserts.
 #define __VAST_ASSERT_IMPL(expr, fmt, ...)												\
 	{																					\
@@ -68,3 +70,19 @@
 #define VAST_ASSERT(expr)
 #define VAST_ASSERTF(expr, fmt...)
 #endif // VAST_ENABLE_ASSERTS
+
+// - Profiling --------------------------------------------------------------------------------- //
+
+#define VAST_PROFILE 1
+
+#if  VAST_PROFILE
+#include "minitrace/minitrace.h"
+
+#define VAST_PROFILE_BEGIN(fileName)	mtr_init(fileName);
+#define VAST_PROFILE_END()				mtr_shutdown();
+#define VAST_PROFILE_SCOPE(c, n)		MTR_SCOPE(c, n)
+#else
+#define VAST_PROFILE_BEGIN(fileName)
+#define VAST_PROFILE_END()			
+#define VAST_PROFILE_SCOPE(c, n)	
+#endif // VAST_PROFILE

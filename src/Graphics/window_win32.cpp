@@ -55,6 +55,8 @@ namespace vast
 		: m_WindowSize(params.size)
 		, m_WindowName(std::wstring(params.name.begin(), params.name.end()))
 	{
+		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::WindowImpl_Win32");
+
 		HINSTANCE hInst = GetModuleHandle(nullptr);
 
 		const wchar_t* windowClassName = L"default";
@@ -70,12 +72,16 @@ namespace vast
 
 	WindowImpl_Win32::~WindowImpl_Win32()
 	{
+		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::~WindowImpl_Win32");
+
 		DestroyWindow(m_Handle);
 		m_Handle = nullptr;
 	}
 
 	void WindowImpl_Win32::OnUpdate()
 	{
+		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::OnUpdate");
+
 		MSG msg{ 0 };
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -108,6 +114,8 @@ namespace vast
 
 	void WindowImpl_Win32::Register(HINSTANCE hInst, const wchar_t* windowClassName)
 	{
+		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::Register");
+
 		WNDCLASSEXW windowClass;
 		windowClass.cbSize = sizeof(WNDCLASSEX);
 		windowClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -123,11 +131,13 @@ namespace vast
 		windowClass.hIconSm = ::LoadIcon(hInst, NULL);
 
 		static ATOM atom = ::RegisterClassExW(&windowClass);
-		assert(atom > 0);
+		VAST_ASSERT(atom > 0);
 	}
 
 	void WindowImpl_Win32::Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 windowSize)
 	{
+		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::Create");
+
 		int screenW = ::GetSystemMetrics(SM_CXSCREEN);
 		int screenH = ::GetSystemMetrics(SM_CYSCREEN);
 
@@ -142,7 +152,7 @@ namespace vast
 		int windowY = std::max<int>(0, (screenH - windowH) / 2);
 
 		m_Handle = ::CreateWindowExW(NULL, windowClassName, windowName, WS_OVERLAPPEDWINDOW, windowX, windowY, windowW, windowH, NULL, NULL, hInst, nullptr);
-		assert(m_Handle && "Failed to create window");
+		VAST_ASSERTF(m_Handle, "Failed to create window");
 
 		// Pass a pointer to the Window to the WndProc function. This can also be done via WM_CREATE.
 		SetWindowLongPtr(m_Handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));

@@ -7,3 +7,6 @@
 [submodule "vendor/spdlog"]
 	path = vendor/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "vendor/minitrace"]
+	path = vendor/minitrace
+	url = https://github.com/hrydgard/minitrace.git
