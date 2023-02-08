@@ -1,6 +1,6 @@
 #include "vastpch.h"
 #include "Core/app.h"
-#include "Core/event.h"
+#include "Core/event_types.h"
 
 namespace vast
 {
@@ -12,7 +12,9 @@ namespace vast
 		Log::Init();
 		(void)argc; (void)argv;// TODO: Process input args.
 		m_Window = Window::Create();
-		VAST_SUBSCRIBE_TO_EVENT(WindowCloseEvent, VAST_EVENT_HANDLER(WindowedApp::Quit));
+
+		VAST_SUBSCRIBE_TO_EVENT(WindowCloseEvent, WindowedApp::OnWindowCloseEvent);
+		VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, WindowedApp::OnWindowResizeEvent);
 	}
 
 	WindowedApp::~WindowedApp()
@@ -34,5 +36,15 @@ namespace vast
 	{
 		VAST_WARNING("Quitting application.");
 		m_bRunning = false;
+	}
+
+	void WindowedApp::OnWindowCloseEvent()
+	{
+		Quit();
+	}
+
+	void WindowedApp::OnWindowResizeEvent(WindowResizeEvent& event)
+	{
+		VAST_INFO("OnWindowResizeEvent() called, to {}x{}", event.m_WindowSize.x, event.m_WindowSize.y);
 	}
 }

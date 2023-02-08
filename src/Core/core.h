@@ -3,6 +3,25 @@
 #include "Core/log.h"
 #include <filesystem>
 
+// - Utility ----------------------------------------------------------------------------------- //
+
+// Macro expansion
+#define EXP(x)		x
+// Macro stringify
+#define STR(x)		#x
+#define XSTR(x)		STR(x)
+// Macro concatenation
+#define CAT(a, b)	a ## b
+#define XCAT(a, b)	CAT(a, b)
+
+#define SELECT_MACRO(_1, _2, x, ...) x
+// Usage: #define FOO(...) EXP(SELECT_MACRO(__VA_ARGS__, FOO_2_PARAMS, FOO_1_PARAM)(__VA_ARGS__))
+
+// Number of elements in array (pointers not supported)
+#define NELEM(x) int(sizeof(x) / sizeof((x)[0]))
+
+#define BIT(x) (1 << x)
+
 // - Platform ---------------------------------------------------------------------------------- //
 
 #ifdef _WIN32
@@ -41,6 +60,7 @@
 		}																				\
 	}
 
+// Note: SELECT_MACRO will not work here because VAST_ASSERTF can take any number of arguments.
 // Passing __LINE__ into the macro to avoid trailing comma from __VA_ARGS__.
 #define VAST_ASSERT(expr)				__VAST_ASSERT_IMPL(expr, "", __LINE__)
 #define VAST_ASSERTF(expr, fmt, ...)	__VAST_ASSERT_IMPL(expr, fmt, __LINE__, __VA_ARGS__)
@@ -48,18 +68,3 @@
 #define VAST_ASSERT(expr)
 #define VAST_ASSERTF(expr, fmt...)
 #endif // VAST_ENABLE_ASSERTS
-
-// - Utility ----------------------------------------------------------------------------------- //
-
-// Macro expansion
-#define EXP(x)		x
-// Macro stringify
-#define STR(x)		#x
-#define XSTR(x)		STR(x)
-// Macro concatenation
-#define CAT(a, b)	a ## b
-#define XCAT(a, b)	CAT(a, b)
-// Number of elements in array (pointers not supported)
-#define NELEM(x) int(sizeof(x) / sizeof((x)[0]))
-
-#define BIT(x) (1 << x)

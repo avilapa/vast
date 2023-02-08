@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Graphics/window_win32.h"
 
-#include "Core/event.h"
+#include "Core/event_types.h"
 
 // TODO: Imgui
 //extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -97,7 +97,8 @@ namespace vast
 		m_WindowSize.x = windowRect.right - windowRect.left;
 		m_WindowSize.y = windowRect.bottom - windowRect.top;
 
-		VAST_FIRE_EVENT_DATA(WindowResizeEvent, m_WindowSize);
+		WindowResizeEvent event(m_WindowSize);
+		VAST_FIRE_EVENT(WindowResizeEvent, event);
 	}
 
 	uint2 WindowImpl_Win32::GetWindowSize() const

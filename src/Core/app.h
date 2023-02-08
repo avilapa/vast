@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Core/event_types.h"
 #include "Graphics/window.h"
 
 namespace vast
@@ -22,6 +23,9 @@ namespace vast
 		void Quit();
 
 	private:
+		void OnWindowCloseEvent();
+		void OnWindowResizeEvent(WindowResizeEvent& event);
+
 		bool m_bRunning;
 		std::unique_ptr<Window> m_Window;
 	};
