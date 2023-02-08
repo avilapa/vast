@@ -10,7 +10,7 @@ namespace vast
 		, m_Window(nullptr)
 	{
 		Log::Init();
-		// TODO: Process input args.
+		(void)argc; (void)argv;// TODO: Process input args.
 		m_Window = Window::Create();
 		VAST_SUBSCRIBE_TO_EVENT(WindowCloseEvent, VAST_EVENT_HANDLER(WindowedApp::Quit));
 	}

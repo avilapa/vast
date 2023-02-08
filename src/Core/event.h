@@ -4,6 +4,7 @@
 #include "Core/types.h"
 
 #include <functional>
+#pragma warning(disable: 4324) // TODO: Disable verbose warning "'std::_Variant_base<EVENT_DATA_TYPES>': structure was padded due to alignment specifier"
 #include <variant>
 
 #define VAST_EVENT_HANDLER(func)						[this](const vast::EventData& data) { (void)data; func(); }
@@ -15,7 +16,22 @@
 
 namespace vast
 {
-	// Add event types as needed, here as well as a matching class using CREATE_EVENT_TYPE()
+	// This is a blocking event system. Add event types as needed, here as well as a matching class
+	// using CREATE_EVENT_TYPE(). Event callbacks are bound by subscribing to an event using
+	// VAST_SUBSCRIBE_TO_EVENT and VAST_EVENT_HANDLER for the callback parameter. An event can be 
+	// fired from anywhere using VAST_FIRE_EVENT. If the callback functions are expected to receive 
+	// data with it (e.g. the window size for a Window Resize Event), the callback can be registered
+	// using VAST_EVENT_HANDLER_DATA instead, and the callback function signature should take in one
+	// const vast::EventData& parameter. To trigger the event, VAST_FIRE_EVENT_DATA should be used
+	// instead, providing the necessary data type from the list declared in EVENT_DATA_TYPES.
+	// EventData is a type safe union (std::variant), so adding big data types to the list will
+	// increase the overall size. In the callback function, data of the right type can be fetched
+	// like so: std::get<T>(data);
+	//
+	// TODO: Currently it is up to the user to ensure the right data types are sent and received.
+	// This would be much more usable if the only parameter necessary in the subscribe, fire and
+	// callback functions was the Event class, and that contained the necessary data to resolve
+	// itself. I haven't found a way to do this while maintaining the same API.
 	enum class EventType
 	{
 		NONE = 0,
@@ -47,7 +63,6 @@ namespace vast
 #define EVENT_DATA_TYPES	\
 	uint2
 
-	// TODO: std::variant seems to throw a lot of warnings, annoying.
 	// TODO: Could make a wrapper for std::variant to make the intended usage more obvious.
 	using EventData = std::variant<EVENT_DATA_TYPES>;
 
@@ -78,7 +93,7 @@ namespace vast
 
 		static uint32 GetSubscriberCount(uint32 eventIdx)
 		{
-			return s_EventsSubscribers[eventIdx].size();
+			return static_cast<uint32>(s_EventsSubscribers[eventIdx].size());
 		}
 
 	private:
