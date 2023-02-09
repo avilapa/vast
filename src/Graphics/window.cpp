@@ -2,7 +2,7 @@
 #include "Graphics/window.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
-#include "window_win32.h"
+#include "Graphics/Platform/x64/window_win32.h"
 #else
 #error "Invalid Platform: Unknown Platform"
 #endif

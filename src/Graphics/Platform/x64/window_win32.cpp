@@ -1,5 +1,5 @@
 #include "vastpch.h"
-#include "Graphics/window_win32.h"
+#include "Graphics/Platform/x64/window_win32.h"
 
 #include "Core/event_types.h"
 

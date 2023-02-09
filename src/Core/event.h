@@ -32,7 +32,7 @@
 
 #define __VAST_EVENT_CALLBACK_DATA(eventType, callback)		[this](vast::IEvent& data) { callback(dynamic_cast<eventType&>(data)); }
 #define __VAST_EVENT_CALLBACK(eventType, callback)			[this](vast::IEvent& data) { (void)data; callback(); }
-
+// TODO: I'd like to have only one VAST_SUBSCRIBE_TO_EVENT macro that can identify on compile time if the callback's signature has any parameters.
 // If you are crashing here, it is likely that you are passing an invalid type to this macro (needs to inherit from IEvent).
 #define VAST_SUBSCRIBE_TO_EVENT_DATA(eventType, callback)	::vast::EventSystem::SubscribeToEvent<eventType>(__VAST_EVENT_CALLBACK_DATA(eventType, callback))
 #define VAST_SUBSCRIBE_TO_EVENT(eventType, callback)		::vast::EventSystem::SubscribeToEvent<eventType>(__VAST_EVENT_CALLBACK(eventType, callback))
