@@ -3,6 +3,8 @@
 
 #include "Core/event_types.h"
 
+#ifdef VAST_PLATFORM_WINDOWS
+
 // TODO: Imgui
 //extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -159,3 +161,5 @@ namespace vast
 	}
 
 }
+
+#endif // VAST_PLATFORM_WINDOWS

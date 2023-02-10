@@ -31,7 +31,7 @@ project "vast"
 	
 	links
 	{
-		"imgui",
+		"imgui", "dx12",
 	}
 	
 	configuration "Debug"

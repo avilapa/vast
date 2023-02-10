@@ -1,8 +1,5 @@
 #pragma once
 
-#include "Core/event_types.h"
-#include "Graphics/window.h"
-
 namespace vast
 {
 	class IApp
@@ -12,6 +9,9 @@ namespace vast
 		virtual ~IApp() = default;
 		virtual void Run() = 0;
 	};
+
+	class Window;
+	class WindowResizeEvent;
 
 	class WindowedApp : public IApp
 	{

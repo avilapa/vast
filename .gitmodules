@@ -10,3 +10,9 @@
 [submodule "vendor/minitrace"]
 	path = vendor/minitrace
 	url = https://github.com/hrydgard/minitrace.git
+[submodule "vendor/dx12/DirectXTex"]
+	path = vendor/dx12/DirectXTex
+	url = https://github.com/microsoft/DirectXTex
+[submodule "vendor/dx12/D3D12MemoryAllocator"]
+	path = vendor/dx12/D3D12MemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator

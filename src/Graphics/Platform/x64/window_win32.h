@@ -2,6 +2,8 @@
 
 #include "Graphics/window.h"
 
+#ifdef VAST_PLATFORM_WINDOWS
+
 // Note: Reduces the size of windows.h by excluding less commonly used parts of the API
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -32,3 +34,5 @@ namespace vast
 		std::wstring m_WindowName;
 	};
 }
+
+#endif // VAST_PLATFORM_WINDOWS
