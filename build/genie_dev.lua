@@ -26,3 +26,13 @@ project "dev"
 	{
 		"vast" 
 	}
+	
+	configuration "Debug"
+		targetdir 	(path.join(ROOT_DIR, "build/bin/Debug/dev"))
+		debugdir	(path.join(ROOT_DIR, "build/bin/Debug/dev"))
+        objdir 		(path.join(ROOT_DIR, "build/obj/Debug/dev"))
+		
+	configuration "Release"
+		targetdir 	(path.join(ROOT_DIR, "build/bin/Release/dev"))
+		objdir 		(path.join(ROOT_DIR, "build/obj/Release/dev"))
+	

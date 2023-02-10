@@ -68,7 +68,7 @@
 #define VAST_ASSERTF(expr, fmt, ...)	__VAST_ASSERT_IMPL(expr, fmt, __LINE__, __VA_ARGS__)
 #else
 #define VAST_ASSERT(expr)
-#define VAST_ASSERTF(expr, fmt...)
+#define VAST_ASSERTF(expr, fmt, ...)
 #endif // VAST_ENABLE_ASSERTS
 
 // - Profiling --------------------------------------------------------------------------------- //
