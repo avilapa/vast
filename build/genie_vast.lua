@@ -21,25 +21,10 @@ project "vast"
 		path.join(ROOT_DIR, "src"),
 		path.join(ROOT_DIR, "vendor"),
 	}
-	
-	libdirs
-	{
-	
-	}
-	
-	links
-	{
-		"imgui"
-	}
+
+	links {	"imgui" }
 	
 	configuration "Debug"
-		links 
-		{  
-			"minitrace" 
-		}
-		
-		defines
-		{
-			"MTR_ENABLED"
-		}
+		links { "minitrace" }
+		defines { "MTR_ENABLED"	}
 	

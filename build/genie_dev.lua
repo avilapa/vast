@@ -22,10 +22,7 @@ project "dev"
 		path.join(ROOT_DIR, "vendor"),
 	}
 	
-	links
-	{
-		"vast", --"d3d12", "dxgi",
-	}
+	links {	"vast" }
 	
 	configuration "Debug"
 		targetdir 	(path.join(ROOT_DIR, "build/bin/Debug/dev"))
