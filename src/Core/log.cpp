@@ -10,6 +10,7 @@ namespace vast
 
 	void Log::Init()
 	{
+#ifdef VAST_ENABLE_LOGGING
 		VAST_PROFILE_SCOPE("Log", "Log::Init");
 
 		std::string logOutputFileName = "vast.log";
@@ -30,6 +31,6 @@ namespace vast
 		s_Logger->set_level(spdlog::level::trace);
 		VAST_INFO("[log] Logging level set to'{}'", spdlog::level::to_string_view(logLevel));
 		s_Logger->flush_on(spdlog::level::trace);
-
+#endif // VAST_ENABLE_LOGGING
 	}	
 }

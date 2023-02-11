@@ -1,4 +1,3 @@
-ROOT_DIR = path.getabsolute("../")
 
 project "vast"
 	kind "StaticLib"
@@ -6,22 +5,21 @@ project "vast"
 	
 	pchheader "vastpch.h"
 	pchsource "../src/vastpch.cpp"
-		
+	
+	AddLibrary(spdlog)
+	AddLibrary(hlslpp)
+	AddDX12Libraries()
+	
 	files
 	{
 		path.join(ROOT_DIR, "src/**.h"),
 		path.join(ROOT_DIR, "src/**.cpp"),
-		path.join(ROOT_DIR, "vendor/hlslpp/include/**.h"),
-		path.join(ROOT_DIR, "vendor/spdlog/include/**.h"),
-		-- Libraries only used within this project also go here (e.g. stb_image)!
 	}
 	
 	includedirs
 	{
 		path.join(ROOT_DIR, "src"),
 		path.join(ROOT_DIR, "vendor"),
-		path.join(ROOT_DIR, "vendor/hlslpp/include"),
-		path.join(ROOT_DIR, "vendor/spdlog/include"),
 	}
 	
 	libdirs
@@ -31,7 +29,7 @@ project "vast"
 	
 	links
 	{
-		"imgui", "dx12",
+		"imgui"
 	}
 	
 	configuration "Debug"

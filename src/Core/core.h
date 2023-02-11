@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Core/log.h"
-
 // - Utility ----------------------------------------------------------------------------------- //
 
 // Macro expansion
@@ -33,19 +31,41 @@
 #error "Invalid Platform: Unknown Platform"
 #endif
 
+// - Logging ----------------------------------------------------------------------------------- //
+
+#include "Core/log.h"
+
+#define VAST_ENABLE_LOGGING 1
+
+// Formatting cheatsheet: https://hackingcpp.com/cpp/libs/fmt.html
+#if VAST_ENABLE_LOGGING
+#define VAST_TRACE(...)		::vast::Log::GetLogger()->trace(__VA_ARGS__)
+#define VAST_INFO(...)		::vast::Log::GetLogger()->info(__VA_ARGS__)
+#define VAST_WARNING(...)	::vast::Log::GetLogger()->warn(__VA_ARGS__)
+#define VAST_ERROR(...)		::vast::Log::GetLogger()->error(__VA_ARGS__)
+#define VAST_CRITICAL(...)	::vast::Log::GetLogger()->critical(__VA_ARGS__)
+#else
+#define VAST_TRACE(...)
+#define VAST_INFO(...)
+#define VAST_WARNING(...)
+#define VAST_ERROR(...)
+#define VAST_CRITICAL(...)
+#endif // VAST_LOGGING_ENABLED
+
 // - Asserts ----------------------------------------------------------------------------------- //
 
 #ifdef VAST_DEBUG
-#define VAST_ENABLE_ASSERTS
+#define VAST_ENABLE_ASSERTS 1
 #define VAST_DEBUGBREAK() __debugbreak()
 #else
+#define VAST_ENABLE_ASSERTS 0
 #define VAST_DEBUGBREAK()
 #endif // VAST_DEBUG
 
 // Don't allow VAST_ASSERT to be called with too many arguments to catch missing F in compile time.
 #pragma warning(error: 4002)
 
-#ifdef VAST_ENABLE_ASSERTS
+#if VAST_ENABLE_ASSERTS
 
 #include <filesystem>
 
@@ -73,9 +93,9 @@
 
 // - Profiling --------------------------------------------------------------------------------- //
 
-#define VAST_PROFILE 1
+#define VAST_ENABLE_PROFILING 0
 
-#if  VAST_PROFILE
+#if  VAST_ENABLE_PROFILING
 #include "minitrace/minitrace.h"
 
 #define VAST_PROFILE_BEGIN(fileName)	mtr_init(fileName);

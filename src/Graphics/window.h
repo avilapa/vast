@@ -10,7 +10,7 @@ namespace vast
 		WindowParams() : name("vast Engine"), size(1600, 900) {}
 
 		std::string name;
-		uint2 size = uint2(1600, 900);
+		uint2 size;
 	};
 
 	class Window
