@@ -6,7 +6,7 @@ using namespace vast;
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
-
+	m_GraphicsContext = gfx::GraphicsContext::Create();
 }
 
 Dev::~Dev()

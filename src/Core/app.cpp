@@ -23,6 +23,8 @@ namespace vast
 
 	WindowedApp::~WindowedApp()
 	{
+		VAST_PROFILE_SCOPE("App", "WindowedApp::~WindowedApp");
+
 		m_Window = nullptr;
 		VAST_PROFILE_END();
 	}
