@@ -5,8 +5,6 @@
 
 namespace vast::gfx
 {
-	constexpr uint32 NUM_BACK_BUFFERS = 3;
-
 	enum class Format
 	{
 		UNKNOWN,

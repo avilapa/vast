@@ -14,6 +14,9 @@
 #define SELECT_MACRO(_1, _2, x, ...) x
 // Usage: #define FOO(...) EXP(SELECT_MACRO(__VA_ARGS__, FOO_2_PARAMS, FOO_1_PARAM)(__VA_ARGS__))
 
+// Enum as index
+#define IDX(x) static_cast<int>(x)
+
 // Number of elements in array (pointers not supported)
 #define NELEM(x) int(sizeof(x) / sizeof((x)[0]))
 

@@ -2,11 +2,51 @@
 
 #include "Graphics/API/DX12/dx12_graphics_context.h"
 #include "Graphics/API/DX12/dx12_command_queue.h"
+#include "Graphics/API/DX12/dx12_descriptors.h"
 
 #include <dxgi1_6.h>
 
 namespace vast::gfx
 {
+	// Graphics constants
+	constexpr uint32 NUM_FRAMES_IN_FLIGHT = 2;
+	constexpr uint32 NUM_BACK_BUFFERS = 3;
+	constexpr uint32 NUM_RTV_STAGING_DESCRIPTORS = 256;
+
+	enum class QueueType
+	{
+		GRAPHICS = 0,
+		COUNT = 1,
+	};
+
+	struct Resource
+	{
+		enum class Type : bool
+		{
+			BUFFER = 0,
+			TEXTURE = 1
+		};
+
+		Type m_Type = Type::BUFFER;
+
+		ID3D12Resource* m_Resource = nullptr;
+		// TODO: D3D12MA::Allocation* m_Allocation = nullptr;
+		D3D12_GPU_VIRTUAL_ADDRESS m_GPUAddress = 0;
+		D3D12_RESOURCE_DESC m_Desc = {};
+		D3D12_RESOURCE_STATES m_State = D3D12_RESOURCE_STATE_COMMON;
+		uint32 m_HeapIndex = UINT32_MAX; // Invalid value
+		bool m_IsReady = false;
+	};
+
+	struct Texture : public Resource
+	{
+		Texture() : Resource() { m_Type = Type::TEXTURE; }
+
+		DX12DescriptorHandle m_RTVDescriptor = {};
+		DX12DescriptorHandle m_DSVDescriptor = {};
+		DX12DescriptorHandle m_SRVDescriptor = {};
+		DX12DescriptorHandle m_UAVDescriptor = {};
+	};
 
 	class DX12Device
 	{
@@ -14,6 +54,9 @@ namespace vast::gfx
 		DX12Device(const uint2& swapChainSize, const Format& swapChainFormat);
 		~DX12Device();
 
+		void BeginFrame();
+		void EndFrame();
+		void Present();
 		void WaitForIdle();
 
 	private:
@@ -30,18 +73,19 @@ namespace vast::gfx
 		ID3D12Device5* m_Device;
 		IDXGISwapChain4* m_SwapChain;
 
+		void SignalEndOfFrame(const QueueType& type);
+
+		// TODO: Could combine these in a single structure
+		std::unique_ptr<DX12CommandQueue> m_CommandQueues[IDX(QueueType::COUNT)];
+		uint64 m_FrameFenceValues[IDX(QueueType::COUNT)][NUM_FRAMES_IN_FLIGHT];
+
+		std::unique_ptr<DX12StagingDescriptorHeap> m_RTVStagingDescriptorHeap;
+
+		std::array<std::unique_ptr<Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
+
 		uint2 m_SwapChainSize;
 		Format m_SwapChainFormat;
-
-		enum CommandQueueType : uint8
-		{
-			CMD_QUEUE_TYPE_GRAPHICS = 0,
-			CMD_QUEUE_TYPE_COPY,
-			CMD_QUEUE_TYPE_COUNT,
-		};
-
-		std::array<std::unique_ptr<DX12CommandQueue>, CMD_QUEUE_TYPE_COUNT> m_CommandQueues;
-
+		uint32 m_FrameId;
 	};
 
 }

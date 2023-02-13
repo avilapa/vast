@@ -12,9 +12,12 @@ namespace vast::gfx
 	DX12Device::DX12Device(const uint2& swapChainSize, const Format& swapChainFormat)
 		: m_DXGIFactory(nullptr)
 		, m_Device(nullptr)
-		, m_CommandQueues({ nullptr })
+		, m_CommandQueues()
+		, m_FrameFenceValues()
+		, m_RTVStagingDescriptorHeap(nullptr)
 		, m_SwapChainSize(swapChainSize)
 		, m_SwapChainFormat(swapChainFormat)
+		// TODO: Make sure we are initializing all members
 	{
 		VAST_PROFILE_SCOPE("GFX", "DX12Device::DX12Device");
 
@@ -114,8 +117,12 @@ namespace vast::gfx
 #endif // VAST_DEBUG
 
 		VAST_INFO("[gfx] [dx12] Creating command queues.");
-		m_CommandQueues[CMD_QUEUE_TYPE_GRAPHICS] = std::make_unique<DX12CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-		m_CommandQueues[CMD_QUEUE_TYPE_COPY] = std::make_unique<DX12CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_COPY);
+		m_CommandQueues[IDX(QueueType::GRAPHICS)] = std::make_unique<DX12CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+		VAST_INFO("[gfx] [dx12] Creating descriptor heaps.");
+		m_RTVStagingDescriptorHeap = std::make_unique<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
+			NUM_RTV_STAGING_DESCRIPTORS);
+
 	}
 
 	void DX12Device::DestroyDeviceResources()
@@ -123,10 +130,12 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("GFX", "DX12Device::DestroyDeviceResources");
 		VAST_INFO("[gfx] [dx12] Destroying device resources.");
 
-		for (uint32 i = 0; i < CMD_QUEUE_TYPE_COUNT; ++i)
+		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			m_CommandQueues[i] = nullptr;
 		}
+
+		m_RTVStagingDescriptorHeap = nullptr;
 
 		DX12SafeRelease(m_Device);
 		DX12SafeRelease(m_DXGIFactory);
@@ -155,7 +164,8 @@ namespace vast::gfx
 		scDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
 
 		IDXGISwapChain1* swapChain = nullptr;
-		DX12Check(m_DXGIFactory->CreateSwapChainForHwnd(m_CommandQueues[CMD_QUEUE_TYPE_GRAPHICS]->GetQueue(), ::GetActiveWindow(), &scDesc, nullptr, nullptr, &swapChain));
+		DX12Check(m_DXGIFactory->CreateSwapChainForHwnd(m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue(), 
+			::GetActiveWindow(), &scDesc, nullptr, nullptr, &swapChain));
 		DX12Check(swapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain)));
 		DX12SafeRelease(swapChain);
 
@@ -176,6 +186,31 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("GFX", "DX12Device::CreateBackBuffers");
 		VAST_INFO("[gfx] [dx12] Creating backbuffers.");
 
+		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
+		{
+			ID3D12Resource* backBuffer = nullptr;
+			DX12Check(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+#if VAST_DEBUG
+			std::string backBufferName = std::string("Back Buffer ") + std::to_string(i);
+			backBuffer->SetName(std::wstring(backBufferName.begin(), backBufferName.end()).c_str()); // TODO: Figure out what we're doing with names
+#endif // VAST_DEBUG
+
+			DX12DescriptorHandle backBufferRTVHandle = m_RTVStagingDescriptorHeap->GetNewDescriptor();
+
+			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+			rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // TODO: Expose backbuffer format (sRGB)
+			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+			rtvDesc.Texture2D.MipSlice = 0;
+			rtvDesc.Texture2D.PlaneSlice = 0;
+
+			m_Device->CreateRenderTargetView(backBuffer, &rtvDesc, backBufferRTVHandle.m_CPUHandle);
+
+			m_BackBuffers[i] = std::make_unique<Texture>();
+			m_BackBuffers[i]->m_Desc = backBuffer->GetDesc();
+			m_BackBuffers[i]->m_Resource = backBuffer;
+			m_BackBuffers[i]->m_State = D3D12_RESOURCE_STATE_PRESENT;
+			m_BackBuffers[i]->m_RTVDescriptor = backBufferRTVHandle;
+		}
 	}
 
 	void DX12Device::DestroyBackBuffers()
@@ -183,6 +218,12 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("GFX", "DX12Device::DestroyBackBuffers");
 		VAST_INFO("[gfx] [dx12] Destroying backbuffers.");
 
+		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
+		{
+			m_RTVStagingDescriptorHeap->FreeDescriptor(m_BackBuffers[i]->m_RTVDescriptor);
+			DX12SafeRelease(m_BackBuffers[i]->m_Resource);
+			m_BackBuffers[i] = nullptr;
+		}
 	}
 
 	bool DX12Device::CheckTearingSupport()
@@ -195,9 +236,37 @@ namespace vast::gfx
 		return allowTearing == TRUE;
 	}
 
+	void DX12Device::BeginFrame()
+	{
+		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
+
+		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
+		{
+			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][m_FrameId]);
+		}
+
+		// TODO
+	}
+
+	void DX12Device::SignalEndOfFrame(const QueueType& type)
+	{
+		m_FrameFenceValues[IDX(type)][m_FrameId] = m_CommandQueues[IDX(type)]->SignalFence();
+	}
+
+	void DX12Device::EndFrame()
+	{
+		// TODO
+	}
+
+	void DX12Device::Present()
+	{
+		m_SwapChain->Present(0, 0); /// TODO: Vsync/Tearing flags
+		SignalEndOfFrame(QueueType::GRAPHICS);
+	}
+
 	void DX12Device::WaitForIdle()
 	{
-		for (uint32 i = 0; i < CMD_QUEUE_TYPE_GRAPHICS; ++i)
+		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			m_CommandQueues[i]->WaitForIdle();
 		}
