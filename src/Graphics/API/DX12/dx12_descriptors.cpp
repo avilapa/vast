@@ -60,7 +60,7 @@ namespace vast::gfx
 	{
 		if (m_ActiveHandleCount != 0)
 		{
-			assert(!"There were active handles when the descriptor heap was destroyed. Look for leaks.");
+			VAST_ASSERTF(0, "There were {} active handles when the descriptor heap was destroyed. Look for leaks.", m_ActiveHandleCount);
 		}
 	}
 
@@ -82,7 +82,7 @@ namespace vast::gfx
 		}
 		else
 		{
-			assert(!"Failed to create new descriptor. Increase heap size.");
+			VAST_ASSERTF(0, "Failed to create new descriptor. Increase heap size.");
 		}
 
 		m_ActiveHandleCount++;
@@ -105,7 +105,7 @@ namespace vast::gfx
 
 		if (m_ActiveHandleCount == 0)
 		{
-			assert(!"Failed to free descriptor. There should be none left.");
+			VAST_ASSERTF(0, "Failed to free descriptor. There should be none left.");
 			return;
 		}
 
@@ -144,7 +144,7 @@ namespace vast::gfx
 			}
 			else
 			{
-				assert(!"Failed to create new descriptor. Increase heap size.");
+				VAST_ASSERTF(0, "Failed to create new descriptor. Heap size is full at {}.", m_MaxDescriptors);
 			}
 		}
 
@@ -163,7 +163,7 @@ namespace vast::gfx
 
 	DX12DescriptorHandle DX12RenderPassDescriptorHeap::GetReservedDescriptor(uint32 index)
 	{
-		assert(index < m_ReservedHandleCount);
+		VAST_ASSERT(index < m_ReservedHandleCount);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.m_CPUHandle;
 		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = m_HeapStart.m_GPUHandle;
