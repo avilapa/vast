@@ -1,6 +1,9 @@
 #pragma once
 
 #include <stdint.h>
+#include <memory>
+#include <array>
+#include <vector>
 
 #define HLSLPP_FEATURE_TRANSFORM
 #include "hlslpp/include/hlsl++_vector_int.h"
@@ -10,7 +13,6 @@
 
 namespace vast
 {
-
 	// - Shader shared types ---------------------------------------------------------------------- //
 
 	// Note: Shader shared types (s_) are needed when using hlslpp types due to these being aligned to
@@ -63,6 +65,33 @@ namespace vast
 	using float2x2 = hlslpp::float2x2;
 	using float3x3 = hlslpp::float3x3;
 	using float4x4 = hlslpp::float4x4;
+
+	// - STL types -------------------------------------------------------------------------------- //
+
+	// Note: This is about giving nicer to read names to types we may want to replace in the future
+	// with our own wrapper.
+
+	template<class T>
+	using Ref = std::shared_ptr<T>;
+	template<class T, class ... Args>
+	constexpr Ref<T> MakeRef(Args&& ... args)
+	{
+		return std::make_shared<T>(std::forward<Args>(args)...);
+	}
+
+	template<class T>
+	using Ptr = std::unique_ptr<T>;
+	template<class T, class ... Args>
+	constexpr Ptr<T> MakePtr(Args&& ... args)
+	{
+		return std::make_unique<T>(std::forward<Args>(args)...);
+	}
+
+	template<class T, std::size_t N>
+	using Array = std::array<T, N>;
+
+	template<class T, class Allocator = std::allocator<T>>
+	using Vector = std::vector<T, Allocator>;
 
 	// -------------------------------------------------------------------------------------------- //
 

@@ -52,7 +52,7 @@ namespace vast::gfx
 		void FreeDescriptor(DX12DescriptorHandle desc);
 
 	private:
-		std::vector<uint32> m_FreeDescriptors;
+		Vector<uint32> m_FreeDescriptors;
 		uint32 m_CurrentDescriptorIndex;
 		uint32 m_ActiveHandleCount;
 		std::mutex m_UsageMutex;

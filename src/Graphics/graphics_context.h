@@ -25,7 +25,7 @@ namespace vast::gfx
 	class GraphicsContext
 	{
 	public:
-		static std::unique_ptr<GraphicsContext> Create(const GraphicsParams& params = GraphicsParams());
+		static Ptr<GraphicsContext> Create(const GraphicsParams& params = GraphicsParams());
 
 		virtual ~GraphicsContext() = default;
 	};

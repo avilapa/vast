@@ -9,13 +9,13 @@
 
 namespace vast
 {
-	std::unique_ptr<Window> Window::Create(const WindowParams& params /* = WindowParams() */)
+	Ptr<Window> Window::Create(const WindowParams& params /* = WindowParams() */)
 	{
 		VAST_PROFILE_SCOPE("Window", "Window::Create");
 
 		VAST_INFO("[window] Creating window.");
 #ifdef VAST_PLATFORM_WINDOWS
-		return std::make_unique<WindowImpl_Win32>(params);
+		return MakePtr<WindowImpl_Win32>(params);
 #else
 		VAST_ASSERTF(0, "Invalid Platform: Unknown Platform");
 		return nullptr;

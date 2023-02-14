@@ -76,12 +76,12 @@ namespace vast::gfx
 		void SignalEndOfFrame(const QueueType& type);
 
 		// TODO: Could combine these in a single structure
-		std::unique_ptr<DX12CommandQueue> m_CommandQueues[IDX(QueueType::COUNT)];
-		uint64 m_FrameFenceValues[IDX(QueueType::COUNT)][NUM_FRAMES_IN_FLIGHT];
+		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
+		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
-		std::unique_ptr<DX12StagingDescriptorHeap> m_RTVStagingDescriptorHeap;
+		Ptr<DX12StagingDescriptorHeap> m_RTVStagingDescriptorHeap;
 
-		std::array<std::unique_ptr<Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
+		Array<Ptr<Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
 
 		uint2 m_SwapChainSize;
 		Format m_SwapChainFormat;

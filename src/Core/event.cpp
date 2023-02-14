@@ -5,7 +5,7 @@
 namespace vast
 {
 
-	static std::array<std::vector<EventSystem::EventCallback>, static_cast<uint32>(EventType::COUNT)> s_EventsSubscribers;
+	static Array<Vector<EventSystem::EventCallback>, static_cast<uint32>(EventType::COUNT)> s_EventsSubscribers;
 
 	void EventSystem::SubscribeToEvent(uint32 eventIdx, EventCallback&& func)
 	{

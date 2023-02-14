@@ -16,7 +16,7 @@ namespace vast
 	class Window
 	{
 	public:
-		static std::unique_ptr<Window> Create(const WindowParams& params = WindowParams());
+		static Ptr<Window> Create(const WindowParams& params = WindowParams());
 		virtual ~Window() = default;
 
 		virtual void OnUpdate() = 0;

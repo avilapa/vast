@@ -27,7 +27,7 @@ namespace vast
 		void OnWindowResizeEvent(WindowResizeEvent& event);
 
 		bool m_bRunning;
-		std::unique_ptr<Window> m_Window;
+		Ptr<Window> m_Window;
 	};
 }
 

@@ -1,10 +1,6 @@
 #pragma once
 
 #include <string>
-#include <vector>
-#include <array>
-
-#include <memory>
 
 #include "Core/types.h"
 #include "Core/core.h"

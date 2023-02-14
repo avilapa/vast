@@ -10,13 +10,13 @@
 namespace vast::gfx
 {
 
-	std::unique_ptr<GraphicsContext> GraphicsContext::Create(const GraphicsParams& params /* = GraphicsParams() */)
+	Ptr<GraphicsContext> GraphicsContext::Create(const GraphicsParams& params /* = GraphicsParams() */)
 	{
 		VAST_PROFILE_SCOPE("GFX", "GraphicsContext::Create");
 
 		VAST_INFO("[gfx] Creating graphics context.");
 #ifdef VAST_PLATFORM_WINDOWS
-		return std::make_unique<DX12GraphicsContext>(params);
+		return MakePtr<DX12GraphicsContext>(params);
 #else
 		VAST_ASSERTF(0, "Invalid Platform: Unknown Platform");
 		return nullptr;

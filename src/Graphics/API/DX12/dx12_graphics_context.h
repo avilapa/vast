@@ -14,7 +14,7 @@ namespace vast::gfx
 		~DX12GraphicsContext();
 
 	private:
-		std::unique_ptr<class DX12Device> m_Device;
+		Ptr<class DX12Device> m_Device;
 	};
 
 	inline void DX12Check(HRESULT hr)
