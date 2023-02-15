@@ -130,14 +130,11 @@ namespace vast::gfx
 	{
 	public:
 		DX12SwapChain(const uint2& swapChainSize, const Format& swapChainFormat, 
-			IDXGIFactory7& dxgiFactory, DX12CommandQueue& commandQueue, 
-			DX12Device& device, DX12StagingDescriptorHeap& rtvStagingDescriptorHeap,
-			HWND windowHandle = ::GetActiveWindow())
+			DX12Device& device, HWND windowHandle = ::GetActiveWindow())
 			: m_SwapChain(nullptr)
 			, m_SwapChainSize(swapChainSize)
 			, m_SwapChainFormat(swapChainFormat)
 			, m_Device(device)
-			, m_RTVStagingDescriptorHeap(rtvStagingDescriptorHeap)
 		{
 			VAST_PROFILE_SCOPE("GFX", "DX12SwapChain::DX12SwapChain");
 			VAST_INFO("[gfx] [dx12] Creating swapchain.");
@@ -154,12 +151,13 @@ namespace vast::gfx
 			scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 			scDesc.BufferCount = NUM_BACK_BUFFERS;
 			scDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-			scDesc.Flags = CheckTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+			scDesc.Flags = CheckTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 			scDesc.Scaling = DXGI_SCALING_NONE;
 			scDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
 
 			IDXGISwapChain1* swapChain = nullptr;
-			DX12Check(dxgiFactory.CreateSwapChainForHwnd(commandQueue.GetQueue(), windowHandle, &scDesc, nullptr, nullptr, &swapChain));
+			auto queue = m_Device.m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue();
+			DX12Check(m_Device.m_DXGIFactory->CreateSwapChainForHwnd(queue, windowHandle, &scDesc, nullptr, nullptr, &swapChain));
 			DX12Check(swapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain)));
 			DX12SafeRelease(swapChain);
 
@@ -244,7 +242,7 @@ namespace vast::gfx
 				backBuffer->SetName(std::wstring(backBufferName.begin(), backBufferName.end()).c_str());
 #endif // VAST_DEBUG
 
-				DX12DescriptorHandle backBufferRTVHandle = m_RTVStagingDescriptorHeap.GetNewDescriptor();
+				DX12DescriptorHandle backBufferRTVHandle = m_Device.m_RTVStagingDescriptorHeap->GetNewDescriptor();
 
 				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
 				rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // TODO: Expose backbuffer format (sRGB)
@@ -269,16 +267,16 @@ namespace vast::gfx
 
 			for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
 			{
-				m_RTVStagingDescriptorHeap.FreeDescriptor(m_BackBuffers[i]->m_RTVDescriptor);
+				m_Device.m_RTVStagingDescriptorHeap->FreeDescriptor(m_BackBuffers[i]->m_RTVDescriptor);
 				DX12SafeRelease(m_BackBuffers[i]->m_Resource);
 				m_BackBuffers[i] = nullptr;
 			}
 		}
 
-		bool CheckTearingSupport(IDXGIFactory7& dxgiFactory)
+		bool CheckTearingSupport()
 		{
 			BOOL allowTearing = FALSE;
-			if (FAILED(dxgiFactory.CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
+			if (FAILED(m_Device.m_DXGIFactory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
 			{
 				allowTearing = FALSE;
 			}
@@ -286,7 +284,6 @@ namespace vast::gfx
 		}
 
 		DX12Device& m_Device;
-		DX12StagingDescriptorHeap& m_RTVStagingDescriptorHeap; // TODO: Instead of keeping a reference this should work with the device interface.
 
 		IDXGISwapChain4* m_SwapChain;
 		Array<Ptr<Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
@@ -401,7 +398,7 @@ namespace vast::gfx
 				NUM_RESERVED_SRV_DESCRIPTORS, NUM_SRV_RENDER_PASS_USER_DESCRIPTORS);
 		}
 
-		m_SwapChain = MakePtr<DX12SwapChain>(swapChainSize, swapChainFormat, *m_DXGIFactory, *m_CommandQueues[IDX(QueueType::GRAPHICS)], *this, *m_RTVStagingDescriptorHeap);
+		m_SwapChain = MakePtr<DX12SwapChain>(swapChainSize, swapChainFormat, *this);
 	}
 
 	DX12Device::~DX12Device()

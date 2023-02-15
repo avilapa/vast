@@ -20,6 +20,7 @@ namespace vast::gfx
 
 	class DX12Device
 	{
+		friend class DX12SwapChain;
 	public:
 		DX12Device(const uint2& swapChainSize, const Format& swapChainFormat);
 		~DX12Device();
@@ -38,7 +39,6 @@ namespace vast::gfx
 // 		Format GetSwapChainFormat() const;
 // 		Format GetBackBufferFormat() const;
 
-		uint32 m_FrameId; // TODO: This should be private
 	private:
 		IDXGIFactory7* m_DXGIFactory;
 		ID3D12Device5* m_Device;
@@ -52,5 +52,7 @@ namespace vast::gfx
 
 		Ptr<DX12StagingDescriptorHeap> m_RTVStagingDescriptorHeap;
 		Array<Ptr<DX12RenderPassDescriptorHeap>, NUM_FRAMES_IN_FLIGHT> m_SRVRenderPassDescriptorHeaps;
+
+		uint32 m_FrameId;
 	};
 }

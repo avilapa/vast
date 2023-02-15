@@ -2,9 +2,6 @@
 
 #include "Graphics/API/DX12/dx12_common.h"
 
-// TODO: class Swapchain inside device
-// TODO: Graphics context public interface, owns device and compute/upload contexts inside it
-
 namespace vast::gfx
 {
 	class DX12Device;
