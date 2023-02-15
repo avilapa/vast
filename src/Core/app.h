@@ -22,9 +22,10 @@ namespace vast
 		void Run() override;
 		void Quit();
 
-	private:
+	protected:
+		virtual void OnUpdate();
+
 		void OnWindowCloseEvent();
-		void OnWindowResizeEvent(WindowResizeEvent& event);
 
 		bool m_bRunning;
 		Ptr<Window> m_Window;

@@ -1,25 +1,11 @@
 #pragma once
 
-#include "Graphics/graphics_context.h"
+#include "Graphics/API/DX12/dx12_common.h"
 
-#include "dx12/DirectXAgilitySDK/include/d3d12.h"
+#include <mutex>
 
 namespace vast::gfx
 {
-
-	// - Descriptor Handles ----------------------------------------------------------------------- //
-
-	struct DX12DescriptorHandle
-	{
-		bool IsValid() const { return m_CPUHandle.ptr != 0; }
-		bool IsReferencedByShader() const { return m_GPUHandle.ptr != 0; }
-
-		D3D12_CPU_DESCRIPTOR_HANDLE m_CPUHandle = { 0 };
-		D3D12_GPU_DESCRIPTOR_HANDLE m_GPUHandle = { 0 };
-		uint32 m_HeapIndex = 0;
-	};
-
-	// - Descriptor Heaps ------------------------------------------------------------------------- //
 
 	class DX12DescriptorHeap
 	{

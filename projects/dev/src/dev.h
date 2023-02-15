@@ -10,5 +10,7 @@ public:
 	~Dev();
 
 private:
+	void OnUpdate() override;
+
 	Ptr<gfx::GraphicsContext> m_GraphicsContext;
 };

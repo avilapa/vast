@@ -18,7 +18,6 @@ namespace vast
 		m_Window = Window::Create();
 
 		VAST_SUBSCRIBE_TO_EVENT(WindowCloseEvent, WindowedApp::OnWindowCloseEvent);
-		VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, WindowedApp::OnWindowResizeEvent);
 	}
 
 	WindowedApp::~WindowedApp()
@@ -37,6 +36,7 @@ namespace vast
 		while (m_bRunning)
 		{
 			m_Window->OnUpdate();
+			OnUpdate();
 		}
 	}
 
@@ -46,13 +46,14 @@ namespace vast
 		m_bRunning = false;
 	}
 
+	void WindowedApp::OnUpdate()
+	{
+
+	}
+
 	void WindowedApp::OnWindowCloseEvent()
 	{
 		Quit();
 	}
 
-	void WindowedApp::OnWindowResizeEvent(WindowResizeEvent& event)
-	{
-		VAST_INFO("OnWindowResizeEvent() called, to {}x{}", event.m_WindowSize.x, event.m_WindowSize.y);
-	}
 }

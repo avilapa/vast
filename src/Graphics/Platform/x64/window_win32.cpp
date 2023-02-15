@@ -102,11 +102,15 @@ namespace vast
 		RECT windowRect = {};
 		::GetClientRect(m_Handle, &windowRect);
 
-		m_WindowSize.x = windowRect.right - windowRect.left;
-		m_WindowSize.y = windowRect.bottom - windowRect.top;
+		uint32 newX = windowRect.right - windowRect.left;
+		uint32 newY = windowRect.bottom - windowRect.top;
 
-		WindowResizeEvent event(m_WindowSize);
-		VAST_FIRE_EVENT(WindowResizeEvent, event);
+		if (newX != m_WindowSize.x || newY != m_WindowSize.y)
+		{
+			m_WindowSize = uint2(newX, newY);
+			WindowResizeEvent event(m_WindowSize);
+			VAST_FIRE_EVENT(WindowResizeEvent, event);
+		}
 	}
 
 	uint2 WindowImpl_Win32::GetWindowSize() const
