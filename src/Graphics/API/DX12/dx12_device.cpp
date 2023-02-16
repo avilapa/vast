@@ -140,11 +140,12 @@ namespace vast::gfx
 	class DX12SwapChain
 	{
 	public:
-		DX12SwapChain(const uint2& swapChainSize, const Format& swapChainFormat, 
+		DX12SwapChain(const uint2& swapChainSize, const Format& swapChainFormat, const Format& backBufferFormat,
 			DX12Device& device, HWND windowHandle = ::GetActiveWindow())
 			: m_SwapChain(nullptr)
 			, m_SwapChainSize(swapChainSize)
 			, m_SwapChainFormat(swapChainFormat)
+			, m_BackBufferFormat(backBufferFormat)
 			, m_Device(device)
 		{
 			VAST_PROFILE_FUNCTION();
@@ -156,7 +157,7 @@ namespace vast::gfx
 			ZeroMemory(&scDesc, sizeof(scDesc));
 			scDesc.Width = m_SwapChainSize.x;
 			scDesc.Height = m_SwapChainSize.y;
-			scDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // TODO: Use m_SwapChainFormat
+			scDesc.Format = TranslateToDX12(m_SwapChainFormat);
 			scDesc.Stereo = false;
 			scDesc.SampleDesc = { 1, 0 };
 			scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -204,7 +205,7 @@ namespace vast::gfx
 
 		Format GetBackBufferFormat() const
 		{
-			return Format::RGBA8_UNORM_SRGB; // TODO: Expose backbuffer format (sRGB)
+			return m_BackBufferFormat;
 		}
 
 		void Present()
@@ -258,7 +259,7 @@ namespace vast::gfx
 				DX12DescriptorHandle backBufferRTVHandle = m_Device.m_RTVStagingDescriptorHeap->GetNewDescriptor();
 
 				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-				rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // TODO: Expose backbuffer format (sRGB)
+				rtvDesc.Format = TranslateToDX12(m_BackBufferFormat);
 				rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 				rtvDesc.Texture2D.MipSlice = 0;
 				rtvDesc.Texture2D.PlaneSlice = 0;
@@ -303,11 +304,12 @@ namespace vast::gfx
 
 		vast::uint2 m_SwapChainSize;
 		Format m_SwapChainFormat;
+		Format m_BackBufferFormat;
 	};
 
 	//
 
-	DX12Device::DX12Device(const uint2& swapChainSize, const Format& swapChainFormat)
+	DX12Device::DX12Device(const uint2& swapChainSize, const Format& swapChainFormat, const Format& backBufferFormat)
 		: m_DXGIFactory(nullptr)
 		, m_Device(nullptr)
 		, m_SwapChain(nullptr)
@@ -419,7 +421,7 @@ namespace vast::gfx
 				NUM_RESERVED_SRV_DESCRIPTORS, NUM_SRV_RENDER_PASS_USER_DESCRIPTORS);
 		}
 
-		m_SwapChain = MakePtr<DX12SwapChain>(swapChainSize, swapChainFormat, *this);
+		m_SwapChain = MakePtr<DX12SwapChain>(swapChainSize, swapChainFormat, backBufferFormat, *this);
 	}
 
 	DX12Device::~DX12Device()
@@ -521,7 +523,5 @@ namespace vast::gfx
 	{
 		return m_FrameId;
 	}
-
-
 
 }

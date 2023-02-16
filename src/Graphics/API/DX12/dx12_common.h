@@ -70,17 +70,6 @@ namespace vast::gfx
 		}
 	}
 
-	static DXGI_FORMAT g_DX12Format[] =
-	{
-		DXGI_FORMAT_UNKNOWN,				// UNKNOWN
-		DXGI_FORMAT_R32G32_FLOAT,			// RG32_FLOAT
-		DXGI_FORMAT_R8G8B8A8_UNORM,			// RGBA8_UNORM
-		DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,	// RGBA8_UNORM_SRGB
-		DXGI_FORMAT_D32_FLOAT,				// D32_FLOAT
-	};
-
-	static_assert(NELEM(g_DX12Format) == IDX(Format::COUNT));
-
 	static DXGI_FORMAT TranslateToDX12(Format e)
 	{
 		switch (e)

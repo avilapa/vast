@@ -22,7 +22,7 @@ namespace vast::gfx
 	{
 		friend class DX12SwapChain;
 	public:
-		DX12Device(const uint2& swapChainSize, const Format& swapChainFormat);
+		DX12Device(const uint2& swapChainSize, const Format& swapChainFormat, const Format& backBufferFormat);
 		~DX12Device();
 
 		void BeginFrame();

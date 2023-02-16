@@ -10,7 +10,7 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_Device = MakePtr<DX12Device>(params.swapChainSize, params.swapChainFormat);
+		m_Device = MakePtr<DX12Device>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat);
 		m_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*m_Device);
 	}
 
