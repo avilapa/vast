@@ -10,11 +10,10 @@ namespace vast
 		: m_bRunning(false)
 		, m_Window(nullptr)
 	{
-		VAST_PROFILE_BEGIN("vast.json");
-		VAST_PROFILE_SCOPE("App", "WindowedApp::WindowedApp");
+		VAST_PROFILE_FUNCTION();
 
 		Log::Init();
-		(void)argc; (void)argv;// TODO: Process input args.
+		(void)argc; (void)argv; // TODO: Process input args.
 		m_Window = Window::Create();
 
 		VAST_SUBSCRIBE_TO_EVENT(WindowCloseEvent, WindowedApp::OnWindowCloseEvent);
@@ -22,15 +21,15 @@ namespace vast
 
 	WindowedApp::~WindowedApp()
 	{
-		VAST_PROFILE_SCOPE("App", "WindowedApp::~WindowedApp");
+		VAST_PROFILE_FUNCTION();
 
 		m_Window = nullptr;
-		VAST_PROFILE_END();
 	}
 
 	void WindowedApp::Run()
 	{
-		VAST_PROFILE_SCOPE("App", "WindowedApp::Run");
+		VAST_PROFILE_FUNCTION();
+
 		m_bRunning = true;
 
 		while (m_bRunning)

@@ -11,7 +11,7 @@ namespace vast
 	void Log::Init()
 	{
 #ifdef VAST_ENABLE_LOGGING
-		VAST_PROFILE_SCOPE("Log", "Log::Init");
+		VAST_PROFILE_FUNCTION();
 
 		std::string logOutputFileName = "vast.log";
 		Vector<spdlog::sink_ptr> logSinks;

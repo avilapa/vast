@@ -32,17 +32,20 @@ namespace vast
 	};
 }
 
-#define VAST_DEFINE_MAIN(function)			\
-int main(int argc, char** argv)				\
-{											\
-	function(argc, argv);					\
-	return 0;								\
+#define VAST_DEFINE_MAIN(function)				\
+int main(int argc, char** argv)					\
+{												\
+	function(argc, argv);						\
+	return 0;									\
 }
 
-#define VAST_DEFINE_APP_MAIN(className)		\
-void RunApp(int argc, char** argv)			\
-{											\
-	className app = className(argc, argv);	\
-	return app.Run();						\
-}											\
+#define VAST_DEFINE_APP_MAIN(className)			\
+void RunApp(int argc, char** argv)				\
+{												\
+	VAST_PROFILE_INIT("vast-profile.json");		\
+	className* app = new className(argc, argv);	\
+	app->Run();									\
+	delete app;									\
+	VAST_PROFILE_STOP();						\
+}												\
 VAST_DEFINE_MAIN(RunApp);

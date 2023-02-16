@@ -8,7 +8,7 @@ namespace vast::gfx
 
 	DX12GraphicsContext::DX12GraphicsContext(const GraphicsParams& params)
 	{
-		VAST_PROFILE_SCOPE("GFX", "DX12GraphicsContext::DX12GraphicsContext");
+		VAST_PROFILE_FUNCTION();
 
 		m_Device = MakePtr<DX12Device>(params.swapChainSize, params.swapChainFormat);
 		m_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*m_Device);
@@ -16,7 +16,7 @@ namespace vast::gfx
 
 	DX12GraphicsContext::~DX12GraphicsContext()
 	{
-		VAST_PROFILE_SCOPE("GFX", "DX12GraphicsContext::~DX12GraphicsContext");
+		VAST_PROFILE_FUNCTION();
 
 		m_Device->WaitForIdle();
 
@@ -51,7 +51,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::AddBarrier(Resource& resource, const ResourceState& state)
 	{
-		m_GraphicsCommandList->AddBarrier(resource, static_cast<D3D12_RESOURCE_STATES>(state)); // TODO: Change enum
+		m_GraphicsCommandList->AddBarrier(resource, TranslateToDX12(state));
 	}
 
 	void DX12GraphicsContext::FlushBarriers()

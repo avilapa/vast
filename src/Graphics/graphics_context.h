@@ -2,26 +2,12 @@
 
 #include "Core/core.h"
 #include "Core/types.h"
+#include "Graphics/graphics.h"
 
 namespace vast::gfx
 {
 	struct Resource; // TODO
 	struct Texture; // TODO
-
-	enum class Format
-	{
-		UNKNOWN,
-		RG32_FLOAT,
-		RGBA8_UNORM,
-		RGBA8_UNORM_SRGB,
-		D32_FLOAT,
-	};
-
-	enum class ResourceState
-	{
-		RENDER_TARGET = 0x4, // TODO TEMP: Make this crossplatform-safe.
-		PRESENT = 0,
-	};
 
 	struct GraphicsParams
 	{

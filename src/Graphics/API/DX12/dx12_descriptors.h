@@ -13,12 +13,12 @@ namespace vast::gfx
 		DX12DescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, uint32 maxDescriptors, bool bIsShaderVisible);
 		virtual ~DX12DescriptorHeap();
 
-		ID3D12DescriptorHeap* GetHeap() const;
-		D3D12_DESCRIPTOR_HEAP_TYPE GetHeapType() const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetHeapCPUStart() const;
-		D3D12_GPU_DESCRIPTOR_HANDLE GetHeapGPUStart() const;
-		uint32 GetMaxDescriptors() const;
-		uint32 GetDescriptorSize() const;
+		ID3D12DescriptorHeap* GetHeap() const { return m_DescriptorHeap; }
+		D3D12_DESCRIPTOR_HEAP_TYPE GetHeapType() const { return m_HeapType; }
+		D3D12_CPU_DESCRIPTOR_HANDLE GetHeapCPUStart() const { return m_HeapStart.m_CPUHandle; }
+		D3D12_GPU_DESCRIPTOR_HANDLE GetHeapGPUStart() const { return m_HeapStart.m_GPUHandle; }
+		uint32 GetMaxDescriptors() const { return m_MaxDescriptors; }
+		uint32 GetDescriptorSize() const { return m_DescriptorSize; }
 
 	protected:
 		D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType;

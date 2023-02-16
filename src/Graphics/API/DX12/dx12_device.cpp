@@ -27,6 +27,8 @@ namespace vast::gfx
 			, m_LastCompletedFenceValue(0)
 			, m_FenceEventHandle(0)
 		{
+			VAST_PROFILE_FUNCTION();
+
 			D3D12_COMMAND_QUEUE_DESC desc = {};
 			desc.Type = m_CommandType;
 			desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
@@ -44,6 +46,8 @@ namespace vast::gfx
 		
 		~DX12CommandQueue()
 		{
+			VAST_PROFILE_FUNCTION();
+
 			CloseHandle(m_FenceEventHandle);
 
 			DX12SafeRelease(m_Fence);
@@ -68,6 +72,8 @@ namespace vast::gfx
 			}
 
 			{
+				VAST_PROFILE_FUNCTION();
+
 				std::lock_guard<std::mutex> lockGuard(m_EventMutex);
 
 				m_Fence->SetEventOnCompletion(fenceValue, m_FenceEventHandle);
@@ -94,6 +100,8 @@ namespace vast::gfx
 
 		uint64 SignalFence()
 		{
+			VAST_PROFILE_FUNCTION();
+
 			std::lock_guard<std::mutex> lockGuard(m_FenceMutex);
 
 			DX12Check(m_Queue->Signal(m_Fence, m_NextFenceValue));
@@ -103,6 +111,8 @@ namespace vast::gfx
 
 		uint64 ExecuteCommandList(ID3D12CommandList* commandList)
 		{
+			VAST_PROFILE_FUNCTION();
+
 			DX12Check(static_cast<ID3D12GraphicsCommandList*>(commandList)->Close());
 			m_Queue->ExecuteCommandLists(1, &commandList);
 
@@ -113,6 +123,7 @@ namespace vast::gfx
 		{ 
 			return m_Queue; 
 		}
+
 	private:
 		D3D12_COMMAND_LIST_TYPE m_CommandType;
 		ID3D12CommandQueue* m_Queue;
@@ -136,7 +147,7 @@ namespace vast::gfx
 			, m_SwapChainFormat(swapChainFormat)
 			, m_Device(device)
 		{
-			VAST_PROFILE_SCOPE("GFX", "DX12SwapChain::DX12SwapChain");
+			VAST_PROFILE_FUNCTION();
 			VAST_INFO("[gfx] [dx12] Creating swapchain.");
 
 			VAST_ASSERTF(m_SwapChainSize.x != 0 && m_SwapChainSize.y != 0, "Failed to create swapchain. Invalid swapchain size.");
@@ -168,7 +179,7 @@ namespace vast::gfx
 
 		~DX12SwapChain()
 		{
-			VAST_PROFILE_SCOPE("GFX", "DX12SwapChain::DX12SwapChain");
+			VAST_PROFILE_FUNCTION();
 
 			DestroyBackBuffers();
 
@@ -204,6 +215,8 @@ namespace vast::gfx
 	private:
 		void OnWindowResizeEvent(WindowResizeEvent& event)
 		{
+			VAST_PROFILE_FUNCTION();
+
 			uint32 newX = event.m_WindowSize.x;
 			uint32 newY = event.m_WindowSize.y;
 			uint2 asd = uint2(0, 0);
@@ -229,7 +242,7 @@ namespace vast::gfx
 
 		void CreateBackBuffers()
 		{
-			VAST_PROFILE_SCOPE("GFX", "DX12SwapChain::CreateBackBuffers");
+			VAST_PROFILE_FUNCTION();
 			VAST_INFO("[gfx] [dx12] Creating backbuffers.");
 
 			for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
@@ -262,7 +275,7 @@ namespace vast::gfx
 
 		void DestroyBackBuffers()
 		{
-			VAST_PROFILE_SCOPE("GFX", "DX12Device::DestroyBackBuffers");
+			VAST_PROFILE_FUNCTION();
 			VAST_INFO("[gfx] [dx12] Destroying backbuffers.");
 
 			for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
@@ -304,55 +317,63 @@ namespace vast::gfx
 		, m_SRVRenderPassDescriptorHeaps({ nullptr })
 		, m_FrameId(0)
 	{
-		VAST_PROFILE_SCOPE("GFX", "DX12Device::DX12Device");
+		VAST_PROFILE_FUNCTION();
 		VAST_INFO("[gfx] [dx12] Starting graphics device creation.");
 
 #ifdef VAST_DEBUG
 		ID3D12Debug* debugController;
 		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 		{
+			VAST_PROFILE_SCOPE("Device", "EnableDebugLayer");
 			debugController->EnableDebugLayer();
 			DX12SafeRelease(debugController);
 			VAST_INFO("[gfx] [dx12] Debug layer enabled.");
 		}
 #endif // VAST_DEBUG
 
-		// Find GPU adapter.
-		VAST_INFO("[gfx] [dx12] Creating DXGI factory.");
-		UINT createFactoryFlags = 0;
-#ifdef VAST_DEBUG
-		createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
-#endif // VAST_DEBUG
-		DX12Check(CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&m_DXGIFactory)));
-
-		// Query adapters
-		IDXGIAdapter1* adapter = nullptr;
-		uint32 bestAdapterIndex = 0;
-		size_t bestAdapterMemory = 0;
-
-		for (uint32 i = 0; m_DXGIFactory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
 		{
-			DXGI_ADAPTER_DESC1 adapterDesc;
-			DX12Check(adapter->GetDesc1(&adapterDesc));
-
-			// Choose adapter with the highest GPU memory.
-			if ((adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0
-				&& SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, __uuidof(ID3D12Device), nullptr))
-				&& adapterDesc.DedicatedVideoMemory > bestAdapterMemory)
-			{
-				bestAdapterIndex = i;
-				bestAdapterMemory = adapterDesc.DedicatedVideoMemory;
-			}
-
-			DX12SafeRelease(adapter);
+			VAST_PROFILE_SCOPE("Device", "CreateDXGIFactory");
+			VAST_INFO("[gfx] [dx12] Creating DXGI factory.");
+			UINT createFactoryFlags = 0;
+#ifdef VAST_DEBUG
+			createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+#endif // VAST_DEBUG
+			DX12Check(CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&m_DXGIFactory)));
 		}
 
-		VAST_INFO("[gfx] [dx12] GPU adapter found with index {}.", bestAdapterIndex);
-		VAST_ASSERTF(bestAdapterMemory != 0, "Failed to find an adapter.");
-		m_DXGIFactory->EnumAdapters1(bestAdapterIndex, &adapter);
+		IDXGIAdapter1* adapter = nullptr;
+		{
+			VAST_PROFILE_SCOPE("Device", "Query adapters");
+			uint32 bestAdapterIndex = 0;
+			size_t bestAdapterMemory = 0;
 
-		VAST_INFO("[gfx] [dx12] Creating device.");
-		DX12Check(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_Device)));
+			for (uint32 i = 0; m_DXGIFactory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
+			{
+				DXGI_ADAPTER_DESC1 adapterDesc;
+				DX12Check(adapter->GetDesc1(&adapterDesc));
+
+				// Choose adapter with the highest GPU memory.
+				if ((adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0
+					&& SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, __uuidof(ID3D12Device), nullptr))
+					&& adapterDesc.DedicatedVideoMemory > bestAdapterMemory)
+				{
+					bestAdapterIndex = i;
+					bestAdapterMemory = adapterDesc.DedicatedVideoMemory;
+				}
+
+				DX12SafeRelease(adapter);
+			}
+
+			VAST_INFO("[gfx] [dx12] GPU adapter found with index {}.", bestAdapterIndex);
+			VAST_ASSERTF(bestAdapterMemory != 0, "Failed to find an adapter.");
+			m_DXGIFactory->EnumAdapters1(bestAdapterIndex, &adapter);
+		}
+
+		{
+			VAST_PROFILE_SCOPE("Device", "D3D12CreateDevice");
+			VAST_INFO("[gfx] [dx12] Creating device.");
+			DX12Check(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_Device)));
+		}
 
 		// TODO: Initialize Memory Allocator
 
@@ -368,16 +389,16 @@ namespace vast::gfx
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_INFO, TRUE);
 
-			//	 		D3D12_MESSAGE_CATEGORY Categories[] = {};
+			//D3D12_MESSAGE_CATEGORY Categories[] = {};
 			D3D12_MESSAGE_SEVERITY Severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
-			// 			D3D12_MESSAGE_ID DenyIds[] = {};
+			//D3D12_MESSAGE_ID DenyIds[] = {};
 			D3D12_INFO_QUEUE_FILTER filter = {};
-			// 	 		filter.DenyList.NumCategories = _countof(Categories);
-			// 	 		filter.DenyList.pCategoryList = Categories;
+			//filter.DenyList.NumCategories = _countof(Categories);
+			//filter.DenyList.pCategoryList = Categories;
 			filter.DenyList.NumSeverities = _countof(Severities);
 			filter.DenyList.pSeverityList = Severities;
-			// 			filter.DenyList.NumIDs = _countof(DenyIds);
-			// 			filter.DenyList.pIDList = DenyIds;
+			//filter.DenyList.NumIDs = _countof(DenyIds);
+			//filter.DenyList.pIDList = DenyIds;
 
 			DX12Check(infoQueue->PushStorageFilter(&filter));
 
@@ -403,6 +424,8 @@ namespace vast::gfx
 
 	DX12Device::~DX12Device()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		WaitForIdle();
 		VAST_INFO("[gfx] [dx12] Starting graphics device destruction.");
 
@@ -426,6 +449,8 @@ namespace vast::gfx
 
 	void DX12Device::BeginFrame()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
 
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
@@ -457,17 +482,20 @@ namespace vast::gfx
 			VAST_ASSERTF(0, "Unsupported context submit type.");
 			break;
 		}
-
 	}
 
 	void DX12Device::Present()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		m_SwapChain->Present();
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
 	void DX12Device::WaitForIdle()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			m_CommandQueues[i]->WaitForIdle();

@@ -69,4 +69,38 @@ namespace vast::gfx
 			p = nullptr;
 		}
 	}
+
+	static DXGI_FORMAT g_DX12Format[] =
+	{
+		DXGI_FORMAT_UNKNOWN,				// UNKNOWN
+		DXGI_FORMAT_R32G32_FLOAT,			// RG32_FLOAT
+		DXGI_FORMAT_R8G8B8A8_UNORM,			// RGBA8_UNORM
+		DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,	// RGBA8_UNORM_SRGB
+		DXGI_FORMAT_D32_FLOAT,				// D32_FLOAT
+	};
+
+	static_assert(NELEM(g_DX12Format) == IDX(Format::COUNT));
+
+	static DXGI_FORMAT TranslateToDX12(Format e)
+	{
+		switch (e)
+		{
+		case Format::UNKNOWN:			return DXGI_FORMAT_UNKNOWN;
+		case Format::RG32_FLOAT:		return DXGI_FORMAT_R32G32_FLOAT;
+		case Format::RGBA8_UNORM:		return DXGI_FORMAT_R8G8B8A8_UNORM;
+		case Format::RGBA8_UNORM_SRGB:	return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		case Format::D32_FLOAT:			return DXGI_FORMAT_D32_FLOAT;
+		default: VAST_ASSERTF(0, "Format type not supported."); return DXGI_FORMAT_UNKNOWN;
+		}
+	}
+
+	static D3D12_RESOURCE_STATES TranslateToDX12(ResourceState e)
+	{
+		switch (e)
+		{
+		case ResourceState::RENDER_TARGET:	return D3D12_RESOURCE_STATE_RENDER_TARGET;
+		case ResourceState::PRESENT:		return D3D12_RESOURCE_STATE_PRESENT;
+		default: VAST_ASSERTF(0, "ResourceState type not supported."); return D3D12_RESOURCE_STATE_COMMON;
+		}
+	}
 }

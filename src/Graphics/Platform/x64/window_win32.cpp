@@ -57,7 +57,7 @@ namespace vast
 		: m_WindowSize(params.size)
 		, m_WindowName(std::wstring(params.name.begin(), params.name.end()))
 	{
-		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::WindowImpl_Win32");
+		VAST_PROFILE_FUNCTION();
 
 		HINSTANCE hInst = GetModuleHandle(nullptr);
 
@@ -65,7 +65,10 @@ namespace vast
 		Register(hInst, windowClassName);
 		Create(hInst, windowClassName, m_WindowName.c_str(), m_WindowSize);
 
-		ShowWindow(m_Handle, SW_SHOW);
+		{
+			VAST_PROFILE_SCOPE("Window", "Show Window");
+			ShowWindow(m_Handle, SW_SHOW);
+		}
 		SetForegroundWindow(m_Handle);
 		SetFocus(m_Handle);
 		ShowCursor(true);
@@ -74,7 +77,7 @@ namespace vast
 
 	WindowImpl_Win32::~WindowImpl_Win32()
 	{
-		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::~WindowImpl_Win32");
+		VAST_PROFILE_FUNCTION();
 
 		DestroyWindow(m_Handle);
 		m_Handle = nullptr;
@@ -82,7 +85,7 @@ namespace vast
 
 	void WindowImpl_Win32::OnUpdate()
 	{
-		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::OnUpdate");
+		VAST_PROFILE_FUNCTION();
 
 		MSG msg{ 0 };
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -120,7 +123,7 @@ namespace vast
 
 	void WindowImpl_Win32::Register(HINSTANCE hInst, const wchar_t* windowClassName)
 	{
-		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::Register");
+		VAST_PROFILE_FUNCTION();
 
 		WNDCLASSEXW windowClass;
 		windowClass.cbSize = sizeof(WNDCLASSEX);
@@ -142,7 +145,7 @@ namespace vast
 
 	void WindowImpl_Win32::Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 windowSize)
 	{
-		VAST_PROFILE_SCOPE("Window", "WindowImpl_Win32::Create");
+		VAST_PROFILE_FUNCTION();
 
 		int screenW = ::GetSystemMetrics(SM_CXSCREEN);
 		int screenH = ::GetSystemMetrics(SM_CYSCREEN);

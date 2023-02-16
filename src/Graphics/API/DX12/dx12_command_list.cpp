@@ -15,6 +15,8 @@ namespace vast::gfx
 		, m_NumQueuedBarriers(0)
 		, m_CurrentSRVDescriptorHeap(nullptr)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			DX12Check(m_Device.GetDevice()->CreateCommandAllocator(m_CommandType, IID_PPV_ARGS(&m_CommandAllocators[i])));
@@ -45,6 +47,8 @@ namespace vast::gfx
 
 	void DX12CommandList::Reset()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		uint32 frameId = m_Device.GetFrameId();
 
 		m_CommandAllocators[frameId]->Reset();
@@ -58,6 +62,8 @@ namespace vast::gfx
 
 	void DX12CommandList::AddBarrier(Resource& resource, D3D12_RESOURCE_STATES newState)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		if (m_NumQueuedBarriers >= MAX_QUEUED_BARRIERS)
 		{
 			FlushBarriers();
@@ -92,6 +98,8 @@ namespace vast::gfx
 
 	void DX12CommandList::FlushBarriers()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		if (m_NumQueuedBarriers > 0)
 		{
 			m_CommandList->ResourceBarrier(m_NumQueuedBarriers, m_ResourceBarrierQueue.data());
@@ -101,6 +109,8 @@ namespace vast::gfx
 
 	void DX12CommandList::BindDescriptorHeaps(uint32 frameId)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		m_CurrentSRVDescriptorHeap = &m_Device.GetSRVDescriptorHeap(frameId);
 		m_CurrentSRVDescriptorHeap->Reset();
 
@@ -121,6 +131,8 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		D3D12_VIEWPORT viewport;
 		viewport.Width = static_cast<float>(windowSize.x);
 		viewport.Height = static_cast<float>(windowSize.y);
@@ -142,11 +154,15 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::ClearRenderTarget(const Texture& rt, float4 color)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		m_CommandList->ClearRenderTargetView(rt.m_RTVDescriptor.m_CPUHandle, (float*)&color, 0, nullptr);
 	}
 
 	void DX12GraphicsCommandList::ClearDepthStencilTarget(const Texture& dst, float depth, uint8 stencil)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		m_CommandList->ClearDepthStencilView(dst.m_DSVDescriptor.m_CPUHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
 	}
 

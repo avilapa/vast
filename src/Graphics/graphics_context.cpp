@@ -12,8 +12,6 @@ namespace vast::gfx
 
 	Ptr<GraphicsContext> GraphicsContext::Create(const GraphicsParams& params /* = GraphicsParams() */)
 	{
-		VAST_PROFILE_SCOPE("GFX", "GraphicsContext::Create");
-
 		VAST_INFO("[gfx] Creating graphics context.");
 #ifdef VAST_PLATFORM_WINDOWS
 		return MakePtr<DX12GraphicsContext>(params);

@@ -11,6 +11,8 @@ namespace vast::gfx
 		, m_MaxDescriptors(maxDescriptors)
 		, m_DescriptorSize(0)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 		desc.NumDescriptors = m_MaxDescriptors;
 		desc.Type = m_HeapType;
@@ -41,18 +43,13 @@ namespace vast::gfx
 		DX12SafeRelease(m_DescriptorHeap);
 	}
 
-	ID3D12DescriptorHeap* DX12DescriptorHeap::GetHeap() const { return m_DescriptorHeap; }
-	D3D12_DESCRIPTOR_HEAP_TYPE DX12DescriptorHeap::GetHeapType() const { return m_HeapType; }
-	D3D12_CPU_DESCRIPTOR_HANDLE DX12DescriptorHeap::GetHeapCPUStart() const { return m_HeapStart.m_CPUHandle; }
-	D3D12_GPU_DESCRIPTOR_HANDLE DX12DescriptorHeap::GetHeapGPUStart() const { return m_HeapStart.m_GPUHandle; }
-	uint32 DX12DescriptorHeap::GetMaxDescriptors() const { return m_MaxDescriptors; }
-	uint32 DX12DescriptorHeap::GetDescriptorSize() const { return m_DescriptorSize; }
-
 	DX12StagingDescriptorHeap::DX12StagingDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, uint32 maxDescriptors)
 		: DX12DescriptorHeap(device, heapType, maxDescriptors, false)
 		, m_CurrentDescriptorIndex(0)
 		, m_ActiveHandleCount(0)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		m_FreeDescriptors.reserve(m_MaxDescriptors);
 	}
 
@@ -66,6 +63,8 @@ namespace vast::gfx
 
 	DX12DescriptorHandle DX12StagingDescriptorHeap::GetNewDescriptor()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		std::lock_guard<std::mutex> lockGuard(m_UsageMutex);
 
 		uint32 newHandleID = 0;
@@ -99,6 +98,8 @@ namespace vast::gfx
 
 	void DX12StagingDescriptorHeap::FreeDescriptor(DX12DescriptorHandle desc)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		std::lock_guard<std::mutex> lockGuard(m_UsageMutex);
 
 		m_FreeDescriptors.push_back(desc.m_HeapIndex);
@@ -117,6 +118,7 @@ namespace vast::gfx
 		, m_CurrentDescriptorIndex(reservedCount)
 		, m_ReservedHandleCount(reservedCount)
 	{
+		VAST_PROFILE_FUNCTION();
 	}
 
 	DX12RenderPassDescriptorHeap::~DX12RenderPassDescriptorHeap()
@@ -130,6 +132,8 @@ namespace vast::gfx
 
 	DX12DescriptorHandle DX12RenderPassDescriptorHeap::GetUserDescriptorBlockStart(uint32 count)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		uint32 newHandleID = 0;
 
 		{
@@ -163,6 +167,7 @@ namespace vast::gfx
 
 	DX12DescriptorHandle DX12RenderPassDescriptorHeap::GetReservedDescriptor(uint32 index)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(index < m_ReservedHandleCount);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.m_CPUHandle;
