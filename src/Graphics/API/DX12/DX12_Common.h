@@ -71,7 +71,7 @@ namespace vast::gfx
 		}
 	}
 
-	static DXGI_FORMAT TranslateToDX12(Format e)
+	constexpr DXGI_FORMAT TranslateToDX12(Format e)
 	{
 		switch (e)
 		{
@@ -84,7 +84,7 @@ namespace vast::gfx
 		}
 	}
 
-	static D3D12_RESOURCE_STATES TranslateToDX12(ResourceState e)
+	constexpr D3D12_RESOURCE_STATES TranslateToDX12(ResourceState e)
 	{
 		switch (e)
 		{
