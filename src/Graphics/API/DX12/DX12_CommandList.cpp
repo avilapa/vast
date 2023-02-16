@@ -1,7 +1,7 @@
 #include "vastpch.h"
-#include "Graphics/API/DX12/dx12_command_list.h"
-#include "Graphics/API/DX12/dx12_device.h"
-#include "Graphics/API/DX12/dx12_descriptors.h"
+#include "Graphics/API/DX12/DX12_CommandList.h"
+#include "Graphics/API/DX12/DX12_Device.h"
+#include "Graphics/API/DX12/DX12_Descriptors.h"
 
 namespace vast::gfx
 {

@@ -1,7 +1,7 @@
 #include "vastpch.h"
-#include "Graphics/Platform/x64/window_win32.h"
+#include "Graphics/Platform/x64/Win32_Window.h"
 
-#include "Core/event_types.h"
+#include "Core/EventTypes.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
 

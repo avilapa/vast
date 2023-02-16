@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/window.h"
+#include "Graphics/Window.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
 

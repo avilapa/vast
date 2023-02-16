@@ -1,6 +1,6 @@
 #include "vastpch.h"
-#include "Core/event.h"
-#include "Core/event_types.h"
+#include "Core/Event.h"
+#include "Core/EventTypes.h"
 
 namespace vast
 {

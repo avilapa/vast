@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Graphics/API/DX12/dx12_common.h"
-#include "Graphics/API/DX12/dx12_descriptors.h"
+#include "Graphics/API/DX12/DX12_Common.h"
+#include "Graphics/API/DX12/DX12_Descriptors.h"
 
 struct IDXGIFactory7;
 struct IDXGISwapChain4;

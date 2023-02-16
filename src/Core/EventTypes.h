@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/event.h"
+#include "Core/Event.h"
 
 // ================================== ADDING NEW EVENT TYPES ======================================
 //

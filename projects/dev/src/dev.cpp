@@ -1,6 +1,6 @@
-#include "dev.h"
+#include "Dev.h"
 
-#include "Graphics/API/DX12/dx12_graphics_context.h"
+#include "Graphics/API/DX12/DX12_GraphicsContext.h" // TODO
 
 VAST_DEFINE_APP_MAIN(Dev)
 

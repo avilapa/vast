@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core/core.h"
-#include "Core/types.h"
+#include "Core/Core.h"
+#include "Core/Types.h"
 
 #include <functional>
 

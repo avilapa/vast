@@ -1,8 +1,8 @@
 #include "vastpch.h"
-#include "Graphics/API/DX12/dx12_device.h"
-#include "Graphics/API/DX12/dx12_command_list.h"
+#include "Graphics/API/DX12/DX12_Device.h"
+#include "Graphics/API/DX12/DX12_CommandList.h"
 
-#include "Core/event_types.h"
+#include "Core/EventTypes.h"
 
 #include <dxgi1_6.h>
 #ifdef VAST_DEBUG

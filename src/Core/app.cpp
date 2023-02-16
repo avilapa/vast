@@ -1,7 +1,7 @@
 #include "vastpch.h"
-#include "Core/app.h"
-#include "Core/event_types.h"
-#include "Graphics/window.h"
+#include "Core/App.h"
+#include "Core/EventTypes.h"
+#include "Graphics/Window.h"
 
 namespace vast
 {

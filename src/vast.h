@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Core/types.h"
-#include "Core/log.h"
-#include "Core/core.h"
-#include "Core/app.h"
-#include "Core/event.h"
-#include "Core/event_types.h"
+#include "Core/Types.h"
+#include "Core/Log.h"
+#include "Core/Core.h"
+#include "Core/App.h"
+#include "Core/Event.h"
+#include "Core/EventTypes.h"
 
-#include "Graphics/window.h"
-#include "Graphics/graphics_context.h"
+#include "Graphics/Window.h"
+#include "Graphics/GraphicsContext.h"

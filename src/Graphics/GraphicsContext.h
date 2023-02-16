@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Core/core.h"
-#include "Core/types.h"
-#include "Graphics/graphics.h"
+#include "Core/Core.h"
+#include "Core/Types.h"
+#include "Graphics/Graphics.h"
 
 namespace vast::gfx
 {

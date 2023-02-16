@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Graphics/graphics_context.h"
+#include "Graphics/GraphicsContext.h"
+
 #include "dx12/DirectXAgilitySDK/include/d3d12.h"
 
 namespace vast::gfx

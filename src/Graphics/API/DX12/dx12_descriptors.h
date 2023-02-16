@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/API/DX12/dx12_common.h"
+#include "Graphics/API/DX12/DX12_Common.h"
 
 #include <mutex>
 

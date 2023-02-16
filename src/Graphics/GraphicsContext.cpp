@@ -1,8 +1,8 @@
 #include "vastpch.h"
-#include "Graphics/graphics_context.h"
+#include "Graphics/GraphicsContext.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
-#include "Graphics/API/DX12/dx12_graphics_context.h"
+#include "Graphics/API/DX12/DX12_GraphicsContext.h"
 #else
 #error "Invalid Platform: Unknown Platform"
 #endif

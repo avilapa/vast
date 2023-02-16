@@ -36,7 +36,7 @@
 
 // - Logging ----------------------------------------------------------------------------------- //
 
-#include "Core/log.h"
+#include "Core/Log.h"
 
 #define VAST_ENABLE_LOGGING 1
 
