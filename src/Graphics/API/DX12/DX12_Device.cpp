@@ -220,7 +220,6 @@ namespace vast::gfx
 
 			uint32 newX = event.m_WindowSize.x;
 			uint32 newY = event.m_WindowSize.y;
-			uint2 asd = uint2(0, 0);
 
 			if (newX != m_SwapChainSize.x || newY != m_SwapChainSize.y)
 			{
