@@ -72,7 +72,7 @@ namespace vast::gfx
 			}
 
 			{
-				VAST_PROFILE_FUNCTION();
+				VAST_PROFILE_SCOPE("GFX", "WaitForFenceValue");
 
 				std::lock_guard<std::mutex> lockGuard(m_EventMutex);
 
@@ -188,7 +188,7 @@ namespace vast::gfx
 			DX12SafeRelease(m_SwapChain);
 		}
 
-		Texture& GetCurrentBackBuffer() const
+		DX12Texture& GetCurrentBackBuffer() const
 		{
 			return *m_BackBuffers[m_SwapChain->GetCurrentBackBufferIndex()];
 		}
@@ -210,7 +210,10 @@ namespace vast::gfx
 
 		void Present()
 		{
-			m_SwapChain->Present(0, 0); // TODO: Vsync/Tearing flags
+			constexpr uint32 kSyncInterval = ENABLE_VSYNC ? 1 : 0;
+			constexpr uint32 kPresentFlags = (ALLOW_TEARING && !ENABLE_VSYNC) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+
+			m_SwapChain->Present(kSyncInterval, kPresentFlags);
 		}
 
 	private:
@@ -226,13 +229,13 @@ namespace vast::gfx
  				m_Device.WaitForIdle();
  
  				DestroyBackBuffers();
- 
- 				DXGI_SWAP_CHAIN_DESC scDesc = {};
- 				DX12Check(m_SwapChain->GetDesc(&scDesc));
-				DX12Check(m_SwapChain->ResizeBuffers(NUM_BACK_BUFFERS, m_SwapChainSize.x, m_SwapChainSize.y, scDesc.BufferDesc.Format, scDesc.Flags));
- 
+				{
+					VAST_PROFILE_SCOPE("GFX", "ResizeBuffers");
+					DXGI_SWAP_CHAIN_DESC scDesc = {};
+					DX12Check(m_SwapChain->GetDesc(&scDesc));
+					DX12Check(m_SwapChain->ResizeBuffers(NUM_BACK_BUFFERS, m_SwapChainSize.x, m_SwapChainSize.y, scDesc.BufferDesc.Format, scDesc.Flags));
+				}
 				m_Device.m_FrameId = m_SwapChain->GetCurrentBackBufferIndex();
- 
  				CreateBackBuffers();
 			}
 		}
@@ -262,7 +265,7 @@ namespace vast::gfx
 
 				m_Device.GetDevice()->CreateRenderTargetView(backBuffer, &rtvDesc, backBufferRTVHandle.m_CPUHandle);
 
-				m_BackBuffers[i] = MakePtr<Texture>();
+				m_BackBuffers[i] = MakePtr<DX12Texture>();
 				m_BackBuffers[i]->m_Desc = backBuffer->GetDesc();
 				m_BackBuffers[i]->m_Resource = backBuffer;
 				m_BackBuffers[i]->m_State = D3D12_RESOURCE_STATE_PRESENT;
@@ -296,7 +299,7 @@ namespace vast::gfx
 		DX12Device& m_Device;
 
 		IDXGISwapChain4* m_SwapChain;
-		Array<Ptr<Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
+		Array<Ptr<DX12Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
 
 		vast::uint2 m_SwapChainSize;
 		Format m_SwapChainFormat;
@@ -319,13 +322,15 @@ namespace vast::gfx
 		VAST_INFO("[gfx] [dx12] Starting graphics device creation.");
 
 #ifdef VAST_DEBUG
-		ID3D12Debug* debugController;
-		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 		{
 			VAST_PROFILE_SCOPE("Device", "EnableDebugLayer");
-			debugController->EnableDebugLayer();
-			DX12SafeRelease(debugController);
-			VAST_INFO("[gfx] [dx12] Debug layer enabled.");
+			ID3D12Debug* debugController;
+			if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+			{
+				debugController->EnableDebugLayer();
+				DX12SafeRelease(debugController);
+				VAST_INFO("[gfx] [dx12] Debug layer enabled.");
+			}
 		}
 #endif // VAST_DEBUG
 
@@ -510,7 +515,7 @@ namespace vast::gfx
 		return *m_SRVRenderPassDescriptorHeaps[frameId];
 	}
 
-	Texture& DX12Device::GetCurrentBackBuffer() const
+	DX12Texture& DX12Device::GetCurrentBackBuffer() const
 	{
 		return m_SwapChain->GetCurrentBackBuffer();
 	}

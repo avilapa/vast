@@ -10,3 +10,11 @@ Error in VS:
 vast\vendor\dx12\DirectXTex\DirectXTex\BCDirectCompute.cpp(23,10): fatal error C1083: Cannot open include file: 'BC7Encode_EncodeBlockCS.inc': No such file or directory
 
 Fix: Need to execute vast\vendor\dx12\DirectXTex\DirectXTex\Shaders\CompileShaders.cmd
+
+----
+
+Error in CompileShaders.cmd:
+
+'fxc.exe' is not recognized as an internal or external command, operable program or batch file.
+
+Fix: Copy fxc.exe to the vast\vendor\dx12\DirectXTex\DirectXTex\Shaders\ directory and execute CompileShaders.cmd again.

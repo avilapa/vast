@@ -18,9 +18,9 @@ namespace vast::gfx
 		void Submit() override;
 		void Present() override;
 
-		Texture& GetCurrentBackBuffer() const override;
+		Texture GetCurrentBackBuffer() const override;
 
-		void AddBarrier(Resource& resource, const ResourceState& state) override;
+		void AddBarrier(GPUResource& resource, const ResourceState& state) override;
 		void FlushBarriers() override;
 
 		void Reset() override;

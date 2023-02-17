@@ -44,14 +44,30 @@ namespace vast::gfx
 		m_Device->Present();
 	}
 
-	Texture& DX12GraphicsContext::GetCurrentBackBuffer() const
+	Texture DX12GraphicsContext::GetCurrentBackBuffer() const
 	{
-		return m_Device->GetCurrentBackBuffer();
+		DX12Texture& backBuffer = m_Device->GetCurrentBackBuffer();
+
+		// TODO: Can we avoid memory allocation but retain similar flexibility?
+		auto internalState = MakeRef<DX12Texture>();
+		internalState->m_Resource = backBuffer.m_Resource;
+		internalState->m_Desc = backBuffer.m_Desc;
+		internalState->m_State = backBuffer.m_State;
+		internalState->m_RTVDescriptor = backBuffer .m_RTVDescriptor;
+
+		D3D12_RESOURCE_DESC desc = internalState->m_Resource->GetDesc();
+		// TODO: GetCopyableFootprints?
+
+		Texture t;
+		t.internalState = internalState;
+		t.desc = TranslateFromDX12(desc);
+		return t;
 	}
 
-	void DX12GraphicsContext::AddBarrier(Resource& resource, const ResourceState& state)
+	void DX12GraphicsContext::AddBarrier(GPUResource& resource, const ResourceState& state)
 	{
-		m_GraphicsCommandList->AddBarrier(resource, TranslateToDX12(state));
+		auto internalState = static_cast<DX12Resource*>(resource.internalState.get());
+		m_GraphicsCommandList->AddBarrier(*internalState, TranslateToDX12(state));
 	}
 
 	void DX12GraphicsContext::FlushBarriers()
@@ -66,6 +82,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::ClearRenderTarget(const Texture& texture, float4 color)
 	{
-		m_GraphicsCommandList->ClearRenderTarget(texture, color);
+		auto internalState = static_cast<DX12Texture*>(texture.internalState.get());
+		m_GraphicsCommandList->ClearRenderTarget(*internalState, color);
 	}
 }

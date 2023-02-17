@@ -7,9 +7,6 @@ namespace vast::gfx
 	class DX12Device;
 	class DX12RenderPassDescriptorHeap;
 
-	struct Resource;
-	struct Texture;
-
 	class DX12CommandList
 	{
 	public:
@@ -20,7 +17,7 @@ namespace vast::gfx
 		ID3D12GraphicsCommandList* GetCommandList() const;
 
 		void Reset();
-		void AddBarrier(Resource& resource, D3D12_RESOURCE_STATES newState);
+		void AddBarrier(DX12Resource& resource, D3D12_RESOURCE_STATES newState);
 		void FlushBarriers();
 
 	protected:
@@ -44,8 +41,8 @@ namespace vast::gfx
 
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 
-		void ClearRenderTarget(const Texture& rt, float4 color);
-		void ClearDepthStencilTarget(const Texture& dst, float depth, uint8 stencil);
+		void ClearRenderTarget(const DX12Texture& rt, float4 color);
+		void ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil);
 	};
 
 }

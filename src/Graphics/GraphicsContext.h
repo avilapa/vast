@@ -6,9 +6,6 @@
 
 namespace vast::gfx
 {
-	struct Resource; // TODO
-	struct Texture; // TODO
-
 	struct GraphicsParams
 	{
 		GraphicsParams() : swapChainSize(1600, 900), swapChainFormat(Format::RGBA8_UNORM), backBufferFormat(Format::RGBA8_UNORM_SRGB) {}
@@ -29,9 +26,9 @@ namespace vast::gfx
 		virtual void Submit() = 0;
 		virtual void Present() = 0;
 
-		virtual Texture& GetCurrentBackBuffer() const = 0;
+		virtual Texture GetCurrentBackBuffer() const = 0;
 
-		virtual void AddBarrier(Resource& resource, const ResourceState& state) = 0;
+		virtual void AddBarrier(GPUResource& resource, const ResourceState& state) = 0;
 		virtual void FlushBarriers() = 0;
 
 		virtual void Reset() = 0;

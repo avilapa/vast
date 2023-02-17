@@ -60,7 +60,7 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12CommandList::AddBarrier(Resource& resource, D3D12_RESOURCE_STATES newState)
+	void DX12CommandList::AddBarrier(DX12Resource& resource, D3D12_RESOURCE_STATES newState)
 	{
 		VAST_PROFILE_FUNCTION();
 
@@ -152,14 +152,14 @@ namespace vast::gfx
 		m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // TODO: This shouldn't be here!
 	}
 
-	void DX12GraphicsCommandList::ClearRenderTarget(const Texture& rt, float4 color)
+	void DX12GraphicsCommandList::ClearRenderTarget(const DX12Texture& rt, float4 color)
 	{
 		VAST_PROFILE_FUNCTION();
 
 		m_CommandList->ClearRenderTargetView(rt.m_RTVDescriptor.m_CPUHandle, (float*)&color, 0, nullptr);
 	}
 
-	void DX12GraphicsCommandList::ClearDepthStencilTarget(const Texture& dst, float depth, uint8 stencil)
+	void DX12GraphicsCommandList::ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil)
 	{
 		VAST_PROFILE_FUNCTION();
 

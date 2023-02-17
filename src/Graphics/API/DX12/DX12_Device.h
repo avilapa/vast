@@ -4,7 +4,6 @@
 #include "Graphics/API/DX12/DX12_Descriptors.h"
 
 struct IDXGIFactory7;
-struct IDXGISwapChain4;
 
 namespace vast::gfx
 {
@@ -33,7 +32,7 @@ namespace vast::gfx
 
 		ID3D12Device5* GetDevice() const;
 		DX12RenderPassDescriptorHeap& GetSRVDescriptorHeap(uint32 frameId) const;
-		Texture& GetCurrentBackBuffer() const;
+		DX12Texture& GetCurrentBackBuffer() const;
 		uint32 GetFrameId() const;
 // 		uint2 GetSwapChainSize() const;
 // 		Format GetSwapChainFormat() const;

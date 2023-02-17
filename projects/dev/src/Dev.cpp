@@ -1,7 +1,5 @@
 #include "Dev.h"
 
-#include "Graphics/API/DX12/DX12_GraphicsContext.h" // TODO
-
 VAST_DEFINE_APP_MAIN(Dev)
 
 using namespace vast;
@@ -23,7 +21,7 @@ void Dev::OnUpdate()
 	ctx.BeginFrame();
  	ctx.Reset();
 
-	gfx::Texture& backBuffer = ctx.GetCurrentBackBuffer();
+	gfx::Texture backBuffer = ctx.GetCurrentBackBuffer();
 	ctx.AddBarrier(backBuffer, gfx::ResourceState::RENDER_TARGET);
 	ctx.FlushBarriers();
 
