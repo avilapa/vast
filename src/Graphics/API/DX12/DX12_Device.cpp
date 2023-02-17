@@ -218,13 +218,10 @@ namespace vast::gfx
 		{
 			VAST_PROFILE_FUNCTION();
 
-			uint32 newX = event.m_WindowSize.x;
-			uint32 newY = event.m_WindowSize.y;
-
-			if (newX != m_SwapChainSize.x || newY != m_SwapChainSize.y)
+			if (event.m_WindowSize.x != m_SwapChainSize.x || event.m_WindowSize.y != m_SwapChainSize.y)
 			{
 				VAST_ASSERTF(m_SwapChainSize.x != 0 && m_SwapChainSize.y != 0, "Failed to resize swapchain. Invalid window size.");
-				m_SwapChainSize = uint2(newX, newY);
+				m_SwapChainSize = event.m_WindowSize;
 
  				m_Device.WaitForIdle();
  
@@ -232,7 +229,7 @@ namespace vast::gfx
  
  				DXGI_SWAP_CHAIN_DESC scDesc = {};
  				DX12Check(m_SwapChain->GetDesc(&scDesc));
-				DX12Check(m_SwapChain->ResizeBuffers(NUM_BACK_BUFFERS, newX, newY, scDesc.BufferDesc.Format, scDesc.Flags));
+				DX12Check(m_SwapChain->ResizeBuffers(NUM_BACK_BUFFERS, m_SwapChainSize.x, m_SwapChainSize.y, scDesc.BufferDesc.Format, scDesc.Flags));
  
 				m_Device.m_FrameId = m_SwapChain->GetCurrentBackBufferIndex();
  
