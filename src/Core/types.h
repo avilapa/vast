@@ -93,6 +93,21 @@ namespace vast
 	template<class T, class Allocator = std::allocator<T>>
 	using Vector = std::vector<T, Allocator>;
 
+	// - Enum class flags ------------------------------------------------------------------------- //
+
+#define ENUM_CLASS_ALLOW_FLAGS(t)											\
+	inline constexpr t operator&(t x, t y)									\
+	{																		\
+	typedef std::underlying_type<t>::type ut; 								\
+		return static_cast<t>(static_cast<int>(x) & static_cast<int>(y));	\
+	}																		\
+																			\
+	inline constexpr t operator|(t x, t y)									\
+	{																		\
+		typedef std::underlying_type<t>::type ut; 							\
+		return static_cast<t>(static_cast<ut>(x) | static_cast<ut>(y));		\
+	}
+
 	// -------------------------------------------------------------------------------------------- //
 
 }
