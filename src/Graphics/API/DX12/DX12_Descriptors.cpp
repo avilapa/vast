@@ -27,11 +27,11 @@ namespace vast::gfx
 		m_DescriptorHeap->SetName(std::wstring(heapName.begin(), heapName.end()).c_str());
 #endif // VAST_DEBUG
 
-		m_HeapStart.m_CPUHandle = m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+		m_HeapStart.cpuHandle = m_DescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
 		if (bIsShaderVisible)
 		{
-			m_HeapStart.m_GPUHandle = m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+			m_HeapStart.gpuHandle = m_DescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 		}
 
 		// The size of a single descriptor in a descriptor heap is vendor specific
@@ -86,12 +86,12 @@ namespace vast::gfx
 
 		m_ActiveHandleCount++;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.m_CPUHandle;
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.cpuHandle;
 		cpuHandle.ptr += static_cast<uint64>(newHandleID) * m_DescriptorSize;
 
 		DX12DescriptorHandle desc;
-		desc.m_HeapIndex = newHandleID;
-		desc.m_CPUHandle = cpuHandle;
+		desc.heapIdx = newHandleID;
+		desc.cpuHandle = cpuHandle;
 
 		return desc;
 	}
@@ -102,7 +102,7 @@ namespace vast::gfx
 
 		std::lock_guard<std::mutex> lockGuard(m_UsageMutex);
 
-		m_FreeDescriptors.push_back(desc.m_HeapIndex);
+		m_FreeDescriptors.push_back(desc.heapIdx);
 
 		if (m_ActiveHandleCount == 0)
 		{
@@ -152,15 +152,15 @@ namespace vast::gfx
 			}
 		}
 
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.m_CPUHandle;
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = m_HeapStart.m_GPUHandle;
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.cpuHandle;
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = m_HeapStart.gpuHandle;
 		cpuHandle.ptr += static_cast<uint64>(newHandleID) * m_DescriptorSize;
 		gpuHandle.ptr += static_cast<uint64>(newHandleID) * m_DescriptorSize;
 
 		DX12DescriptorHandle desc;
-		desc.m_HeapIndex = newHandleID;
-		desc.m_CPUHandle = cpuHandle;
-		desc.m_GPUHandle = gpuHandle;
+		desc.heapIdx = newHandleID;
+		desc.cpuHandle = cpuHandle;
+		desc.gpuHandle = gpuHandle;
 
 		return desc;
 	}
@@ -170,15 +170,15 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(index < m_ReservedHandleCount);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.m_CPUHandle;
-		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = m_HeapStart.m_GPUHandle;
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.cpuHandle;
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = m_HeapStart.gpuHandle;
 		cpuHandle.ptr += static_cast<uint64_t>(index) * m_DescriptorSize;
 		gpuHandle.ptr += static_cast<uint64_t>(index) * m_DescriptorSize;
 
 		DX12DescriptorHandle desc;
-		desc.m_HeapIndex = index;
-		desc.m_CPUHandle = cpuHandle;
-		desc.m_GPUHandle = gpuHandle;
+		desc.heapIdx = index;
+		desc.cpuHandle = cpuHandle;
+		desc.gpuHandle = gpuHandle;
 
 		return desc;
 	}

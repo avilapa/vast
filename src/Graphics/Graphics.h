@@ -38,6 +38,24 @@ namespace vast::gfx
 		RTV_SRV = RTV | SRV,
 		DSV_SRV = DSV | SRV,
 	};
+	ENUM_CLASS_ALLOW_FLAGS(TextureViewFlags);
+
+	enum class BufferViewFlags
+	{
+		NONE = 0,
+		CBV = BIT(0),
+		SRV = BIT(1),
+		UAV = BIT(2),
+	};
+	ENUM_CLASS_ALLOW_FLAGS(BufferViewFlags);
+
+
+	enum class BufferAccessFlags
+	{
+		HOST_WRITABLE	= BIT(0),
+		GPU_ONLY		= BIT(1),
+	};
+	ENUM_CLASS_ALLOW_FLAGS(BufferAccessFlags);
 
 	enum class ResourceType
 	{
@@ -57,6 +75,21 @@ namespace vast::gfx
 		virtual ~GPUResource() = default;
 	};
 
+	struct BufferDesc
+	{
+		uint32 size = 0;
+		uint32 stride = 0;
+		BufferViewFlags viewFlags = BufferViewFlags::NONE;
+		BufferAccessFlags accessFlags = BufferAccessFlags::HOST_WRITABLE;
+		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
+	};
+
+	struct Buffer : public GPUResource
+	{
+		Buffer() : GPUResource() { type = ResourceType::BUFFER; }
+		BufferDesc desc;
+	};
+
 	struct TextureDesc
 	{
 		TextureType type = TextureType::TEXTURE_2D;
@@ -71,10 +104,7 @@ namespace vast::gfx
 	struct Texture : public GPUResource
 	{
 		Texture() : GPUResource() { type = ResourceType::TEXTURE; }
-
 		TextureDesc desc;
-
-		constexpr const TextureDesc& GetDesc() const { return desc; }
 	};
 
 }

@@ -1,320 +1,31 @@
 #include "vastpch.h"
 #include "Graphics/API/DX12/DX12_Device.h"
 #include "Graphics/API/DX12/DX12_CommandList.h"
+#include "Graphics/API/DX12/DX12_CommandQueue.h"
 
 #include "Core/EventTypes.h"
+
+#include "dx12/D3D12MemoryAllocator/include/D3D12MemAlloc.h"
 
 #include <dxgi1_6.h>
 #ifdef VAST_DEBUG
 #include <dxgidebug.h>
 #endif
 
-// TODO: Long relative path will make it hard to simply export an .exe, but it is a lot more comfortable for development.
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
-extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = "..\\..\\..\\..\\vendor\\dx12\\DirectXAgilitySDK\\bin\\x64\\"; }
+#include <numeric>
 
 namespace vast::gfx
 {
 
-	class DX12CommandQueue
-	{
-	public:
-		DX12CommandQueue(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE commandType = D3D12_COMMAND_LIST_TYPE_DIRECT)
-			: m_CommandType(commandType)
-			, m_Queue(nullptr)
-			, m_Fence(nullptr)
-			, m_NextFenceValue(1)
-			, m_LastCompletedFenceValue(0)
-			, m_FenceEventHandle(0)
-		{
-			VAST_PROFILE_FUNCTION();
-
-			D3D12_COMMAND_QUEUE_DESC desc = {};
-			desc.Type = m_CommandType;
-			desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
-			desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-			desc.NodeMask = 0; // Used for MGPU
-
-			DX12Check(device->CreateCommandQueue(&desc, IID_PPV_ARGS(&m_Queue)));
-			DX12Check(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_Fence)));
-
-			m_Fence->Signal(m_LastCompletedFenceValue);
-
-			m_FenceEventHandle = CreateEventEx(nullptr, nullptr, 0, EVENT_ALL_ACCESS);
-			VAST_ASSERTF(m_FenceEventHandle != INVALID_HANDLE_VALUE, "Failed to create fence event.");
-		}
-		
-		~DX12CommandQueue()
-		{
-			VAST_PROFILE_FUNCTION();
-
-			CloseHandle(m_FenceEventHandle);
-
-			DX12SafeRelease(m_Fence);
-			DX12SafeRelease(m_Queue);
-		}
-
-		bool IsFenceComplete(uint64 fenceValue)
-		{
-			if (fenceValue > m_LastCompletedFenceValue)
-			{
-				PollCurrentFenceValue();
-			}
-
-			return fenceValue <= m_LastCompletedFenceValue;
-		}
-
-		void WaitForFenceValue(uint64 fenceValue)
-		{
-			if (IsFenceComplete(fenceValue))
-			{
-				return;
-			}
-
-			{
-				VAST_PROFILE_SCOPE("GFX", "WaitForFenceValue");
-
-				std::lock_guard<std::mutex> lockGuard(m_EventMutex);
-
-				m_Fence->SetEventOnCompletion(fenceValue, m_FenceEventHandle);
-				WaitForSingleObjectEx(m_FenceEventHandle, INFINITE, false);
-				m_LastCompletedFenceValue = fenceValue;
-			}
-		}		
-		
-		void WaitForIdle()
-		{
-			WaitForFenceValue(m_NextFenceValue - 1); // TODO: How is this different to Flush?
-		}
-
-		void Flush()
-		{
-			WaitForFenceValue(SignalFence());
-		}
-
-		uint64 PollCurrentFenceValue()
-		{
-			m_LastCompletedFenceValue = (std::max)(m_LastCompletedFenceValue, m_Fence->GetCompletedValue());
-			return m_LastCompletedFenceValue;
-		}
-
-		uint64 SignalFence()
-		{
-			VAST_PROFILE_FUNCTION();
-
-			std::lock_guard<std::mutex> lockGuard(m_FenceMutex);
-
-			DX12Check(m_Queue->Signal(m_Fence, m_NextFenceValue));
-
-			return m_NextFenceValue++;
-		}
-
-		uint64 ExecuteCommandList(ID3D12CommandList* commandList)
-		{
-			VAST_PROFILE_FUNCTION();
-
-			DX12Check(static_cast<ID3D12GraphicsCommandList*>(commandList)->Close());
-			m_Queue->ExecuteCommandLists(1, &commandList);
-
-			return SignalFence();
-		}
-
-		ID3D12CommandQueue* GetQueue() 
-		{ 
-			return m_Queue; 
-		}
-
-	private:
-		D3D12_COMMAND_LIST_TYPE m_CommandType;
-		ID3D12CommandQueue* m_Queue;
-		ID3D12Fence* m_Fence;
-		uint64 m_NextFenceValue;
-		uint64 m_LastCompletedFenceValue;
-		HANDLE m_FenceEventHandle;
-		std::mutex m_FenceMutex;
-		std::mutex m_EventMutex;
-	};
-
-	//
-
-	class DX12SwapChain
-	{
-	public:
-		DX12SwapChain(const uint2& swapChainSize, const Format& swapChainFormat, const Format& backBufferFormat,
-			DX12Device& device, HWND windowHandle = ::GetActiveWindow())
-			: m_SwapChain(nullptr)
-			, m_SwapChainSize(swapChainSize)
-			, m_SwapChainFormat(swapChainFormat)
-			, m_BackBufferFormat(backBufferFormat)
-			, m_Device(device)
-		{
-			VAST_PROFILE_FUNCTION();
-			VAST_INFO("[gfx] [dx12] Creating swapchain.");
-
-			VAST_ASSERTF(m_SwapChainSize.x != 0 && m_SwapChainSize.y != 0, "Failed to create swapchain. Invalid swapchain size.");
-
-			DXGI_SWAP_CHAIN_DESC1 scDesc = {};
-			ZeroMemory(&scDesc, sizeof(scDesc));
-			scDesc.Width = m_SwapChainSize.x;
-			scDesc.Height = m_SwapChainSize.y;
-			scDesc.Format = TranslateToDX12(m_SwapChainFormat);
-			scDesc.Stereo = false;
-			scDesc.SampleDesc = { 1, 0 };
-			scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-			scDesc.BufferCount = NUM_BACK_BUFFERS;
-			scDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-			scDesc.Flags = CheckTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
-			scDesc.Scaling = DXGI_SCALING_NONE;
-			scDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-
-			IDXGISwapChain1* swapChain = nullptr;
-			auto queue = m_Device.m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue();
-			DX12Check(m_Device.m_DXGIFactory->CreateSwapChainForHwnd(queue, windowHandle, &scDesc, nullptr, nullptr, &swapChain));
-			DX12Check(swapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain)));
-			DX12SafeRelease(swapChain);
-
-			CreateBackBuffers();
-
-			VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, DX12SwapChain::OnWindowResizeEvent);
-		}
-
-		~DX12SwapChain()
-		{
-			VAST_PROFILE_FUNCTION();
-
-			DestroyBackBuffers();
-
-			VAST_INFO("[gfx] [dx12] Destroying swapchain.");
-			DX12SafeRelease(m_SwapChain);
-		}
-
-		DX12Texture& GetCurrentBackBuffer() const
-		{
-			return *m_BackBuffers[m_SwapChain->GetCurrentBackBufferIndex()];
-		}
-
-		uint2 GetSwapChainSize() const
-		{
-			return m_SwapChainSize;
-		}
-
-		Format GetSwapChainFormat() const
-		{
-			return m_SwapChainFormat;
-		}
-
-		Format GetBackBufferFormat() const
-		{
-			return m_BackBufferFormat;
-		}
-
-		void Present()
-		{
-			constexpr uint32 kSyncInterval = ENABLE_VSYNC ? 1 : 0;
-			constexpr uint32 kPresentFlags = (ALLOW_TEARING && !ENABLE_VSYNC) ? DXGI_PRESENT_ALLOW_TEARING : 0;
-
-			m_SwapChain->Present(kSyncInterval, kPresentFlags);
-		}
-
-	private:
-		void OnWindowResizeEvent(WindowResizeEvent& event)
-		{
-			VAST_PROFILE_FUNCTION();
-
-			if (event.m_WindowSize.x != m_SwapChainSize.x || event.m_WindowSize.y != m_SwapChainSize.y)
-			{
-				VAST_ASSERTF(m_SwapChainSize.x != 0 && m_SwapChainSize.y != 0, "Failed to resize swapchain. Invalid window size.");
-				m_SwapChainSize = event.m_WindowSize;
-
- 				m_Device.WaitForIdle();
- 
- 				DestroyBackBuffers();
-				{
-					VAST_PROFILE_SCOPE("GFX", "ResizeBuffers");
-					DXGI_SWAP_CHAIN_DESC scDesc = {};
-					DX12Check(m_SwapChain->GetDesc(&scDesc));
-					DX12Check(m_SwapChain->ResizeBuffers(NUM_BACK_BUFFERS, m_SwapChainSize.x, m_SwapChainSize.y, scDesc.BufferDesc.Format, scDesc.Flags));
-				}
-				m_Device.m_FrameId = m_SwapChain->GetCurrentBackBufferIndex();
- 				CreateBackBuffers();
-			}
-		}
-
-		void CreateBackBuffers()
-		{
-			VAST_PROFILE_FUNCTION();
-			VAST_INFO("[gfx] [dx12] Creating backbuffers.");
-
-			for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
-			{
-				ID3D12Resource* backBuffer = nullptr;
-				DX12Check(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
-#if VAST_DEBUG
-				// TODO: Figure out what we're doing with names
-				std::string backBufferName = std::string("Back Buffer ") + std::to_string(i);
-				backBuffer->SetName(std::wstring(backBufferName.begin(), backBufferName.end()).c_str());
-#endif // VAST_DEBUG
-
-				DX12DescriptorHandle backBufferRTVHandle = m_Device.m_RTVStagingDescriptorHeap->GetNewDescriptor();
-
-				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-				rtvDesc.Format = TranslateToDX12(m_BackBufferFormat);
-				rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-				rtvDesc.Texture2D.MipSlice = 0;
-				rtvDesc.Texture2D.PlaneSlice = 0;
-
-				m_Device.GetDevice()->CreateRenderTargetView(backBuffer, &rtvDesc, backBufferRTVHandle.m_CPUHandle);
-
-				m_BackBuffers[i] = MakePtr<DX12Texture>();
-				m_BackBuffers[i]->m_Desc = backBuffer->GetDesc();
-				m_BackBuffers[i]->m_Resource = backBuffer;
-				m_BackBuffers[i]->m_State = D3D12_RESOURCE_STATE_PRESENT;
-				m_BackBuffers[i]->m_RTVDescriptor = backBufferRTVHandle;
-			}
-		}
-
-		void DestroyBackBuffers()
-		{
-			VAST_PROFILE_FUNCTION();
-			VAST_INFO("[gfx] [dx12] Destroying backbuffers.");
-
-			for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
-			{
-				m_Device.m_RTVStagingDescriptorHeap->FreeDescriptor(m_BackBuffers[i]->m_RTVDescriptor);
-				DX12SafeRelease(m_BackBuffers[i]->m_Resource);
-				m_BackBuffers[i] = nullptr;
-			}
-		}
-
-		bool CheckTearingSupport()
-		{
-			BOOL allowTearing = FALSE;
-			if (FAILED(m_Device.m_DXGIFactory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
-			{
-				allowTearing = FALSE;
-			}
-			return allowTearing == TRUE;
-		}
-
-		DX12Device& m_Device;
-
-		IDXGISwapChain4* m_SwapChain;
-		Array<Ptr<DX12Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
-
-		vast::uint2 m_SwapChainSize;
-		Format m_SwapChainFormat;
-		Format m_BackBufferFormat;
-	};
-
-	//
-
-	DX12Device::DX12Device(const uint2& swapChainSize, const Format& swapChainFormat, const Format& backBufferFormat)
+	DX12Device::DX12Device()
 		: m_DXGIFactory(nullptr)
 		, m_Device(nullptr)
-		, m_SwapChain(nullptr)
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
 		, m_RTVStagingDescriptorHeap(nullptr)
+		, m_DSVStagingDescriptorHeap(nullptr)
+		, m_SRVStagingDescriptorHeap(nullptr)
+		, m_FreeReservedDescriptorIndices({ 0 })
 		, m_SRVRenderPassDescriptorHeaps({ nullptr })
 		, m_FrameId(0)
 	{
@@ -378,7 +89,15 @@ namespace vast::gfx
 			DX12Check(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_Device)));
 		}
 
-		// TODO: Initialize Memory Allocator
+		{
+			VAST_PROFILE_SCOPE("Device", "D3D12MA::CreateAllocator");
+			VAST_INFO("[gfx] [dx12] Creating allocator.");
+			D3D12MA::ALLOCATOR_DESC desc = {};
+			desc.Flags = D3D12MA::ALLOCATOR_FLAG_NONE;
+			desc.pDevice = m_Device;
+			desc.pAdapter = adapter;
+			D3D12MA::CreateAllocator(&desc, &m_Allocator);
+		}
 
 		DX12SafeRelease(adapter);
 
@@ -413,16 +132,21 @@ namespace vast::gfx
 		m_CommandQueues[IDX(QueueType::GRAPHICS)] = MakePtr<DX12CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 		VAST_INFO("[gfx] [dx12] Creating descriptor heaps.");
-		m_RTVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
+		m_RTVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
 			NUM_RTV_STAGING_DESCRIPTORS);
+		m_DSVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 
+			NUM_DSV_STAGING_DESCRIPTORS);
+		m_SRVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
+			NUM_SRV_STAGING_DESCRIPTORS);
+
+		m_FreeReservedDescriptorIndices.resize(NUM_RESERVED_SRV_DESCRIPTORS);
+		std::iota(m_FreeReservedDescriptorIndices.begin(), m_FreeReservedDescriptorIndices.end(), 0);
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			m_SRVRenderPassDescriptorHeaps[i] = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 				NUM_RESERVED_SRV_DESCRIPTORS, NUM_SRV_RENDER_PASS_USER_DESCRIPTORS);
 		}
-
-		m_SwapChain = MakePtr<DX12SwapChain>(swapChainSize, swapChainFormat, backBufferFormat, *this);
 	}
 
 	DX12Device::~DX12Device()
@@ -432,14 +156,14 @@ namespace vast::gfx
 		WaitForIdle();
 		VAST_INFO("[gfx] [dx12] Starting graphics device destruction.");
 
-		m_SwapChain = nullptr;
-
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			m_CommandQueues[i] = nullptr;
 		}
 
 		m_RTVStagingDescriptorHeap = nullptr;
+		m_DSVStagingDescriptorHeap = nullptr;
+		m_SRVStagingDescriptorHeap = nullptr;
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -448,6 +172,92 @@ namespace vast::gfx
 
 		DX12SafeRelease(m_Device);
 		DX12SafeRelease(m_DXGIFactory);
+	}
+
+	Ref<DX12Buffer> DX12Device::CreateBuffer(const BufferDesc& desc)
+	{
+		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
+
+		Ref<DX12Buffer> newBufferRsc = MakeRef<DX12Buffer>();
+		newBufferRsc->stride = desc.stride;
+
+		uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
+		bool isHostVisible = ((desc.accessFlags & BufferAccessFlags::HOST_WRITABLE) == BufferAccessFlags::HOST_WRITABLE);
+
+		D3D12_RESOURCE_STATES rscState = isHostVisible ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST;
+		newBufferRsc->state = rscState;
+
+		D3D12MA::ALLOCATION_DESC allocDesc = {};
+		allocDesc.HeapType = isHostVisible ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
+		m_Allocator->CreateResource(&allocDesc, &rscDesc, rscState, nullptr, &newBufferRsc->allocation, IID_PPV_ARGS(&newBufferRsc->resource));
+		newBufferRsc->gpuAddress = newBufferRsc->resource->GetGPUVirtualAddress();
+
+		if ((desc.viewFlags & BufferViewFlags::CBV) == BufferViewFlags::CBV)
+		{
+			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+			cbvDesc.BufferLocation = newBufferRsc->gpuAddress;
+			cbvDesc.SizeInBytes = static_cast<uint32>(rscDesc.Width);
+
+			newBufferRsc->cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateConstantBufferView(&cbvDesc, newBufferRsc->cbv.cpuHandle);
+		}
+
+		if ((desc.viewFlags & BufferViewFlags::SRV) == BufferViewFlags::SRV)
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.Format = desc.isRawAccess ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Buffer.FirstElement = 0;
+			srvDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / 4) : nelem);
+			srvDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
+			srvDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
+
+			newBufferRsc->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateShaderResourceView(newBufferRsc->resource, &srvDesc, newBufferRsc->srv.cpuHandle);
+
+			newBufferRsc->heapIdx = m_FreeReservedDescriptorIndices.back();
+			m_FreeReservedDescriptorIndices.pop_back();
+
+			CopySRVHandleToReservedTable(newBufferRsc->srv, newBufferRsc->heapIdx);
+		}
+
+		if ((desc.viewFlags & BufferViewFlags::UAV) == BufferViewFlags::UAV)
+		{
+			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+			uavDesc.Format = desc.isRawAccess ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
+			uavDesc.Buffer.CounterOffsetInBytes = 0;
+			uavDesc.Buffer.FirstElement = 0;
+			uavDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / 4) : nelem);
+			uavDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
+			uavDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
+
+			newBufferRsc->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateUnorderedAccessView(newBufferRsc->resource, nullptr, &uavDesc, newBufferRsc->uav.cpuHandle);
+		}
+
+		if (isHostVisible)
+		{
+			newBufferRsc->resource->Map(0, nullptr, reinterpret_cast<void**>(&newBufferRsc->data));
+		}
+
+		return newBufferRsc;
+	}
+
+	void DX12Device::CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType)
+	{
+		m_Device->CopyDescriptorsSimple(numDesc, destDescRangeStart, srcDescRangeStart, descType);
+	}
+
+	void DX12Device::CopySRVHandleToReservedTable(DX12DescriptorHandle srvHandle, uint32 heapIndex)
+	{
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			DX12DescriptorHandle targetDescriptor = m_SRVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
+
+			CopyDescriptorsSimple(1, targetDescriptor.cpuHandle, srvHandle.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
 	}
 
 	void DX12Device::BeginFrame()
@@ -487,14 +297,6 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12Device::Present()
-	{
-		VAST_PROFILE_FUNCTION();
-
-		m_SwapChain->Present();
-		SignalEndOfFrame(QueueType::GRAPHICS);
-	}
-
 	void DX12Device::WaitForIdle()
 	{
 		VAST_PROFILE_FUNCTION();
@@ -513,11 +315,6 @@ namespace vast::gfx
 	DX12RenderPassDescriptorHeap& DX12Device::GetSRVDescriptorHeap(uint32 frameId) const
 	{
 		return *m_SRVRenderPassDescriptorHeaps[frameId];
-	}
-
-	DX12Texture& DX12Device::GetCurrentBackBuffer() const
-	{
-		return m_SwapChain->GetCurrentBackBuffer();
 	}
 
 	uint32 DX12Device::GetFrameId() const

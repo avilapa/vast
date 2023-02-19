@@ -69,7 +69,7 @@ namespace vast::gfx
 			FlushBarriers();
 		}
 
-		D3D12_RESOURCE_STATES oldState = resource.m_State;
+		D3D12_RESOURCE_STATES oldState = resource.state;
 
 		// TODO: Compute exceptions
 
@@ -78,13 +78,13 @@ namespace vast::gfx
 			D3D12_RESOURCE_BARRIER& desc = m_ResourceBarrierQueue[m_NumQueuedBarriers++];
 
 			desc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			desc.Transition.pResource = resource.m_Resource;
+			desc.Transition.pResource = resource.resource;
 			desc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 			desc.Transition.StateBefore = oldState;
 			desc.Transition.StateAfter = newState;
 			desc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
-			resource.m_State = newState;
+			resource.state = newState;
 		}
 		else if (newState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
 		{
@@ -92,7 +92,7 @@ namespace vast::gfx
 
 			desc.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 			desc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			desc.UAV.pResource = resource.m_Resource;
+			desc.UAV.pResource = resource.resource;
 		}
 	}
 
@@ -156,14 +156,14 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_CommandList->ClearRenderTargetView(rt.m_RTVDescriptor.m_CPUHandle, (float*)&color, 0, nullptr);
+		m_CommandList->ClearRenderTargetView(rt.rtv.cpuHandle, (float*)&color, 0, nullptr);
 	}
 
 	void DX12GraphicsCommandList::ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil)
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_CommandList->ClearDepthStencilView(dst.m_DSVDescriptor.m_CPUHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+		m_CommandList->ClearDepthStencilView(dst.dsv.cpuHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
 	}
 
 }

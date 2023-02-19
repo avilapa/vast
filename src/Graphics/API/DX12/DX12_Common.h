@@ -4,12 +4,19 @@
 
 #include "dx12/DirectXAgilitySDK/include/d3d12.h"
 
+namespace D3D12MA
+{
+	class Allocation;
+}
+
 namespace vast::gfx
 {
-	// Graphics constants
+	// - Graphics constants ----------------------------------------------------------------------- //
+
 	constexpr uint32 NUM_FRAMES_IN_FLIGHT = 2;
 	constexpr uint32 NUM_BACK_BUFFERS = 3;
 	constexpr uint32 NUM_RTV_STAGING_DESCRIPTORS = 256;
+	constexpr uint32 NUM_DSV_STAGING_DESCRIPTORS = 32;
 	constexpr uint32 NUM_SRV_STAGING_DESCRIPTORS = 4096;
 	constexpr uint32 NUM_RESERVED_SRV_DESCRIPTORS = 8192;
 	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
@@ -18,39 +25,59 @@ namespace vast::gfx
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
-	// TODO: Move this to descriptors
+	// - Resources -------------------------------------------------------------------------------- //
+
 	struct DX12DescriptorHandle
 	{
-		bool IsValid() const { return m_CPUHandle.ptr != 0; }
-		bool IsReferencedByShader() const { return m_GPUHandle.ptr != 0; }
+		bool IsValid() const { return cpuHandle.ptr != 0; }
+		bool IsReferencedByShader() const { return gpuHandle.ptr != 0; }
 
-		D3D12_CPU_DESCRIPTOR_HANDLE m_CPUHandle = { 0 };
-		D3D12_GPU_DESCRIPTOR_HANDLE m_GPUHandle = { 0 };
-		uint32 m_HeapIndex = 0;
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = { 0 };
+		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = { 0 };
+		uint32 heapIdx = 0;
 	};
 
 	struct DX12Resource
 	{
-		ResourceType m_Type = ResourceType::BUFFER;
+		ResourceType type = ResourceType::UNKNOWN;
+		ID3D12Resource* resource = nullptr;
+		D3D12MA::Allocation* allocation = nullptr;
+		D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;
+		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
+		uint32 heapIdx = UINT32_MAX; // Invalid value
+		bool isReady = false;
+	};
 
-		ID3D12Resource* m_Resource = nullptr;
-		// TODO: D3D12MA::Allocation* m_Allocation = nullptr;
-		D3D12_GPU_VIRTUAL_ADDRESS m_GPUAddress = 0;
-		D3D12_RESOURCE_DESC m_Desc = {}; // TODO: Do we need m_Desc? We can get it from m_Resource->GetDesc() after all.
-		D3D12_RESOURCE_STATES m_State = D3D12_RESOURCE_STATE_COMMON;
-		uint32 m_HeapIndex = UINT32_MAX; // Invalid value
-		bool m_IsReady = false;
+	struct DX12Buffer : public DX12Resource
+	{
+		DX12Buffer() : DX12Resource() { type = ResourceType::BUFFER; }
+
+		uint8* data = nullptr;
+		uint32 stride = 0;
+		DX12DescriptorHandle cbv = {};
+		DX12DescriptorHandle srv = {};
+		DX12DescriptorHandle uav = {};
+
+		void SetMappedData(void* p, size_t dataSize)
+		{
+			const auto size = resource->GetDesc().Width;
+			VAST_ASSERT(data != nullptr && p != nullptr && dataSize > 0 && dataSize <= size);
+			memcpy_s(data, size, p, dataSize);
+			isReady = true; // TODO
+		}
 	};
 
 	struct DX12Texture : public DX12Resource
 	{
-		DX12Texture() : DX12Resource() { m_Type = ResourceType::TEXTURE; }
+		DX12Texture() : DX12Resource() { type = ResourceType::TEXTURE; }
 
-		DX12DescriptorHandle m_RTVDescriptor = {};
-		DX12DescriptorHandle m_DSVDescriptor = {};
-		DX12DescriptorHandle m_SRVDescriptor = {};
-		DX12DescriptorHandle m_UAVDescriptor = {};
+		DX12DescriptorHandle rtv = {};
+		DX12DescriptorHandle dsv = {};
+		DX12DescriptorHandle srv = {};
+		DX12DescriptorHandle uav = {};
 	};
+
+	// - Helpers ---------------------------------------------------------------------------------- //
 
 	inline void DX12Check(HRESULT hr)
 	{
@@ -67,7 +94,19 @@ namespace vast::gfx
 		}
 	}
 
-	constexpr DXGI_FORMAT TranslateToDX12(Format v)
+	inline constexpr uint32 AlignU32(uint32 valueToAlign, uint32 alignment)
+	{
+		alignment -= 1;
+		return (uint32)((valueToAlign + alignment) & ~alignment);
+	}
+
+	inline constexpr uint64 AlignU64(uint64 valueToAlign, uint64 alignment)
+	{
+		alignment -= 1;
+		return (uint64)((valueToAlign + alignment) & ~alignment);
+	}
+
+	constexpr DXGI_FORMAT TranslateToDX12(const Format& v)
 	{
 		switch (v)
 		{
@@ -80,7 +119,7 @@ namespace vast::gfx
 		}
 	}
 
-	constexpr Format TranslateFromDX12(DXGI_FORMAT v)
+	constexpr Format TranslateFromDX12(const DXGI_FORMAT& v)
 	{
 		switch (v)
 		{
@@ -93,7 +132,7 @@ namespace vast::gfx
 		}
 	}
 
-	constexpr D3D12_RESOURCE_STATES TranslateToDX12(ResourceState v)
+	constexpr D3D12_RESOURCE_STATES TranslateToDX12(const ResourceState& v)
 	{
 		switch (v)
 		{
@@ -103,7 +142,7 @@ namespace vast::gfx
 		}
 	}
 
-	constexpr D3D12_RESOURCE_DIMENSION TranslateToDX12(TextureType v)
+	constexpr D3D12_RESOURCE_DIMENSION TranslateToDX12(const TextureType& v)
 	{
 		switch (v)
 		{
@@ -115,7 +154,7 @@ namespace vast::gfx
 		}
 	}
 
-	constexpr TextureType TranslateFromDX12(D3D12_RESOURCE_DIMENSION v)
+	constexpr TextureType TranslateFromDX12(const D3D12_RESOURCE_DIMENSION& v)
 	{
 		switch (v)
 		{
@@ -127,29 +166,61 @@ namespace vast::gfx
 		}
 	}
 
-	constexpr D3D12_RESOURCE_DESC  TranslateToDX12(TextureDesc v)
+	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const TextureDesc& v)
 	{
 		D3D12_RESOURCE_DESC desc = {};
 		desc.Dimension = TranslateToDX12(v.type);
+		desc.Alignment = 0;
+		desc.Width = static_cast<UINT64>(v.width);
+		desc.Height = static_cast<UINT>(v.height);
+		desc.DepthOrArraySize = static_cast<UINT16>(v.depthOrArraySize);
+		desc.MipLevels = static_cast<UINT16>(v.mipCount);
 		desc.Format = TranslateToDX12(v.format);
-		desc.Width = v.width;
-		desc.Height = v.height;
-		desc.DepthOrArraySize = v.depthOrArraySize;
-		desc.MipLevels = v.mipCount;
-		// TODO: TextureViewFlags
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		return desc;
 	}
 
-	constexpr TextureDesc TranslateFromDX12(D3D12_RESOURCE_DESC v)
+	constexpr TextureDesc TranslateFromDX12_Tex(const D3D12_RESOURCE_DESC& v)
 	{
-		TextureDesc t;
-		t.type = TranslateFromDX12(v.Dimension);
-		t.format = TranslateFromDX12(v.Format);
-		t.width = v.Width;
-		t.height = v.Height;
-		t.depthOrArraySize = v.DepthOrArraySize;
-		t.mipCount = v.MipLevels;
-		t.viewFlags = TextureViewFlags::NONE; // TODO : TextureViewFlags
-		return t;
+		TextureDesc desc;
+		desc.type = TranslateFromDX12(v.Dimension);
+		desc.format = TranslateFromDX12(v.Format);
+		desc.width = static_cast<uint32>(v.Width);
+		desc.height = static_cast<uint32>(v.Height);
+		desc.depthOrArraySize = static_cast<uint32>(v.DepthOrArraySize);
+		desc.mipCount = static_cast<uint32>(v.MipLevels);
+		desc.viewFlags = TextureViewFlags::NONE; // TODO : TextureViewFlags
+		return desc;
+	}
+
+	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const BufferDesc& v)
+	{
+		D3D12_RESOURCE_DESC desc = {};
+		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+		desc.Alignment = 0; 
+		// TODO: Aligned width only needed for CBV?
+		desc.Width = static_cast<UINT64>(AlignU32(static_cast<uint32>(v.size), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+		desc.Height = 1;
+		desc.DepthOrArraySize = 1;
+		desc.MipLevels = 1;
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		return desc;
+	}
+
+	constexpr BufferDesc TranslateFromDX12_Buf(const D3D12_RESOURCE_DESC& v)
+	{
+		BufferDesc desc;
+		desc.size = static_cast<uint32>(v.Width);
+		desc.stride = 0; // TODO: Stride
+		desc.viewFlags = BufferViewFlags::NONE; // TODO: BufferViewFlags
+		desc.accessFlags = BufferAccessFlags::HOST_WRITABLE; // TODO: BufferAccessFlags
+		return desc;
 	}
 }

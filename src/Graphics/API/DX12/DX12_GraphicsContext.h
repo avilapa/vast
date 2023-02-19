@@ -5,6 +5,7 @@
 namespace vast::gfx
 {
 	class DX12Device;
+	class DX12SwapChain;
 	class DX12GraphicsCommandList;
 
 	class DX12GraphicsContext final : public GraphicsContext
@@ -20,6 +21,8 @@ namespace vast::gfx
 
 		Texture GetCurrentBackBuffer() const override;
 
+		void CreateBuffer(const BufferDesc& desc, Buffer* buffer, void* data = nullptr) override;
+
 		void AddBarrier(GPUResource& resource, const ResourceState& state) override;
 		void FlushBarriers() override;
 
@@ -28,6 +31,7 @@ namespace vast::gfx
 
 	private:
 		Ptr<DX12Device> m_Device;
+		Ptr<DX12SwapChain> m_SwapChain;
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
 	};
 }

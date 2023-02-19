@@ -15,8 +15,8 @@ namespace vast::gfx
 
 		ID3D12DescriptorHeap* GetHeap() const { return m_DescriptorHeap; }
 		D3D12_DESCRIPTOR_HEAP_TYPE GetHeapType() const { return m_HeapType; }
-		D3D12_CPU_DESCRIPTOR_HANDLE GetHeapCPUStart() const { return m_HeapStart.m_CPUHandle; }
-		D3D12_GPU_DESCRIPTOR_HANDLE GetHeapGPUStart() const { return m_HeapStart.m_GPUHandle; }
+		D3D12_CPU_DESCRIPTOR_HANDLE GetHeapCPUStart() const { return m_HeapStart.cpuHandle; }
+		D3D12_GPU_DESCRIPTOR_HANDLE GetHeapGPUStart() const { return m_HeapStart.gpuHandle; }
 		uint32 GetMaxDescriptors() const { return m_MaxDescriptors; }
 		uint32 GetDescriptorSize() const { return m_DescriptorSize; }
 
