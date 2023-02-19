@@ -30,8 +30,12 @@ namespace vast::gfx
 		void ClearRenderTarget(const Texture& texture, float4 color) override;
 
 	private:
+		void OnWindowResizeEvent(WindowResizeEvent& event);
+
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
+
+		uint32 m_FrameId;
 	};
 }

@@ -3,8 +3,6 @@
 #include "Graphics/API/DX12/DX12_CommandList.h"
 #include "Graphics/API/DX12/DX12_CommandQueue.h"
 
-#include "Core/EventTypes.h"
-
 #include "dx12/D3D12MemoryAllocator/include/D3D12MemAlloc.h"
 
 #include <dxgi1_6.h>
@@ -27,7 +25,6 @@ namespace vast::gfx
 		, m_SRVStagingDescriptorHeap(nullptr)
 		, m_FreeReservedDescriptorIndices({ 0 })
 		, m_SRVRenderPassDescriptorHeaps({ nullptr })
-		, m_FrameId(0)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_INFO("[gfx] [dx12] Starting graphics device creation.");
@@ -260,23 +257,21 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12Device::BeginFrame()
+	void DX12Device::BeginFrame(uint32 frameId)
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
-
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
-			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][m_FrameId]);
+			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][frameId]);
 		}
 
 		// TODO
 	}
 
-	void DX12Device::SignalEndOfFrame(const QueueType& type)
+	void DX12Device::SignalEndOfFrame(uint32 frameId, const QueueType& type)
 	{
-		m_FrameFenceValues[IDX(type)][m_FrameId] = m_CommandQueues[IDX(type)]->SignalFence();
+		m_FrameFenceValues[IDX(type)][frameId] = m_CommandQueues[IDX(type)]->SignalFence();
 	}
 
 	void DX12Device::EndFrame()
@@ -315,11 +310,6 @@ namespace vast::gfx
 	DX12RenderPassDescriptorHeap& DX12Device::GetSRVDescriptorHeap(uint32 frameId) const
 	{
 		return *m_SRVRenderPassDescriptorHeaps[frameId];
-	}
-
-	uint32 DX12Device::GetFrameId() const
-	{
-		return m_FrameId;
 	}
 
 }

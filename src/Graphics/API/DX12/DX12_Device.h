@@ -30,15 +30,14 @@ namespace vast::gfx
 
 		Ref<DX12Buffer> CreateBuffer(const BufferDesc& desc);
 
-		void BeginFrame();
+		void BeginFrame(uint32 frameId);
 		void EndFrame();
 		void SubmitCommandList(DX12CommandList& ctx);
-		void SignalEndOfFrame(const QueueType& type); // TODO: Made this public when moving out SwapChain
+		void SignalEndOfFrame(uint32 frameId, const QueueType& type); // TODO: Made this public when moving out SwapChain
 		void WaitForIdle();
 
 		ID3D12Device5* GetDevice() const;
 		DX12RenderPassDescriptorHeap& GetSRVDescriptorHeap(uint32 frameId) const;
-		uint32 GetFrameId() const;
 
 		void CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType);
 
@@ -58,7 +57,5 @@ namespace vast::gfx
 		Array<Ptr<DX12RenderPassDescriptorHeap>, NUM_FRAMES_IN_FLIGHT> m_SRVRenderPassDescriptorHeaps;
 
 		void CopySRVHandleToReservedTable(DX12DescriptorHandle srvHandle, uint32 heapIndex);
-
-		uint32 m_FrameId;
 	};
 }

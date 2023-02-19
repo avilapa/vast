@@ -16,7 +16,7 @@ namespace vast::gfx
 		D3D12_COMMAND_LIST_TYPE GetCommandType() const;
 		ID3D12GraphicsCommandList* GetCommandList() const;
 
-		void Reset();
+		void Reset(uint32 frameId);
 		void AddBarrier(DX12Resource& resource, D3D12_RESOURCE_STATES newState);
 		void FlushBarriers();
 
