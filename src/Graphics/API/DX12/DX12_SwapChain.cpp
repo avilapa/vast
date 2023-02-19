@@ -3,8 +3,6 @@
 #include "Graphics/API/DX12/DX12_Device.h"
 #include "Graphics/API/DX12/DX12_CommandQueue.h"
 
-#include "Core/EventTypes.h"
-
 #include <dxgi1_6.h>
 #ifdef VAST_DEBUG
 #include <dxgidebug.h>
@@ -13,24 +11,24 @@
 namespace vast::gfx
 {
 
-	DX12SwapChain::DX12SwapChain(const uint2& swapChainSize, const Format& swapChainFormat, const Format& backBufferFormat,
+	DX12SwapChain::DX12SwapChain(const uint2& size, const Format& format, const Format& backBufferFormat,
 		DX12Device& device, HWND windowHandle /*= ::GetActiveWindow()*/)
 		: m_SwapChain(nullptr)
-		, m_SwapChainSize(swapChainSize)
-		, m_SwapChainFormat(swapChainFormat)
+		, m_Size(size)
+		, m_Format(format)
 		, m_BackBufferFormat(backBufferFormat)
 		, m_Device(device)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_INFO("[gfx] [dx12] Creating swapchain.");
 
-		VAST_ASSERTF(m_SwapChainSize.x != 0 && m_SwapChainSize.y != 0, "Failed to create swapchain. Invalid swapchain size.");
+		VAST_ASSERTF(m_Size.x != 0 && m_Size.y != 0, "Failed to create swapchain. Invalid swapchain size.");
 
 		DXGI_SWAP_CHAIN_DESC1 scDesc = {};
 		ZeroMemory(&scDesc, sizeof(scDesc));
-		scDesc.Width = m_SwapChainSize.x;
-		scDesc.Height = m_SwapChainSize.y;
-		scDesc.Format = TranslateToDX12(m_SwapChainFormat);
+		scDesc.Width = m_Size.x;
+		scDesc.Height = m_Size.y;
+		scDesc.Format = TranslateToDX12(m_Format);
 		scDesc.Stereo = false;
 		scDesc.SampleDesc = { 1, 0 };
 		scDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -47,8 +45,6 @@ namespace vast::gfx
 		DX12SafeRelease(swapChain);
 
 		CreateBackBuffers();
-
-		VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, DX12SwapChain::OnWindowResizeEvent);
 	}
 
 	DX12SwapChain::~DX12SwapChain()
@@ -76,27 +72,23 @@ namespace vast::gfx
 		m_SwapChain->Present(kSyncInterval, kPresentFlags);
 	}
 
-	void DX12SwapChain::OnWindowResizeEvent(WindowResizeEvent& event)
+	uint32 DX12SwapChain::Resize(uint2 newSize)
 	{
 		VAST_PROFILE_FUNCTION();
 
-		if (event.m_WindowSize.x != m_SwapChainSize.x || event.m_WindowSize.y != m_SwapChainSize.y)
+		m_Size = newSize;
+		VAST_ASSERTF(m_Size.x != 0 && m_Size.y != 0, "Failed to resize swapchain. Invalid window size.");
+
+		DestroyBackBuffers();
 		{
-			VAST_ASSERTF(m_SwapChainSize.x != 0 && m_SwapChainSize.y != 0, "Failed to resize swapchain. Invalid window size.");
-			m_SwapChainSize = event.m_WindowSize;
-
-			m_Device.WaitForIdle();
-
-			DestroyBackBuffers();
-			{
-				VAST_PROFILE_SCOPE("GFX", "ResizeBuffers");
-				DXGI_SWAP_CHAIN_DESC scDesc = {};
-				DX12Check(m_SwapChain->GetDesc(&scDesc));
-				DX12Check(m_SwapChain->ResizeBuffers(NUM_BACK_BUFFERS, m_SwapChainSize.x, m_SwapChainSize.y, scDesc.BufferDesc.Format, scDesc.Flags));
-			}
-			m_Device.m_FrameId = m_SwapChain->GetCurrentBackBufferIndex();
-			CreateBackBuffers();
+			VAST_PROFILE_SCOPE("GFX", "ResizeBuffers");
+			DXGI_SWAP_CHAIN_DESC scDesc = {};
+			DX12Check(m_SwapChain->GetDesc(&scDesc));
+			DX12Check(m_SwapChain->ResizeBuffers(NUM_BACK_BUFFERS, m_Size.x, m_Size.y, scDesc.BufferDesc.Format, scDesc.Flags));
 		}
+		CreateBackBuffers();
+
+		return m_SwapChain->GetCurrentBackBufferIndex();
 	}
 
 	void DX12SwapChain::CreateBackBuffers()

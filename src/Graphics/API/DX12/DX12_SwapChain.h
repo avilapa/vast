@@ -11,21 +11,21 @@ namespace vast::gfx
 	class DX12SwapChain
 	{
 	public:
-		DX12SwapChain(const uint2& swapChainSize, const Format& swapChainFormat, const Format& backBufferFormat,
+		DX12SwapChain(const uint2& size, const Format& format, const Format& backBufferFormat,
 			DX12Device& device, HWND windowHandle = ::GetActiveWindow());
 		~DX12SwapChain();
 
 		DX12Texture& GetCurrentBackBuffer() const;
 
-		uint2 GetSwapChainSize() const { return m_SwapChainSize; }
-		Format GetSwapChainFormat() const {	return m_SwapChainFormat; }
+		uint2 GetSize() const { return m_Size; }
+		Format GetFormat() const {	return m_Format; }
 		Format GetBackBufferFormat() const { return m_BackBufferFormat; }
 
 		void Present();
 
-	private:
-		void OnWindowResizeEvent(WindowResizeEvent& event);
+		[[nodiscard]] uint32 Resize(uint2 newSize);
 
+	private:
 		void CreateBackBuffers();
 		void DestroyBackBuffers();
 
@@ -36,8 +36,8 @@ namespace vast::gfx
 		IDXGISwapChain4* m_SwapChain;
 		Array<Ptr<DX12Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
 
-		vast::uint2 m_SwapChainSize;
-		Format m_SwapChainFormat;
+		vast::uint2 m_Size;
+		Format m_Format;
 		Format m_BackBufferFormat;
 	};
 

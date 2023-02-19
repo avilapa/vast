@@ -4,6 +4,8 @@
 #include "Graphics/API/DX12/DX12_SwapChain.h"
 #include "Graphics/API/DX12/DX12_CommandList.h"
 
+#include "Core/EventTypes.h"
+
 // TODO: Long relative path will make it hard to simply export an .exe, but it is a lot more comfortable for development.
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = "..\\..\\..\\..\\vendor\\dx12\\DirectXAgilitySDK\\bin\\x64\\"; }
@@ -12,12 +14,18 @@ namespace vast::gfx
 {
 
 	DX12GraphicsContext::DX12GraphicsContext(const GraphicsParams& params)
+		: m_Device(nullptr)
+		, m_SwapChain(nullptr)
+		, m_GraphicsCommandList(nullptr)
+		, m_FrameId(0)
 	{
 		VAST_PROFILE_FUNCTION();
 
 		m_Device = MakePtr<DX12Device>();
 		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, *m_Device);
 		m_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*m_Device);
+
+		VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, DX12GraphicsContext::OnWindowResizeEvent);
 	}
 
 	DX12GraphicsContext::~DX12GraphicsContext()
@@ -33,7 +41,9 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginFrame()
 	{
-		m_Device->BeginFrame();
+		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
+
+		m_Device->BeginFrame(m_FrameId);
 	}
 
 	void DX12GraphicsContext::EndFrame()
@@ -49,7 +59,7 @@ namespace vast::gfx
 	void DX12GraphicsContext::Present()
 	{
 		m_SwapChain->Present();
-		m_Device->SignalEndOfFrame(QueueType::GRAPHICS);
+		m_Device->SignalEndOfFrame(m_FrameId, QueueType::GRAPHICS);
 	}
 
 	Texture DX12GraphicsContext::GetCurrentBackBuffer() const
@@ -98,12 +108,26 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::Reset()
 	{
-		m_GraphicsCommandList->Reset();
+		m_GraphicsCommandList->Reset(m_FrameId);
 	}
 
 	void DX12GraphicsContext::ClearRenderTarget(const Texture& texture, float4 color)
 	{
 		auto internalState = static_cast<DX12Texture*>(texture.internalState.get());
  		m_GraphicsCommandList->ClearRenderTarget(*internalState, color);
+	}
+
+	void DX12GraphicsContext::OnWindowResizeEvent(WindowResizeEvent& event)
+	{
+		VAST_PROFILE_FUNCTION();
+
+		const uint2 scSize = m_SwapChain->GetSize();
+
+		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
+		{
+			m_Device->WaitForIdle();
+			m_FrameId = m_SwapChain->Resize(event.m_WindowSize);
+		}
+
 	}
 }

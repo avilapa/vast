@@ -45,11 +45,9 @@ namespace vast::gfx
 		return m_CommandList;
 	}
 
-	void DX12CommandList::Reset()
+	void DX12CommandList::Reset(uint32 frameId)
 	{
 		VAST_PROFILE_FUNCTION();
-
-		uint32 frameId = m_Device.GetFrameId();
 
 		m_CommandAllocators[frameId]->Reset();
 		m_CommandList->Reset(m_CommandAllocators[frameId], nullptr);
