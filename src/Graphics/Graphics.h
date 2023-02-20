@@ -13,12 +13,6 @@ namespace vast::gfx
 		COUNT,
 	};
 
-	enum class ResourceState
-	{
-		RENDER_TARGET,
-		PRESENT,
-	};
-
 	enum class TextureType
 	{
 		UNKNOWN,
@@ -64,15 +58,10 @@ namespace vast::gfx
 		TEXTURE,
 	};
 
-	struct GPUResource
+	enum class ResourceState
 	{
-		ResourceType type = ResourceType::UNKNOWN;
-		Ref<void> internalState;
-
-		inline bool IsValid() const { return internalState.get() != nullptr; }
-		constexpr bool IsTexture() const { return type == ResourceType::TEXTURE; }
-		constexpr bool IsBuffer() const { return type == ResourceType::BUFFER; }
-		virtual ~GPUResource() = default;
+		RENDER_TARGET,
+		PRESENT,
 	};
 
 	struct BufferDesc
@@ -84,10 +73,9 @@ namespace vast::gfx
 		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
 	};
 
-	struct Buffer : public GPUResource
+	struct Buffer
 	{
-		Buffer() : GPUResource() { type = ResourceType::BUFFER; }
-		BufferDesc desc;
+		// TODO: dummy for now
 	};
 
 	struct TextureDesc
@@ -101,10 +89,8 @@ namespace vast::gfx
 		TextureViewFlags viewFlags = TextureViewFlags::NONE;
 	};
 
-	struct Texture : public GPUResource
+	class Texture
 	{
-		Texture() : GPUResource() { type = ResourceType::TEXTURE; }
-		TextureDesc desc;
+		// TODO: dummy for now
 	};
-
 }

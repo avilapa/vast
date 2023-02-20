@@ -17,9 +17,15 @@ namespace vast::gfx
 		: m_Device(nullptr)
 		, m_SwapChain(nullptr)
 		, m_GraphicsCommandList(nullptr)
+		, m_TextureHandles(nullptr)
+		, m_Textures(0)
+		, m_CurrentRT(nullptr)
 		, m_FrameId(0)
 	{
 		VAST_PROFILE_FUNCTION();
+
+		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
+		m_Textures.resize(NUM_TEXTURES);
 
 		m_Device = MakePtr<DX12Device>();
 		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, *m_Device);
@@ -37,6 +43,8 @@ namespace vast::gfx
 		m_GraphicsCommandList = nullptr;
 		m_SwapChain = nullptr;
 		m_Device = nullptr;
+
+ 		m_TextureHandles = nullptr;
 	}
 
 	void DX12GraphicsContext::BeginFrame()
@@ -44,77 +52,50 @@ namespace vast::gfx
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
 
 		m_Device->BeginFrame(m_FrameId);
+		m_GraphicsCommandList->Reset(m_FrameId);
 	}
 
 	void DX12GraphicsContext::EndFrame()
 	{
-		m_Device->EndFrame();
-	}
-
-	void DX12GraphicsContext::Submit()
-	{
 		m_Device->SubmitCommandList(*m_GraphicsCommandList);
-	}
+		m_Device->EndFrame();
 
-	void DX12GraphicsContext::Present()
-	{
 		m_SwapChain->Present();
+
 		m_Device->SignalEndOfFrame(m_FrameId, QueueType::GRAPHICS);
 	}
 
-	Texture DX12GraphicsContext::GetCurrentBackBuffer() const
+	void DX12GraphicsContext::BeginRenderPass()
 	{
-		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
-
-		// TODO: Can we avoid memory allocation but retain similar flexibility?
-		auto internalState = MakeRef<DX12Texture>();
-		internalState->resource = backBuffer.resource;
-		internalState->state = backBuffer.state;
-		internalState->rtv = backBuffer .rtv;
-
-		D3D12_RESOURCE_DESC desc = internalState->resource->GetDesc();
-		// TODO: GetCopyableFootprints?
-
-		Texture t;
-		t.internalState = internalState;
-		t.desc = TranslateFromDX12_Tex(desc);
-		return t;
+		m_CurrentRT = &m_SwapChain->GetCurrentBackBuffer();
+		BeginRenderPassInternal();
 	}
 
-	void DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, Buffer* buffer, void* data /* = nullptr */)
+	void DX12GraphicsContext::BeginRenderPass(const TextureHandle& h)
 	{
-		VAST_ASSERT(buffer);
+		VAST_ASSERT(m_Textures[h.GetIdx()]);
+		m_CurrentRT = m_Textures[h.GetIdx()].get();
 
-		auto internalState = m_Device->CreateBuffer(desc);
-		if (data != nullptr)
-		{
-			internalState->SetMappedData(&data, sizeof(data));
-		}
-
-		buffer->internalState = internalState;
-		buffer->desc = TranslateFromDX12_Buf(internalState->resource->GetDesc());
+		BeginRenderPassInternal();
 	}
 
-	void DX12GraphicsContext::AddBarrier(GPUResource& resource, const ResourceState& state)
+	void DX12GraphicsContext::BeginRenderPassInternal()
 	{
-		auto internalState = static_cast<DX12Resource*>(resource.internalState.get());
-		m_GraphicsCommandList->AddBarrier(*internalState, TranslateToDX12(state));
-	}
-
-	void DX12GraphicsContext::FlushBarriers()
-	{
+		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_GraphicsCommandList->FlushBarriers();
+		
+		if (true) // TODO: Clear flags
+		{
+			float4 color = float4(0.6, 0.2, 0.9, 1.0);
+			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT, color);
+		}
 	}
 
-	void DX12GraphicsContext::Reset()
+	void DX12GraphicsContext::EndRenderPass()
 	{
-		m_GraphicsCommandList->Reset(m_FrameId);
-	}
-
-	void DX12GraphicsContext::ClearRenderTarget(const Texture& texture, float4 color)
-	{
-		auto internalState = static_cast<DX12Texture*>(texture.internalState.get());
- 		m_GraphicsCommandList->ClearRenderTarget(*internalState, color);
+		VAST_ASSERT(m_CurrentRT);
+		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
+		m_GraphicsCommandList->FlushBarriers();
 	}
 
 	void DX12GraphicsContext::OnWindowResizeEvent(WindowResizeEvent& event)

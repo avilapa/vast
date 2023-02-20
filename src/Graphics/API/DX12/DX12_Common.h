@@ -22,6 +22,8 @@ namespace vast::gfx
 	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
 	constexpr uint32 MAX_QUEUED_BARRIERS = 16;
 
+	constexpr uint32 NUM_TEXTURES = 512;
+
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 

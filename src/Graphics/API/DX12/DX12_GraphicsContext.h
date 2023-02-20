@@ -16,25 +16,22 @@ namespace vast::gfx
 
 		void BeginFrame() override;
 		void EndFrame() override;
-		void Submit() override;
-		void Present() override;
 
-		Texture GetCurrentBackBuffer() const override;
-
-		void CreateBuffer(const BufferDesc& desc, Buffer* buffer, void* data = nullptr) override;
-
-		void AddBarrier(GPUResource& resource, const ResourceState& state) override;
-		void FlushBarriers() override;
-
-		void Reset() override;
-		void ClearRenderTarget(const Texture& texture, float4 color) override;
-
+		void BeginRenderPass() override;
+		void BeginRenderPass(const TextureHandle& h) override;
+		void EndRenderPass() override;
 	private:
+		void BeginRenderPassInternal();
+
 		void OnWindowResizeEvent(WindowResizeEvent& event);
 
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
+
+ 		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
+ 		Vector<Ptr<DX12Texture>> m_Textures;
+		DX12Texture* m_CurrentRT;
 
 		uint32 m_FrameId;
 	};
