@@ -23,11 +23,14 @@ namespace vast::gfx
 	constexpr uint32 MAX_QUEUED_BARRIERS = 16;
 
 	constexpr uint32 NUM_TEXTURES = 512;
+	constexpr uint32 NUM_BUFFERS = 512;
 
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
 	// - Resources -------------------------------------------------------------------------------- //
+
+	static const uint32 kInvalidHeapIdx = UINT32_MAX;
 
 	struct DX12DescriptorHandle
 	{
@@ -46,7 +49,7 @@ namespace vast::gfx
 		D3D12MA::Allocation* allocation = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-		uint32 heapIdx = UINT32_MAX; // Invalid value
+		uint32 heapIdx = kInvalidHeapIdx;
 		bool isReady = false;
 	};
 

@@ -18,6 +18,7 @@ namespace vast::gfx
 	enum class QueueType // TODO: Are we OK with this here?
 	{
 		GRAPHICS = 0,
+		// TODO: Compute, Upload
 		COUNT = 1,
 	};
 
@@ -28,7 +29,8 @@ namespace vast::gfx
 		DX12Device();
 		~DX12Device();
 
-		Ref<DX12Buffer> CreateBuffer(const BufferDesc& desc);
+		void CreateBuffer(const BufferDesc& desc, DX12Buffer* buf);
+		void CreateTexture(const TextureDesc& desc, DX12Texture* tex);
 
 		void BeginFrame(uint32 frameId);
 		void EndFrame();
@@ -45,7 +47,6 @@ namespace vast::gfx
 		IDXGIFactory7* m_DXGIFactory;
 		ID3D12Device5* m_Device;
 		D3D12MA::Allocator* m_Allocator;
-
 
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;

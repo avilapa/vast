@@ -171,32 +171,32 @@ namespace vast::gfx
 		DX12SafeRelease(m_DXGIFactory);
 	}
 
-	Ref<DX12Buffer> DX12Device::CreateBuffer(const BufferDesc& desc)
+	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* buf)
 	{
-		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
-
-		Ref<DX12Buffer> newBufferRsc = MakeRef<DX12Buffer>();
-		newBufferRsc->stride = desc.stride;
+		VAST_ASSERT(buf);
+		buf->stride = desc.stride;
 
 		uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
 		bool isHostVisible = ((desc.accessFlags & BufferAccessFlags::HOST_WRITABLE) == BufferAccessFlags::HOST_WRITABLE);
 
 		D3D12_RESOURCE_STATES rscState = isHostVisible ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST;
-		newBufferRsc->state = rscState;
+		buf->state = rscState;
+
+		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
 		allocDesc.HeapType = isHostVisible ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
-		m_Allocator->CreateResource(&allocDesc, &rscDesc, rscState, nullptr, &newBufferRsc->allocation, IID_PPV_ARGS(&newBufferRsc->resource));
-		newBufferRsc->gpuAddress = newBufferRsc->resource->GetGPUVirtualAddress();
+		m_Allocator->CreateResource(&allocDesc, &rscDesc, rscState, nullptr, &buf->allocation, IID_PPV_ARGS(&buf->resource));
+		buf->gpuAddress = buf->resource->GetGPUVirtualAddress();
 
 		if ((desc.viewFlags & BufferViewFlags::CBV) == BufferViewFlags::CBV)
 		{
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-			cbvDesc.BufferLocation = newBufferRsc->gpuAddress;
+			cbvDesc.BufferLocation = buf->gpuAddress;
 			cbvDesc.SizeInBytes = static_cast<uint32>(rscDesc.Width);
 
-			newBufferRsc->cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateConstantBufferView(&cbvDesc, newBufferRsc->cbv.cpuHandle);
+			buf->cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateConstantBufferView(&cbvDesc, buf->cbv.cpuHandle);
 		}
 
 		if ((desc.viewFlags & BufferViewFlags::SRV) == BufferViewFlags::SRV)
@@ -210,13 +210,13 @@ namespace vast::gfx
 			srvDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			srvDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
 
-			newBufferRsc->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateShaderResourceView(newBufferRsc->resource, &srvDesc, newBufferRsc->srv.cpuHandle);
+			buf->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateShaderResourceView(buf->resource, &srvDesc, buf->srv.cpuHandle);
 
-			newBufferRsc->heapIdx = m_FreeReservedDescriptorIndices.back();
+			buf->heapIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
-			CopySRVHandleToReservedTable(newBufferRsc->srv, newBufferRsc->heapIdx);
+			CopySRVHandleToReservedTable(buf->srv, buf->heapIdx);
 		}
 
 		if ((desc.viewFlags & BufferViewFlags::UAV) == BufferViewFlags::UAV)
@@ -230,16 +230,20 @@ namespace vast::gfx
 			uavDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			uavDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
-			newBufferRsc->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateUnorderedAccessView(newBufferRsc->resource, nullptr, &uavDesc, newBufferRsc->uav.cpuHandle);
+			buf->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateUnorderedAccessView(buf->resource, nullptr, &uavDesc, buf->uav.cpuHandle);
 		}
 
 		if (isHostVisible)
 		{
-			newBufferRsc->resource->Map(0, nullptr, reinterpret_cast<void**>(&newBufferRsc->data));
+			buf->resource->Map(0, nullptr, reinterpret_cast<void**>(&buf->data));
 		}
+	}
 
-		return newBufferRsc;
+	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* tex)
+	{
+		(void)desc;
+		(void)tex;
 	}
 
 	void DX12Device::CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType)

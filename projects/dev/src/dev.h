@@ -13,4 +13,7 @@ private:
 	void OnUpdate() override;
 
 	Ptr<gfx::GraphicsContext> m_GraphicsContext;
+
+	gfx::BufferHandle m_VertexBufferHandle;
+	gfx::BufferHandle m_TriangleCBVHandle;
 };

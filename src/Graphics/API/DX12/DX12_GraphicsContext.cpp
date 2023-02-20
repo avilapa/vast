@@ -26,6 +26,8 @@ namespace vast::gfx
 
 		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
 		m_Textures.resize(NUM_TEXTURES);
+		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
+		m_Buffers.resize(NUM_BUFFERS);
 
 		m_Device = MakePtr<DX12Device>();
 		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, *m_Device);
@@ -73,8 +75,8 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPass(const TextureHandle& h)
 	{
-		VAST_ASSERT(m_Textures[h.GetIdx()]);
-		m_CurrentRT = m_Textures[h.GetIdx()].get();
+		VAST_ASSERT(h.IsValid());
+		m_CurrentRT = &m_Textures[h.GetIdx()];
 
 		BeginRenderPassInternal();
 	}
@@ -96,6 +98,30 @@ namespace vast::gfx
 		VAST_ASSERT(m_CurrentRT);
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
+	}
+
+	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, size_t dataSize /*= 0*/)
+	{
+		BufferHandle h = m_BufferHandles->Acquire();
+		VAST_ASSERT(h.IsValid());
+		DX12Buffer* buf = &m_Buffers[h.GetIdx()];
+		m_Device->CreateBuffer(desc, buf);
+		buf->SetMappedData(initialData, dataSize);
+		return h;
+	}
+
+	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc)
+	{
+		TextureHandle h = m_TextureHandles->Acquire();
+		DX12Texture* tex = &m_Textures[h.GetIdx()];
+		m_Device->CreateTexture(desc, tex);
+		return h;
+	}
+
+	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return m_Buffers[h.GetIdx()].heapIdx;
 	}
 
 	void DX12GraphicsContext::OnWindowResizeEvent(WindowResizeEvent& event)

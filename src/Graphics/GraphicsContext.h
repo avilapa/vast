@@ -8,6 +8,7 @@
 namespace vast::gfx
 {
 	using TextureHandle = Handle<Texture>;
+	using BufferHandle = Handle<Buffer>;
 
 	struct GraphicsParams
 	{
@@ -32,6 +33,11 @@ namespace vast::gfx
 		virtual void BeginRenderPass() = 0;
 		virtual void BeginRenderPass(const TextureHandle& h) = 0;
 		virtual void EndRenderPass() = 0;
+
+		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) = 0;
+		virtual TextureHandle CreateTexture(const TextureDesc& desc) = 0;
+
+		virtual uint32 GetBindlessHeapIndex(const BufferHandle& h) = 0;
 	};
 
 }

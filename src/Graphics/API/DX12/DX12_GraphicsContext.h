@@ -20,6 +20,12 @@ namespace vast::gfx
 		void BeginRenderPass() override;
 		void BeginRenderPass(const TextureHandle& h) override;
 		void EndRenderPass() override;
+
+		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
+		TextureHandle CreateTexture(const TextureDesc& desc) override;
+
+		uint32 GetBindlessHeapIndex(const BufferHandle& h) override;
+
 	private:
 		void BeginRenderPassInternal();
 
@@ -30,7 +36,11 @@ namespace vast::gfx
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
 
  		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
- 		Vector<Ptr<DX12Texture>> m_Textures;
+ 		Vector<DX12Texture> m_Textures;
+
+		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles;
+		Vector<DX12Buffer> m_Buffers;
+
 		DX12Texture* m_CurrentRT;
 
 		uint32 m_FrameId;
