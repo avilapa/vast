@@ -27,10 +27,21 @@ project "dev"
 	
 	configuration "Debug"
 		targetdir 	(path.join(ROOT_DIR, "build/bin/Debug/dev"))
-		debugdir	(path.join(ROOT_DIR, "build/bin/Debug/dev"))
         objdir 		(path.join(ROOT_DIR, "build/obj/Debug/dev"))
+		postbuildcommands
+		{
+			'echo Copying necessary DLLs to bin',
+			'copy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXShaderCompiler/bin/x64\\*.dll")..'" "'..path.join(ROOT_DIR, "build/bin/Debug/dev/")..'" ',
+			'xcopy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXAgilitySDK/bin/x64\\*.dll")..'" "'..path.join(ROOT_DIR, "build/bin/Debug/dev/D3D12/*")..'" /y',
+		}
 		
 	configuration "Release"
 		targetdir 	(path.join(ROOT_DIR, "build/bin/Release/dev"))
 		objdir 		(path.join(ROOT_DIR, "build/obj/Release/dev"))
+		postbuildcommands
+		{
+			'echo Copying necessary DLLs to bin',
+			'copy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXShaderCompiler/bin/x64\\*.dll")..'" "'..path.join(ROOT_DIR, "build/bin/Release/dev/")..'" ',
+			'xcopy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXAgilitySDK/bin/x64\\D3D12Core.dll")..'" "'..path.join(ROOT_DIR, "build/bin/Release/dev/D3D12/*")..'" /y',
+		}
 	

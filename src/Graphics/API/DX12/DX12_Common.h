@@ -31,10 +31,9 @@ namespace vast::gfx
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
-	// TODO: Need to avoid relative paths when including shaders.
-	constexpr wchar_t* SHADER_SOURCE_PATH = L"../../../../shaders/";
+	constexpr wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
 	// TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
-	constexpr wchar_t* SHADER_OUTPUT_PATH = L"../../../../shaders/compiled/";
+	constexpr wchar_t* SHADER_OUTPUT_PATH = L"../../shaders/compiled/";
 
 	// - Resources -------------------------------------------------------------------------------- //
 
@@ -92,7 +91,7 @@ namespace vast::gfx
 
 	struct DX12Shader
 	{
-		IDxcBlob* m_ShaderBlob = nullptr;
+		IDxcBlob* shaderBlob = nullptr;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //

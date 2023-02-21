@@ -6,9 +6,8 @@
 
 #include "Core/EventTypes.h"
 
-// TODO: Long relative path will make it hard to simply export an .exe, but it is a lot more comfortable for development.
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
-extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = "..\\..\\..\\..\\vendor\\dx12\\DirectXAgilitySDK\\bin\\x64\\"; }
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
 namespace vast::gfx
 {
@@ -17,17 +16,21 @@ namespace vast::gfx
 		: m_Device(nullptr)
 		, m_SwapChain(nullptr)
 		, m_GraphicsCommandList(nullptr)
+		, m_BufferHandles(nullptr)
+		, m_Buffers(0)
 		, m_TextureHandles(nullptr)
 		, m_Textures(0)
+		, m_ShaderHandles(nullptr)
+		, m_Shaders(0)
 		, m_CurrentRT(nullptr)
 		, m_FrameId(0)
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
-		m_Textures.resize(NUM_TEXTURES);
 		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
 		m_Buffers.resize(NUM_BUFFERS);
+		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
+		m_Textures.resize(NUM_TEXTURES);
 		m_ShaderHandles = MakePtr<HandlePool<Shader, NUM_SHADERS>>();
 		m_Shaders.resize(NUM_SHADERS);
 
@@ -104,6 +107,7 @@ namespace vast::gfx
 
 	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, size_t dataSize /*= 0*/)
 	{
+		VAST_ASSERT(m_Device);
 		BufferHandle h = m_BufferHandles->Acquire();
 		VAST_ASSERT(h.IsValid());
 		DX12Buffer* buf = &m_Buffers[h.GetIdx()];
@@ -114,7 +118,9 @@ namespace vast::gfx
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc)
 	{
+		VAST_ASSERT(m_Device);
 		TextureHandle h = m_TextureHandles->Acquire();
+		VAST_ASSERT(h.IsValid());
 		DX12Texture* tex = &m_Textures[h.GetIdx()];
 		m_Device->CreateTexture(desc, tex);
 		return h;
@@ -122,7 +128,9 @@ namespace vast::gfx
 	
 	ShaderHandle DX12GraphicsContext::CreateShader(const ShaderDesc& desc)
 	{
+		VAST_ASSERT(m_Device);
 		ShaderHandle h = m_ShaderHandles->Acquire();
+		VAST_ASSERT(h.IsValid());
 		DX12Shader* shader = &m_Shaders[h.GetIdx()];
 		m_Device->CreateShader(desc, shader);
 		return h;

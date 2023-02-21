@@ -13,7 +13,6 @@ solution "vast"
 	-- TODO: Add platform specific folders
 	configuration "Debug"
 		targetdir 	(path.join(ROOT_DIR, "build/bin/Debug"))
-		debugdir	(path.join(ROOT_DIR, "build/bin/Debug"))
         objdir 		(path.join(ROOT_DIR, "build/obj/Debug"))
 		flags 		{ "Symbols", "ExtraWarnings" }
 		defines 	{ "VAST_DEBUG" }

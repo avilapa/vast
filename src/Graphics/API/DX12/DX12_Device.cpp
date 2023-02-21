@@ -77,6 +77,7 @@ namespace vast::gfx
 			}
 
 			VAST_INFO("[gfx] [dx12] GPU adapter found with index {}.", bestAdapterIndex);
+			// TODO: If we can't find the DirectXAgilitySDK dll's we will crash here. Check earlier and give a proper message.
 			VAST_ASSERTF(bestAdapterMemory != 0, "Failed to find an adapter.");
 			m_DXGIFactory->EnumAdapters1(bestAdapterIndex, &adapter);
 		}
@@ -174,6 +175,8 @@ namespace vast::gfx
 
 	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* buf)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		VAST_ASSERT(buf);
 		buf->stride = desc.stride;
 
@@ -243,26 +246,30 @@ namespace vast::gfx
 
 	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* tex)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		(void)desc;
 		(void)tex;
 	}
 
 	void DX12Device::CreateShader(const ShaderDesc& desc, DX12Shader* shader)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		IDxcUtils* dxcUtils = nullptr;
 		IDxcCompiler3* dxcCompiler = nullptr;
 		IDxcIncludeHandler* dxcIncludeHandler = nullptr;
 
-		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
+ 		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
 		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
-		dxcUtils->CreateDefaultIncludeHandler(&dxcIncludeHandler);
+ 		dxcUtils->CreateDefaultIncludeHandler(&dxcIncludeHandler);
+ 
+ 		std::wstring sourcePath;
+ 		sourcePath.append(SHADER_SOURCE_PATH);
+ 		sourcePath.append(desc.shaderName);
 
-		std::wstring sourcePath;
-		sourcePath.append(SHADER_SOURCE_PATH);
-		sourcePath.append(desc.shaderName);
-
-		IDxcBlobEncoding* sourceBlobEncoding = nullptr;
-		dxcUtils->LoadFile(sourcePath.c_str(), nullptr, &sourceBlobEncoding);
+ 		IDxcBlobEncoding* sourceBlobEncoding = nullptr;
+		DX12Check(dxcUtils->LoadFile(sourcePath.c_str(), nullptr, &sourceBlobEncoding));
 
 		DxcBuffer sourceBuffer = {};
 		sourceBuffer.Ptr = sourceBlobEncoding->GetBufferPointer();
@@ -367,7 +374,7 @@ namespace vast::gfx
 		DX12SafeRelease(dxcCompiler);
 		DX12SafeRelease(dxcUtils);
 
-		shader->m_ShaderBlob = shaderBlob;
+		shader->shaderBlob = shaderBlob;
 	}
 
 	void DX12Device::CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType)
