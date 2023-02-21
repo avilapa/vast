@@ -39,6 +39,10 @@ namespace vast::gfx
 		virtual TextureHandle CreateTexture(const TextureDesc& desc) = 0;
 		virtual ShaderHandle CreateShader(const ShaderDesc& desc) = 0;
 
+		virtual void DestroyBuffer(const BufferHandle& h) = 0;
+		virtual void DestroyTexture(const TextureHandle& h) = 0;
+		virtual void DestroyShader(const ShaderHandle& h) = 0;
+
 		virtual uint32 GetBindlessHeapIndex(const BufferHandle& h) = 0;
 	};
 

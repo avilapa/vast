@@ -6,7 +6,16 @@ namespace vast::gfx
 {
 	class DX12Device;
 	class DX12SwapChain;
+	class DX12CommandList;
 	class DX12GraphicsCommandList;
+	class DX12CommandQueue;
+
+	enum class QueueType
+	{
+		GRAPHICS = 0,
+		// TODO: Compute, Upload
+		COUNT = 1,
+	};
 
 	class DX12GraphicsContext final : public GraphicsContext
 	{
@@ -25,9 +34,17 @@ namespace vast::gfx
 		TextureHandle CreateTexture(const TextureDesc& desc) override;
 		ShaderHandle CreateShader(const ShaderDesc& desc) override;
 
+		void DestroyBuffer(const BufferHandle& h) override;
+		void DestroyTexture(const TextureHandle& h) override;
+		void DestroyShader(const ShaderHandle& h) override;
+
 		uint32 GetBindlessHeapIndex(const BufferHandle& h) override;
 
 	private:
+		void SubmitCommandList(DX12CommandList& ctx);
+		void SignalEndOfFrame(const QueueType& type);
+		void WaitForIdle();
+
 		void BeginRenderPassInternal();
 
 		void OnWindowResizeEvent(WindowResizeEvent& event);
@@ -35,6 +52,8 @@ namespace vast::gfx
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
+		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
+		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
 		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles;
 		Vector<DX12Buffer> m_Buffers;

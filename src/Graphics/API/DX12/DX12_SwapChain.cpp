@@ -12,7 +12,7 @@ namespace vast::gfx
 {
 
 	DX12SwapChain::DX12SwapChain(const uint2& size, const Format& format, const Format& backBufferFormat,
-		DX12Device& device, HWND windowHandle /*= ::GetActiveWindow()*/)
+		DX12Device& device, ID3D12CommandQueue& graphicsQueue, HWND windowHandle /*= ::GetActiveWindow()*/)
 		: m_SwapChain(nullptr)
 		, m_Size(size)
 		, m_Format(format)
@@ -39,8 +39,7 @@ namespace vast::gfx
 		scDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
 
 		IDXGISwapChain1* swapChain = nullptr;
-		auto queue = m_Device.m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue();
-		DX12Check(m_Device.m_DXGIFactory->CreateSwapChainForHwnd(queue, windowHandle, &scDesc, nullptr, nullptr, &swapChain));
+		DX12Check(m_Device.GetDXGIFactory()->CreateSwapChainForHwnd(&graphicsQueue, windowHandle, &scDesc, nullptr, nullptr, &swapChain));
 		DX12Check(swapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain)));
 		DX12SafeRelease(swapChain);
 
@@ -101,25 +100,15 @@ namespace vast::gfx
 			ID3D12Resource* backBuffer = nullptr;
 			DX12Check(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
 #if VAST_DEBUG
-			// TODO: Figure out what we're doing with names
+			// TODO: Figure out what we're doing with debug names
 			std::string backBufferName = std::string("Back Buffer ") + std::to_string(i);
 			backBuffer->SetName(std::wstring(backBufferName.begin(), backBufferName.end()).c_str());
 #endif // VAST_DEBUG
 
-			DX12DescriptorHandle backBufferRTVHandle = m_Device.m_RTVStagingDescriptorHeap->GetNewDescriptor();
-
-			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
-			rtvDesc.Format = TranslateToDX12(m_BackBufferFormat);
-			rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
-			rtvDesc.Texture2D.MipSlice = 0;
-			rtvDesc.Texture2D.PlaneSlice = 0;
-
-			m_Device.GetDevice()->CreateRenderTargetView(backBuffer, &rtvDesc, backBufferRTVHandle.cpuHandle);
-
 			m_BackBuffers[i] = MakePtr<DX12Texture>();
 			m_BackBuffers[i]->resource = backBuffer;
 			m_BackBuffers[i]->state = D3D12_RESOURCE_STATE_PRESENT;
-			m_BackBuffers[i]->rtv = backBufferRTVHandle;
+			m_BackBuffers[i]->rtv = m_Device.CreateBackBufferRTV(backBuffer, TranslateToDX12(m_BackBufferFormat));
 		}
 	}
 
@@ -130,7 +119,7 @@ namespace vast::gfx
 
 		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
 		{
-			m_Device.m_RTVStagingDescriptorHeap->FreeDescriptor(m_BackBuffers[i]->rtv);
+			m_Device.DestroyBackBufferRTV(m_BackBuffers[i]->rtv);
 			DX12SafeRelease(m_BackBuffers[i]->resource);
 			m_BackBuffers[i] = nullptr;
 		}
@@ -139,7 +128,7 @@ namespace vast::gfx
 	bool DX12SwapChain::CheckTearingSupport()
 	{
 		BOOL allowTearing = FALSE;
-		if (FAILED(m_Device.m_DXGIFactory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
+		if (FAILED(m_Device.GetDXGIFactory()->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
 		{
 			allowTearing = FALSE;
 		}

@@ -11,14 +11,15 @@ namespace vast::gfx
 	class DX12SwapChain
 	{
 	public:
+		// TODO: HWND is platform specific!
 		DX12SwapChain(const uint2& size, const Format& format, const Format& backBufferFormat,
-			DX12Device& device, HWND windowHandle = ::GetActiveWindow());
+			DX12Device& device, ID3D12CommandQueue& graphicsQueue, HWND windowHandle = ::GetActiveWindow());
 		~DX12SwapChain();
 
 		DX12Texture& GetCurrentBackBuffer() const;
 
 		uint2 GetSize() const { return m_Size; }
-		Format GetFormat() const {	return m_Format; }
+		Format GetFormat() const { return m_Format; }
 		Format GetBackBufferFormat() const { return m_BackBufferFormat; }
 
 		void Present();

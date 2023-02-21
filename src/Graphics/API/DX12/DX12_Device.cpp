@@ -11,16 +11,12 @@
 #include <dxgidebug.h>
 #endif
 
-#include <numeric>
-
 namespace vast::gfx
 {
 
 	DX12Device::DX12Device()
 		: m_DXGIFactory(nullptr)
 		, m_Device(nullptr)
-		, m_CommandQueues({ nullptr })
-		, m_FrameFenceValues({ {0} })
 		, m_RTVStagingDescriptorHeap(nullptr)
 		, m_DSVStagingDescriptorHeap(nullptr)
 		, m_SRVStagingDescriptorHeap(nullptr)
@@ -127,9 +123,6 @@ namespace vast::gfx
 		}
 #endif // VAST_DEBUG
 
-		VAST_INFO("[gfx] [dx12] Creating command queues.");
-		m_CommandQueues[IDX(QueueType::GRAPHICS)] = MakePtr<DX12CommandQueue>(m_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-
 		VAST_INFO("[gfx] [dx12] Creating descriptor heaps.");
 		m_RTVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
 			NUM_RTV_STAGING_DESCRIPTORS);
@@ -139,7 +132,10 @@ namespace vast::gfx
 			NUM_SRV_STAGING_DESCRIPTORS);
 
 		m_FreeReservedDescriptorIndices.resize(NUM_RESERVED_SRV_DESCRIPTORS);
-		std::iota(m_FreeReservedDescriptorIndices.begin(), m_FreeReservedDescriptorIndices.end(), 0);
+		for (uint32 i = 0; i < m_FreeReservedDescriptorIndices.size(); ++i)
+		{
+			m_FreeReservedDescriptorIndices[i] = i;
+		}
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -151,14 +147,7 @@ namespace vast::gfx
 	DX12Device::~DX12Device()
 	{
 		VAST_PROFILE_FUNCTION();
-
-		WaitForIdle();
 		VAST_INFO("[gfx] [dx12] Starting graphics device destruction.");
-
-		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
-		{
-			m_CommandQueues[i] = nullptr;
-		}
 
 		m_RTVStagingDescriptorHeap = nullptr;
 		m_DSVStagingDescriptorHeap = nullptr;
@@ -377,6 +366,41 @@ namespace vast::gfx
 		shader->shaderBlob = shaderBlob;
 	}
 
+	ID3D12Device5* DX12Device::GetDevice() const
+	{
+		return m_Device;
+	}
+
+	IDXGIFactory7* DX12Device::GetDXGIFactory() const
+	{
+		return m_DXGIFactory;
+	}
+
+	DX12RenderPassDescriptorHeap& DX12Device::GetSRVDescriptorHeap(uint32 frameId) const
+	{
+		return *m_SRVRenderPassDescriptorHeaps[frameId];
+	}
+
+	DX12DescriptorHandle DX12Device::CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format)
+	{
+		VAST_ASSERT(backBuffer);
+
+		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+		rtvDesc.Format = format;
+		rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		rtvDesc.Texture2D.MipSlice = 0;
+		rtvDesc.Texture2D.PlaneSlice = 0;
+
+		DX12DescriptorHandle rtv = m_RTVStagingDescriptorHeap->GetNewDescriptor();
+		m_Device->CreateRenderTargetView(backBuffer, &rtvDesc, rtv.cpuHandle);
+		return rtv;
+	}
+
+	void DX12Device::DestroyBackBufferRTV(const DX12DescriptorHandle& rtv)
+	{
+		m_RTVStagingDescriptorHeap->FreeDescriptor(rtv);
+	}
+
 	void DX12Device::CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType)
 	{
 		m_Device->CopyDescriptorsSimple(numDesc, destDescRangeStart, srcDescRangeStart, descType);
@@ -391,60 +415,4 @@ namespace vast::gfx
 			CopyDescriptorsSimple(1, targetDescriptor.cpuHandle, srvHandle.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
-
-	void DX12Device::BeginFrame(uint32 frameId)
-	{
-		VAST_PROFILE_FUNCTION();
-
-		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
-		{
-			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][frameId]);
-		}
-
-		// TODO
-	}
-
-	void DX12Device::SignalEndOfFrame(uint32 frameId, const QueueType& type)
-	{
-		m_FrameFenceValues[IDX(type)][frameId] = m_CommandQueues[IDX(type)]->SignalFence();
-	}
-
-	void DX12Device::EndFrame()
-	{
-		// TODO
-	}
-
-	void DX12Device::SubmitCommandList(DX12CommandList& ctx)
-	{
-		switch (ctx.GetCommandType())
-		{
-		case D3D12_COMMAND_LIST_TYPE_DIRECT:
-			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(ctx.GetCommandList());
-			break;
-		default:
-			VAST_ASSERTF(0, "Unsupported context submit type.");
-			break;
-		}
-	}
-
-	void DX12Device::WaitForIdle()
-	{
-		VAST_PROFILE_FUNCTION();
-
-		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
-		{
-			m_CommandQueues[i]->WaitForIdle();
-		}
-	}
-
-	ID3D12Device5* DX12Device::GetDevice() const
-	{
-		return m_Device;
-	}
-
-	DX12RenderPassDescriptorHeap& DX12Device::GetSRVDescriptorHeap(uint32 frameId) const
-	{
-		return *m_SRVRenderPassDescriptorHeaps[frameId];
-	}
-
 }

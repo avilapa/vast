@@ -72,6 +72,8 @@ namespace vast::gfx
 		PRESENT,
 	};
 
+	// TODO: Provide functions to more easily build common configurations of Desc objects.
+
 	struct BufferDesc
 	{
 		uint32 size = 0;

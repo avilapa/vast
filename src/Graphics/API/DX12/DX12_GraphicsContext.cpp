@@ -3,6 +3,7 @@
 #include "Graphics/API/DX12/DX12_Device.h"
 #include "Graphics/API/DX12/DX12_SwapChain.h"
 #include "Graphics/API/DX12/DX12_CommandList.h"
+#include "Graphics/API/DX12/DX12_CommandQueue.h"
 
 #include "Core/EventTypes.h"
 
@@ -16,6 +17,8 @@ namespace vast::gfx
 		: m_Device(nullptr)
 		, m_SwapChain(nullptr)
 		, m_GraphicsCommandList(nullptr)
+		, m_CommandQueues({ nullptr })
+		, m_FrameFenceValues({ {0} })
 		, m_BufferHandles(nullptr)
 		, m_Buffers(0)
 		, m_TextureHandles(nullptr)
@@ -35,7 +38,12 @@ namespace vast::gfx
 		m_Shaders.resize(NUM_SHADERS);
 
 		m_Device = MakePtr<DX12Device>();
-		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, *m_Device);
+
+		m_CommandQueues[IDX(QueueType::GRAPHICS)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, 
+			*m_Device, *m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue());
+
 		m_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*m_Device);
 
 		VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, DX12GraphicsContext::OnWindowResizeEvent);
@@ -45,10 +53,18 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_Device->WaitForIdle();
+		WaitForIdle();
 
 		m_GraphicsCommandList = nullptr;
 		m_SwapChain = nullptr;
+
+		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
+		{
+			m_CommandQueues[i] = nullptr;
+		}
+
+		// TODO: WaitForIdle?
+
 		m_Device = nullptr;
 
  		m_TextureHandles = nullptr;
@@ -58,18 +74,48 @@ namespace vast::gfx
 	{
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
 
-		m_Device->BeginFrame(m_FrameId);
+		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
+		{
+			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][m_FrameId]);
+		}
+
 		m_GraphicsCommandList->Reset(m_FrameId);
 	}
 
 	void DX12GraphicsContext::EndFrame()
 	{
-		m_Device->SubmitCommandList(*m_GraphicsCommandList);
-		m_Device->EndFrame();
+		SubmitCommandList(*m_GraphicsCommandList);
 
 		m_SwapChain->Present();
 
-		m_Device->SignalEndOfFrame(m_FrameId, QueueType::GRAPHICS);
+		SignalEndOfFrame(QueueType::GRAPHICS);
+	}
+
+	void DX12GraphicsContext::SubmitCommandList(DX12CommandList& ctx)
+	{
+		switch (ctx.GetCommandType())
+		{
+		case D3D12_COMMAND_LIST_TYPE_DIRECT:
+			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(ctx.GetCommandList());
+			break;
+		default:
+			VAST_ASSERTF(0, "Unsupported context submit type.");
+			break;
+		}
+	}
+
+	void DX12GraphicsContext::SignalEndOfFrame(const QueueType& type)
+	{
+		m_FrameFenceValues[IDX(type)][m_FrameId] = m_CommandQueues[IDX(type)]->SignalFence();
+	}
+
+	void DX12GraphicsContext::WaitForIdle()
+	{
+		VAST_PROFILE_FUNCTION();
+		for (auto& q : m_CommandQueues)
+		{
+			q->WaitForIdle();
+		}
 	}
 
 	void DX12GraphicsContext::BeginRenderPass()
@@ -136,6 +182,24 @@ namespace vast::gfx
 		return h;
 	}
 
+	void DX12GraphicsContext::DestroyBuffer(const BufferHandle& h)
+	{
+		VAST_ASSERT(h.IsValid());
+		
+	}
+
+	void DX12GraphicsContext::DestroyTexture(const TextureHandle& h)
+	{
+		VAST_ASSERT(h.IsValid());
+		
+	}
+
+	void DX12GraphicsContext::DestroyShader(const ShaderHandle& h)
+	{
+		VAST_ASSERT(h.IsValid());
+		
+	}
+
 	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)
 	{
 		VAST_ASSERT(h.IsValid());
@@ -150,7 +214,7 @@ namespace vast::gfx
 
 		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
 		{
-			m_Device->WaitForIdle();
+			WaitForIdle();
 			m_FrameId = m_SwapChain->Resize(event.m_WindowSize);
 		}
 
