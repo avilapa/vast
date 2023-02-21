@@ -9,6 +9,8 @@ namespace D3D12MA
 	class Allocation;
 }
 
+struct IDxcBlob;
+
 namespace vast::gfx
 {
 	// - Graphics constants ----------------------------------------------------------------------- //
@@ -21,12 +23,18 @@ namespace vast::gfx
 	constexpr uint32 NUM_RESERVED_SRV_DESCRIPTORS = 8192;
 	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
 	constexpr uint32 MAX_QUEUED_BARRIERS = 16;
-
+	// TODO: Set sensible defaults
 	constexpr uint32 NUM_TEXTURES = 512;
 	constexpr uint32 NUM_BUFFERS = 512;
+	constexpr uint32 NUM_SHADERS = 64;
 
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
+
+	// TODO: Need to avoid relative paths when including shaders.
+	constexpr wchar_t* SHADER_SOURCE_PATH = L"../../../../shaders/";
+	// TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
+	constexpr wchar_t* SHADER_OUTPUT_PATH = L"../../../../shaders/compiled/";
 
 	// - Resources -------------------------------------------------------------------------------- //
 
@@ -80,6 +88,11 @@ namespace vast::gfx
 		DX12DescriptorHandle dsv = {};
 		DX12DescriptorHandle srv = {};
 		DX12DescriptorHandle uav = {};
+	};
+
+	struct DX12Shader
+	{
+		IDxcBlob* m_ShaderBlob = nullptr;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //

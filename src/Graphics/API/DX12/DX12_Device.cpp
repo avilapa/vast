@@ -4,6 +4,7 @@
 #include "Graphics/API/DX12/DX12_CommandQueue.h"
 
 #include "dx12/D3D12MemoryAllocator/include/D3D12MemAlloc.h"
+#include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
 #include <dxgi1_6.h>
 #ifdef VAST_DEBUG
@@ -244,6 +245,128 @@ namespace vast::gfx
 	{
 		(void)desc;
 		(void)tex;
+	}
+
+	void DX12Device::CreateShader(const ShaderDesc& desc, DX12Shader* shader)
+	{
+		IDxcUtils* dxcUtils = nullptr;
+		IDxcCompiler3* dxcCompiler = nullptr;
+		IDxcIncludeHandler* dxcIncludeHandler = nullptr;
+
+		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
+		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
+		dxcUtils->CreateDefaultIncludeHandler(&dxcIncludeHandler);
+
+		std::wstring sourcePath;
+		sourcePath.append(SHADER_SOURCE_PATH);
+		sourcePath.append(desc.shaderName);
+
+		IDxcBlobEncoding* sourceBlobEncoding = nullptr;
+		dxcUtils->LoadFile(sourcePath.c_str(), nullptr, &sourceBlobEncoding);
+
+		DxcBuffer sourceBuffer = {};
+		sourceBuffer.Ptr = sourceBlobEncoding->GetBufferPointer();
+		sourceBuffer.Size = sourceBlobEncoding->GetBufferSize();
+		sourceBuffer.Encoding = DXC_CP_ACP;
+
+		LPCWSTR target = nullptr;
+
+		switch (desc.type)
+		{
+		case ShaderType::COMPUTE:
+			target = L"cs_6_6";
+			break;
+		case ShaderType::VERTEX:
+			target = L"vs_6_6";
+			break;
+		case ShaderType::PIXEL:
+			target = L"ps_6_6";
+			break;
+		default:
+			VAST_ASSERTF(0, "Shader type not supported.");
+			break;
+		}
+
+		std::vector<LPCWSTR> arguments;
+		arguments.reserve(8);
+		arguments.push_back(desc.shaderName.c_str());
+		arguments.push_back(L"-E");
+		arguments.push_back(desc.entryPoint.c_str());
+		arguments.push_back(L"-T");
+		arguments.push_back(target);
+		arguments.push_back(L"-Zi");
+		arguments.push_back(L"-WX");
+		arguments.push_back(L"-Qstrip_reflect");
+
+		IDxcResult* compilationResults = nullptr;
+		dxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), dxcIncludeHandler, IID_PPV_ARGS(&compilationResults));
+
+		IDxcBlobUtf8* errors = nullptr;
+		HRESULT getCompilationResults = compilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
+
+		if (FAILED(getCompilationResults))
+		{
+			VAST_ASSERTF(0, "Failed to get compilation result.");
+		}
+
+		if (errors != nullptr && errors->GetStringLength() != 0)
+		{
+			wprintf(L"Shader compilation error:\n%S\n", errors->GetStringPointer());
+			VAST_ASSERTF(0, "Shader compilation error.");
+		}
+
+		HRESULT statusResult;
+		compilationResults->GetStatus(&statusResult);
+		if (FAILED(statusResult))
+		{
+			VAST_ASSERTF(0, "Shader compilation failed.");
+		}
+
+		std::wstring dxilPath;
+		std::wstring pdbPath;
+
+		dxilPath.append(SHADER_OUTPUT_PATH);
+		dxilPath.append(desc.shaderName);
+		dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
+		dxilPath.append(L".dxil");
+
+		pdbPath = dxilPath;
+		pdbPath.append(L".pdb");
+
+		IDxcBlob* shaderBlob = nullptr;
+		compilationResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
+		if (shaderBlob != nullptr)
+		{
+			FILE* fp = nullptr;
+
+			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
+			// TODO: Create "compiled" folder if not found, will crash newly cloned builds from repo otherwise.
+			VAST_ASSERTF(fp, "Cannot find specified path.");
+
+			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
+			fclose(fp);
+		}
+
+		IDxcBlob* pdbBlob = nullptr;
+		compilationResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pdbBlob), nullptr);
+		{
+			FILE* fp = nullptr;
+
+			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
+			VAST_ASSERTF(fp, "Cannot find specified path.");
+
+			fwrite(pdbBlob->GetBufferPointer(), pdbBlob->GetBufferSize(), 1, fp);
+			fclose(fp);
+		}
+
+		DX12SafeRelease(pdbBlob);
+		DX12SafeRelease(errors);
+		DX12SafeRelease(compilationResults);
+		DX12SafeRelease(dxcIncludeHandler);
+		DX12SafeRelease(dxcCompiler);
+		DX12SafeRelease(dxcUtils);
+
+		shader->m_ShaderBlob = shaderBlob;
 	}
 
 	void DX12Device::CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType)

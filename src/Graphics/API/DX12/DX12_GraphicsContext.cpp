@@ -28,6 +28,8 @@ namespace vast::gfx
 		m_Textures.resize(NUM_TEXTURES);
 		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
 		m_Buffers.resize(NUM_BUFFERS);
+		m_ShaderHandles = MakePtr<HandlePool<Shader, NUM_SHADERS>>();
+		m_Shaders.resize(NUM_SHADERS);
 
 		m_Device = MakePtr<DX12Device>();
 		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, *m_Device);
@@ -115,6 +117,14 @@ namespace vast::gfx
 		TextureHandle h = m_TextureHandles->Acquire();
 		DX12Texture* tex = &m_Textures[h.GetIdx()];
 		m_Device->CreateTexture(desc, tex);
+		return h;
+	}
+	
+	ShaderHandle DX12GraphicsContext::CreateShader(const ShaderDesc& desc)
+	{
+		ShaderHandle h = m_ShaderHandles->Acquire();
+		DX12Shader* shader = &m_Shaders[h.GetIdx()];
+		m_Device->CreateShader(desc, shader);
 		return h;
 	}
 

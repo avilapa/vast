@@ -7,7 +7,7 @@ project "dev"
 	
 	AddLibrary(spdlog)
 	AddLibrary(hlslpp)
-	AddLibrary(DirectXAgilitySDK)
+	AddDX12Libraries()
 	
 	files
 	{

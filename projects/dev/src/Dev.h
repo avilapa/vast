@@ -14,6 +14,8 @@ private:
 
 	Ptr<gfx::GraphicsContext> m_GraphicsContext;
 
+	gfx::ShaderHandle m_TriangleShaderHandles[2];
+
 	gfx::BufferHandle m_VertexBufferHandle;
 	gfx::BufferHandle m_TriangleCBVHandle;
 };

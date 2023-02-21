@@ -12,6 +12,19 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
 	{
+		gfx::ShaderDesc vsDesc;
+		vsDesc.type = gfx::ShaderType::VERTEX;
+		vsDesc.shaderName = L"triangle.hlsl";
+		vsDesc.entryPoint = L"VS_Main";
+		m_TriangleShaderHandles[0] = ctx.CreateShader(vsDesc);
+
+		gfx::ShaderDesc psDesc;
+		psDesc.type = gfx::ShaderType::PIXEL;
+		psDesc.shaderName = L"triangle.hlsl";
+		psDesc.entryPoint = L"PS_Main";
+		m_TriangleShaderHandles[1] = ctx.CreateShader(psDesc);
+	}
+	{
 		// The vertex layout struct is declared in the shared.h file.
 		Array<TriangleVtx, 3> vertexData =
 		{ {

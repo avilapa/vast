@@ -13,6 +13,23 @@ namespace vast::gfx
 		COUNT,
 	};
 
+	enum class BufferViewFlags
+	{
+		NONE = 0,
+		CBV = BIT(0),
+		SRV = BIT(1),
+		UAV = BIT(2),
+	};
+	ENUM_CLASS_ALLOW_FLAGS(BufferViewFlags);
+
+
+	enum class BufferAccessFlags
+	{
+		HOST_WRITABLE	= BIT(0),
+		GPU_ONLY		= BIT(1),
+	};
+	ENUM_CLASS_ALLOW_FLAGS(BufferAccessFlags);
+
 	enum class TextureType
 	{
 		UNKNOWN,
@@ -34,22 +51,13 @@ namespace vast::gfx
 	};
 	ENUM_CLASS_ALLOW_FLAGS(TextureViewFlags);
 
-	enum class BufferViewFlags
+	enum class ShaderType
 	{
-		NONE = 0,
-		CBV = BIT(0),
-		SRV = BIT(1),
-		UAV = BIT(2),
+		COMPUTE,
+		VERTEX,
+		PIXEL,
 	};
-	ENUM_CLASS_ALLOW_FLAGS(BufferViewFlags);
 
-
-	enum class BufferAccessFlags
-	{
-		HOST_WRITABLE	= BIT(0),
-		GPU_ONLY		= BIT(1),
-	};
-	ENUM_CLASS_ALLOW_FLAGS(BufferAccessFlags);
 
 	enum class ResourceType
 	{
@@ -93,4 +101,17 @@ namespace vast::gfx
 	{
 		// TODO: dummy for now
 	};
+
+	struct ShaderDesc
+	{
+		ShaderType type = ShaderType::COMPUTE;
+		std::wstring shaderName;
+		std::wstring entryPoint;
+	};
+
+	class Shader
+	{
+		// TODO: dummy for now
+	};
+
 }

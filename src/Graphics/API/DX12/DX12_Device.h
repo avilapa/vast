@@ -31,6 +31,7 @@ namespace vast::gfx
 
 		void CreateBuffer(const BufferDesc& desc, DX12Buffer* buf);
 		void CreateTexture(const TextureDesc& desc, DX12Texture* tex);
+		void CreateShader(const ShaderDesc& desc, DX12Shader* shader);
 
 		void BeginFrame(uint32 frameId);
 		void EndFrame();

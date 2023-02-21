@@ -23,6 +23,7 @@ namespace vast::gfx
 
 		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
 		TextureHandle CreateTexture(const TextureDesc& desc) override;
+		ShaderHandle CreateShader(const ShaderDesc& desc) override;
 
 		uint32 GetBindlessHeapIndex(const BufferHandle& h) override;
 
@@ -37,9 +38,10 @@ namespace vast::gfx
 
  		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
  		Vector<DX12Texture> m_Textures;
-
 		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles;
 		Vector<DX12Buffer> m_Buffers;
+		Ptr<HandlePool<Shader, NUM_SHADERS>> m_ShaderHandles;
+		Vector<DX12Shader> m_Shaders;
 
 		DX12Texture* m_CurrentRT;
 
