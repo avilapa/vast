@@ -1,4 +1,4 @@
-#include "../../../../shaders/shaders_shared.h" // TODO: Make includedirs for shaders to avoid this nonsense
+#include "shaders_shared.h"
 
 ConstantBuffer<TriangleCBV> ObjectConstantBuffer : register(b0, space0);
 

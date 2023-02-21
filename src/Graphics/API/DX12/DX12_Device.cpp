@@ -270,7 +270,6 @@ namespace vast::gfx
 		sourceBuffer.Encoding = DXC_CP_ACP;
 
 		LPCWSTR target = nullptr;
-
 		switch (desc.type)
 		{
 		case ShaderType::COMPUTE:
@@ -294,6 +293,8 @@ namespace vast::gfx
 		arguments.push_back(desc.entryPoint.c_str());
 		arguments.push_back(L"-T");
 		arguments.push_back(target);
+		arguments.push_back(L"-I");
+		arguments.push_back(SHADER_SOURCE_PATH);
 		arguments.push_back(L"-Zi");
 		arguments.push_back(L"-WX");
 		arguments.push_back(L"-Qstrip_reflect");
