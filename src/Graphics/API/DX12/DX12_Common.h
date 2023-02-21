@@ -39,7 +39,7 @@ namespace vast::gfx
 
 	static const uint32 kInvalidHeapIdx = UINT32_MAX;
 
-	struct DX12DescriptorHandle
+	struct DX12Descriptor
 	{
 		bool IsValid() const { return cpuHandle.ptr != 0; }
 		bool IsReferencedByShader() const { return gpuHandle.ptr != 0; }
@@ -66,9 +66,9 @@ namespace vast::gfx
 
 		uint8* data = nullptr;
 		uint32 stride = 0;
-		DX12DescriptorHandle cbv = {};
-		DX12DescriptorHandle srv = {};
-		DX12DescriptorHandle uav = {};
+		DX12Descriptor cbv = {};
+		DX12Descriptor srv = {};
+		DX12Descriptor uav = {};
 
 		void SetMappedData(void* p, size_t dataSize)
 		{
@@ -83,10 +83,10 @@ namespace vast::gfx
 	{
 		DX12Texture() : DX12Resource() { type = ResourceType::TEXTURE; }
 
-		DX12DescriptorHandle rtv = {};
-		DX12DescriptorHandle dsv = {};
-		DX12DescriptorHandle srv = {};
-		DX12DescriptorHandle uav = {};
+		DX12Descriptor rtv = {};
+		DX12Descriptor dsv = {};
+		DX12Descriptor srv = {};
+		DX12Descriptor uav = {};
 	};
 
 	struct DX12Shader

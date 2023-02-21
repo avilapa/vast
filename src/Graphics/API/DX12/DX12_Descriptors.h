@@ -23,7 +23,7 @@ namespace vast::gfx
 	protected:
 		D3D12_DESCRIPTOR_HEAP_TYPE m_HeapType;
 		ID3D12DescriptorHeap* m_DescriptorHeap;
-		DX12DescriptorHandle m_HeapStart;
+		DX12Descriptor m_HeapStart;
 		uint32 m_MaxDescriptors;
 		uint32 m_DescriptorSize;
 	};
@@ -34,8 +34,8 @@ namespace vast::gfx
 		DX12StagingDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, uint32 maxDescriptors);
 		~DX12StagingDescriptorHeap();
 
-		DX12DescriptorHandle GetNewDescriptor();
-		void FreeDescriptor(DX12DescriptorHandle desc);
+		DX12Descriptor GetNewDescriptor();
+		void FreeDescriptor(DX12Descriptor desc);
 
 	private:
 		Vector<uint32> m_FreeDescriptors;
@@ -51,8 +51,8 @@ namespace vast::gfx
 		~DX12RenderPassDescriptorHeap();
 
 		void Reset();
-		DX12DescriptorHandle GetUserDescriptorBlockStart(uint32 count);
-		DX12DescriptorHandle GetReservedDescriptor(uint32 index);
+		DX12Descriptor GetUserDescriptorBlockStart(uint32 count);
+		DX12Descriptor GetReservedDescriptor(uint32 index);
 
 	private:
 		uint32 m_CurrentDescriptorIndex;

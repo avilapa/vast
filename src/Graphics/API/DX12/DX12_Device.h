@@ -27,13 +27,13 @@ namespace vast::gfx
 		DX12RenderPassDescriptorHeap& GetSRVDescriptorHeap(uint32 frameId) const;
 	
 		// For internal use of the DX12SwapChain
-		DX12DescriptorHandle CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format);
-		void DestroyBackBufferRTV(const DX12DescriptorHandle& rtv);
+		DX12Descriptor CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format);
+		void DestroyBackBufferRTV(const DX12Descriptor& rtv);
 
 		void CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType);
 
 	private:
-		void CopySRVHandleToReservedTable(DX12DescriptorHandle srvHandle, uint32 heapIndex);
+		void CopySRVHandleToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex);
 
 		ID3D12Device5* m_Device;
 		IDXGIFactory7* m_DXGIFactory;

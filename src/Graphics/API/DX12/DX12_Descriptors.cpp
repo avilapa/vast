@@ -57,11 +57,11 @@ namespace vast::gfx
 	{
 		if (m_ActiveHandleCount != 0)
 		{
-			VAST_ASSERTF(0, "There were {} active handles when the descriptor heap was destroyed. Look for leaks.", m_ActiveHandleCount);
+			VAST_ASSERTF(0, "There were {} active handles when the descriptor heap was destroyed.", m_ActiveHandleCount);
 		}
 	}
 
-	DX12DescriptorHandle DX12StagingDescriptorHeap::GetNewDescriptor()
+	DX12Descriptor DX12StagingDescriptorHeap::GetNewDescriptor()
 	{
 		VAST_PROFILE_FUNCTION();
 
@@ -89,14 +89,14 @@ namespace vast::gfx
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.cpuHandle;
 		cpuHandle.ptr += static_cast<uint64>(newHandleID) * m_DescriptorSize;
 
-		DX12DescriptorHandle desc;
+		DX12Descriptor desc;
 		desc.heapIdx = newHandleID;
 		desc.cpuHandle = cpuHandle;
 
 		return desc;
 	}
 
-	void DX12StagingDescriptorHeap::FreeDescriptor(DX12DescriptorHandle desc)
+	void DX12StagingDescriptorHeap::FreeDescriptor(DX12Descriptor desc)
 	{
 		VAST_PROFILE_FUNCTION();
 
@@ -130,7 +130,7 @@ namespace vast::gfx
 		m_CurrentDescriptorIndex = m_ReservedHandleCount;
 	}
 
-	DX12DescriptorHandle DX12RenderPassDescriptorHeap::GetUserDescriptorBlockStart(uint32 count)
+	DX12Descriptor DX12RenderPassDescriptorHeap::GetUserDescriptorBlockStart(uint32 count)
 	{
 		VAST_PROFILE_FUNCTION();
 
@@ -157,7 +157,7 @@ namespace vast::gfx
 		cpuHandle.ptr += static_cast<uint64>(newHandleID) * m_DescriptorSize;
 		gpuHandle.ptr += static_cast<uint64>(newHandleID) * m_DescriptorSize;
 
-		DX12DescriptorHandle desc;
+		DX12Descriptor desc;
 		desc.heapIdx = newHandleID;
 		desc.cpuHandle = cpuHandle;
 		desc.gpuHandle = gpuHandle;
@@ -165,7 +165,7 @@ namespace vast::gfx
 		return desc;
 	}
 
-	DX12DescriptorHandle DX12RenderPassDescriptorHeap::GetReservedDescriptor(uint32 index)
+	DX12Descriptor DX12RenderPassDescriptorHeap::GetReservedDescriptor(uint32 index)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(index < m_ReservedHandleCount);
@@ -175,7 +175,7 @@ namespace vast::gfx
 		cpuHandle.ptr += static_cast<uint64_t>(index) * m_DescriptorSize;
 		gpuHandle.ptr += static_cast<uint64_t>(index) * m_DescriptorSize;
 
-		DX12DescriptorHandle desc;
+		DX12Descriptor desc;
 		desc.heapIdx = index;
 		desc.cpuHandle = cpuHandle;
 		desc.gpuHandle = gpuHandle;

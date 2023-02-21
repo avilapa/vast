@@ -381,7 +381,7 @@ namespace vast::gfx
 		return *m_SRVRenderPassDescriptorHeaps[frameId];
 	}
 
-	DX12DescriptorHandle DX12Device::CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format)
+	DX12Descriptor DX12Device::CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format)
 	{
 		VAST_ASSERT(backBuffer);
 
@@ -391,12 +391,12 @@ namespace vast::gfx
 		rtvDesc.Texture2D.MipSlice = 0;
 		rtvDesc.Texture2D.PlaneSlice = 0;
 
-		DX12DescriptorHandle rtv = m_RTVStagingDescriptorHeap->GetNewDescriptor();
+		DX12Descriptor rtv = m_RTVStagingDescriptorHeap->GetNewDescriptor();
 		m_Device->CreateRenderTargetView(backBuffer, &rtvDesc, rtv.cpuHandle);
 		return rtv;
 	}
 
-	void DX12Device::DestroyBackBufferRTV(const DX12DescriptorHandle& rtv)
+	void DX12Device::DestroyBackBufferRTV(const DX12Descriptor& rtv)
 	{
 		m_RTVStagingDescriptorHeap->FreeDescriptor(rtv);
 	}
@@ -406,11 +406,11 @@ namespace vast::gfx
 		m_Device->CopyDescriptorsSimple(numDesc, destDescRangeStart, srcDescRangeStart, descType);
 	}
 
-	void DX12Device::CopySRVHandleToReservedTable(DX12DescriptorHandle srvHandle, uint32 heapIndex)
+	void DX12Device::CopySRVHandleToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex)
 	{
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			DX12DescriptorHandle targetDescriptor = m_SRVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
+			DX12Descriptor targetDescriptor = m_SRVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
 
 			CopyDescriptorsSimple(1, targetDescriptor.cpuHandle, srvHandle.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
