@@ -18,9 +18,13 @@ namespace vast::gfx
 		DX12Device();
 		~DX12Device();
 
-		void CreateBuffer(const BufferDesc& desc, DX12Buffer* buf);
 		void CreateTexture(const TextureDesc& desc, DX12Texture* tex);
+		void CreateBuffer(const BufferDesc& desc, DX12Buffer* buf);
 		void CreateShader(const ShaderDesc& desc, DX12Shader* shader);
+
+		void DestroyTexture(DX12Texture* tex);
+		void DestroyBuffer(DX12Buffer* buf);
+		void DestroyShader(DX12Shader* shader);
 
 		ID3D12Device5* GetDevice() const;
 		IDXGIFactory7* GetDXGIFactory() const;

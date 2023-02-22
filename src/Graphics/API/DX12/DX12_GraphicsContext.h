@@ -30,12 +30,12 @@ namespace vast::gfx
 		void BeginRenderPass(const TextureHandle& h) override;
 		void EndRenderPass() override;
 
-		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
 		TextureHandle CreateTexture(const TextureDesc& desc) override;
+		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
 		ShaderHandle CreateShader(const ShaderDesc& desc) override;
 
-		void DestroyBuffer(const BufferHandle& h) override;
 		void DestroyTexture(const TextureHandle& h) override;
+		void DestroyBuffer(const BufferHandle& h) override;
 		void DestroyShader(const ShaderHandle& h) override;
 
 		uint32 GetBindlessHeapIndex(const BufferHandle& h) override;
@@ -49,18 +49,20 @@ namespace vast::gfx
 
 		void OnWindowResizeEvent(WindowResizeEvent& event);
 
+		void ProcessDestructions(uint32 frameId);
+
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
-		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles;
-		Vector<DX12Buffer> m_Buffers;
- 		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
- 		Vector<DX12Texture> m_Textures;
-		Ptr<HandlePool<Shader, NUM_SHADERS>> m_ShaderHandles;
-		Vector<DX12Shader> m_Shaders;
+		Ptr<ResourceManager<DX12Texture, Texture, NUM_TEXTURES>> m_Textures;
+		Ptr<ResourceManager<DX12Buffer, Buffer, NUM_BUFFERS>> m_Buffers;
+		Ptr<ResourceManager<DX12Shader, Shader, NUM_SHADERS>> m_Shaders;
+
+		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
+		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
 
 		DX12Texture* m_CurrentRT;
 

@@ -19,23 +19,19 @@ namespace vast::gfx
 		, m_GraphicsCommandList(nullptr)
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
-		, m_BufferHandles(nullptr)
-		, m_Buffers(0)
-		, m_TextureHandles(nullptr)
-		, m_Textures(0)
-		, m_ShaderHandles(nullptr)
-		, m_Shaders(0)
+		, m_Textures(nullptr)
+ 		, m_Buffers(nullptr)
+		, m_Shaders(nullptr)
+		, m_TexturesMarkedForDestruction({})
+		, m_BuffersMarkedForDestruction({})
 		, m_CurrentRT(nullptr)
 		, m_FrameId(0)
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
-		m_Buffers.resize(NUM_BUFFERS);
-		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
-		m_Textures.resize(NUM_TEXTURES);
-		m_ShaderHandles = MakePtr<HandlePool<Shader, NUM_SHADERS>>();
-		m_Shaders.resize(NUM_SHADERS);
+		m_Textures = MakePtr<ResourceManager<DX12Texture, Texture, NUM_TEXTURES>>();
+		m_Buffers = MakePtr<ResourceManager<DX12Buffer, Buffer, NUM_BUFFERS>>();
+		m_Shaders = MakePtr<ResourceManager<DX12Shader, Shader, NUM_SHADERS>>();
 
 		m_Device = MakePtr<DX12Device>();
 
@@ -58,6 +54,11 @@ namespace vast::gfx
 		m_GraphicsCommandList = nullptr;
 		m_SwapChain = nullptr;
 
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			ProcessDestructions(i);
+		}
+
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			m_CommandQueues[i] = nullptr;
@@ -67,7 +68,9 @@ namespace vast::gfx
 
 		m_Device = nullptr;
 
- 		m_TextureHandles = nullptr;
+		m_Textures = nullptr;
+		m_Buffers = nullptr;
+		m_Shaders = nullptr;
 	}
 
 	void DX12GraphicsContext::BeginFrame()
@@ -78,6 +81,8 @@ namespace vast::gfx
 		{
 			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][m_FrameId]);
 		}
+
+		ProcessDestructions(m_FrameId);
 
 		m_GraphicsCommandList->Reset(m_FrameId);
 	}
@@ -127,7 +132,7 @@ namespace vast::gfx
 	void DX12GraphicsContext::BeginRenderPass(const TextureHandle& h)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_CurrentRT = &m_Textures[h.GetIdx()];
+		m_CurrentRT = m_Textures->LookupResource(h);
 
 		BeginRenderPassInternal();
 	}
@@ -151,59 +156,80 @@ namespace vast::gfx
 		m_GraphicsCommandList->FlushBarriers();
 	}
 
-	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, size_t dataSize /*= 0*/)
-	{
-		VAST_ASSERT(m_Device);
-		BufferHandle h = m_BufferHandles->Acquire();
-		VAST_ASSERT(h.IsValid());
-		DX12Buffer* buf = &m_Buffers[h.GetIdx()];
-		m_Device->CreateBuffer(desc, buf);
-		buf->SetMappedData(initialData, dataSize);
-		return h;
-	}
-
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc)
 	{
 		VAST_ASSERT(m_Device);
-		TextureHandle h = m_TextureHandles->Acquire();
-		VAST_ASSERT(h.IsValid());
-		DX12Texture* tex = &m_Textures[h.GetIdx()];
+		auto [h, tex] = m_Textures->AcquireResource();
 		m_Device->CreateTexture(desc, tex);
+		return h;
+	}
+
+	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, size_t dataSize /*= 0*/)
+	{
+		VAST_ASSERT(m_Device);
+		auto [h, buf] = m_Buffers->AcquireResource();
+		m_Device->CreateBuffer(desc, buf);
+		buf->SetMappedData(initialData, dataSize);
 		return h;
 	}
 	
 	ShaderHandle DX12GraphicsContext::CreateShader(const ShaderDesc& desc)
 	{
 		VAST_ASSERT(m_Device);
-		ShaderHandle h = m_ShaderHandles->Acquire();
-		VAST_ASSERT(h.IsValid());
-		DX12Shader* shader = &m_Shaders[h.GetIdx()];
+		auto [h, shader] = m_Shaders->AcquireResource();
 		m_Device->CreateShader(desc, shader);
 		return h;
-	}
-
-	void DX12GraphicsContext::DestroyBuffer(const BufferHandle& h)
-	{
-		VAST_ASSERT(h.IsValid());
-		
 	}
 
 	void DX12GraphicsContext::DestroyTexture(const TextureHandle& h)
 	{
 		VAST_ASSERT(h.IsValid());
-		
+		m_TexturesMarkedForDestruction[m_FrameId].push_back(h);
+	}
+
+	void DX12GraphicsContext::DestroyBuffer(const BufferHandle& h)
+	{
+		VAST_ASSERT(h.IsValid());
+		m_BuffersMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
 	void DX12GraphicsContext::DestroyShader(const ShaderHandle& h)
 	{
+		VAST_ASSERT(m_Device);
 		VAST_ASSERT(h.IsValid());
-		
+		DX12Shader* shader = m_Shaders->FreeResource(h);
+		VAST_ASSERT(shader);
+		m_Device->DestroyShader(shader);
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return m_Buffers[h.GetIdx()].heapIdx;
+		return m_Buffers->LookupResource(h)->heapIdx;
+	}
+
+	void DX12GraphicsContext::ProcessDestructions(uint32 frameId)
+	{
+		VAST_ASSERT(m_Device);
+
+		for (auto& h : m_TexturesMarkedForDestruction[frameId])
+		{
+			DX12Texture* tex = m_Textures->FreeResource(h);
+			VAST_ASSERT(tex);
+			m_Device->DestroyTexture(tex);
+			// TODO: Reset texture for reuse.
+		}
+		m_TexturesMarkedForDestruction[frameId].clear();
+
+		for (auto& h : m_BuffersMarkedForDestruction[frameId])
+		{
+			DX12Buffer* buf = m_Buffers->FreeResource(h);
+			VAST_ASSERT(buf);
+			m_Device->DestroyBuffer(buf);
+			// TODO: Reset buffer for reuse.
+		}
+		m_BuffersMarkedForDestruction[frameId].clear();
+
 	}
 
 	void DX12GraphicsContext::OnWindowResizeEvent(WindowResizeEvent& event)

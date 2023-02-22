@@ -8,7 +8,7 @@ using namespace vast;
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
-	m_GraphicsContext = gfx::GraphicsContext::Create();
+ 	m_GraphicsContext = gfx::GraphicsContext::Create();
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
 	{
@@ -58,7 +58,12 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 
 Dev::~Dev()
 {
+	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
+	ctx.DestroyShader(m_TriangleShaderHandles[0]);
+	ctx.DestroyShader(m_TriangleShaderHandles[1]);
+	ctx.DestroyBuffer(m_VertexBufferHandle);
+	ctx.DestroyBuffer(m_TriangleCBVHandle);
 }
 
 void Dev::OnUpdate()

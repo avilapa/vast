@@ -3,6 +3,8 @@
 #include "Core/Core.h"
 #include "Core/Types.h"
 
+#include <utility> 
+
 namespace vast
 {
 
@@ -28,9 +30,7 @@ namespace vast
 	class HandlePool
 	{
 	public:
-
-		HandlePool() 
-			: m_UsedHandles(0) 
+		HandlePool() : m_UsedHandles(0) 
 		{
 			static_assert(maxHandles > 0 && maxHandles < UINT16_MAX, "Invalid pool size.");
 
@@ -65,5 +65,36 @@ namespace vast
 	private:
 		uint16 m_UsedHandles;
 		Array<uint16, maxHandles> m_FreeSlots;
+	};
+
+	template<typename T, typename H, const uint16 numResources>
+	class ResourceManager
+	{
+	public:
+		std::pair<Handle<H>, T*> AcquireResource()
+		{
+			Handle<H> h = m_Handles.Acquire();
+			T* rsc = LookupResource(h);
+			return { h, rsc };
+		}
+
+		T* FreeResource(const Handle<H>& h)
+		{
+			T* rsc = LookupResource(h);
+			m_Handles.Free(h);
+			return rsc;
+		}
+		
+		T* LookupResource(const Handle<H>& h)
+		{
+			VAST_ASSERT(h.IsValid());
+			T* rsc = &m_Resources[h.GetIdx()];
+			VAST_ASSERT(rsc);
+			return rsc;
+		}
+
+	private:
+		HandlePool<H, numResources> m_Handles;
+		Array<T, numResources> m_Resources;
 	};
 }

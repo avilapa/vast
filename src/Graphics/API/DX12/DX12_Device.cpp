@@ -366,6 +366,70 @@ namespace vast::gfx
 		shader->shaderBlob = shaderBlob;
 	}
 
+	void DX12Device::DestroyTexture(DX12Texture* tex)
+	{
+		VAST_ASSERTF(tex, "Attempted to destroy an empty texture.");
+
+		if (tex->rtv.IsValid())
+		{
+			m_RTVStagingDescriptorHeap->FreeDescriptor(tex->rtv);
+		}
+
+		if (tex->dsv.IsValid())
+		{
+			m_DSVStagingDescriptorHeap->FreeDescriptor(tex->dsv);
+		}
+
+		if (tex->srv.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(tex->srv);
+			m_FreeReservedDescriptorIndices.push_back(tex->heapIdx);
+		}
+
+		if (tex->uav.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(tex->uav);
+		}
+
+		DX12SafeRelease(tex->resource);
+		DX12SafeRelease(tex->allocation);
+	}
+	
+	void DX12Device::DestroyBuffer(DX12Buffer* buf)
+	{
+		VAST_ASSERTF(buf, "Attempted to destroy an empty buffer.");
+
+		if (buf->cbv.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->cbv);
+		}
+
+		if (buf->srv.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->srv);
+			m_FreeReservedDescriptorIndices.push_back(buf->heapIdx);
+		}
+
+		if (buf->uav.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->uav);
+		}
+
+		if (buf->data != nullptr)
+		{
+			buf->resource->Unmap(0, nullptr);
+		}
+
+		DX12SafeRelease(buf->resource);
+		DX12SafeRelease(buf->allocation);
+	}
+
+	void DX12Device::DestroyShader(DX12Shader* shader)
+	{
+		VAST_ASSERTF(shader, "Attempted to destroy an empty shader.");
+		DX12SafeRelease(shader->shaderBlob);
+	}
+
 	ID3D12Device5* DX12Device::GetDevice() const
 	{
 		return m_Device;
