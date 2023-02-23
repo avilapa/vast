@@ -29,9 +29,9 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_Textures = MakePtr<ResourceManager<DX12Texture, Texture, NUM_TEXTURES>>();
-		m_Buffers = MakePtr<ResourceManager<DX12Buffer, Buffer, NUM_BUFFERS>>();
-		m_Shaders = MakePtr<ResourceManager<DX12Shader, Shader, NUM_SHADERS>>();
+		m_Textures = MakePtr<ResourceHandlePool<DX12Texture, Texture, NUM_TEXTURES>>();
+		m_Buffers = MakePtr<ResourceHandlePool<DX12Buffer, Buffer, NUM_BUFFERS>>();
+		m_Shaders = MakePtr<ResourceHandlePool<DX12Shader, Shader, NUM_SHADERS>>();
 
 		m_Device = MakePtr<DX12Device>();
 
@@ -197,9 +197,10 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(m_Device);
 		VAST_ASSERT(h.IsValid());
-		DX12Shader* shader = m_Shaders->FreeResource(h);
+		DX12Shader* shader = m_Shaders->LookupResource(h);
 		VAST_ASSERT(shader);
 		m_Device->DestroyShader(shader);
+		m_Shaders->FreeResource(h);
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)
@@ -214,19 +215,19 @@ namespace vast::gfx
 
 		for (auto& h : m_TexturesMarkedForDestruction[frameId])
 		{
-			DX12Texture* tex = m_Textures->FreeResource(h);
+			DX12Texture* tex = m_Textures->LookupResource(h);
 			VAST_ASSERT(tex);
 			m_Device->DestroyTexture(tex);
-			// TODO: Reset texture for reuse.
+			m_Textures->FreeResource(h);
 		}
 		m_TexturesMarkedForDestruction[frameId].clear();
 
 		for (auto& h : m_BuffersMarkedForDestruction[frameId])
 		{
-			DX12Buffer* buf = m_Buffers->FreeResource(h);
+			DX12Buffer* buf = m_Buffers->LookupResource(h);
 			VAST_ASSERT(buf);
 			m_Device->DestroyBuffer(buf);
-			// TODO: Reset buffer for reuse.
+			m_Buffers->FreeResource(h);
 		}
 		m_BuffersMarkedForDestruction[frameId].clear();
 

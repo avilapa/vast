@@ -64,6 +64,8 @@ namespace vast::gfx
 	{
 		DX12Buffer() : DX12Resource() { type = ResourceType::BUFFER; }
 
+		BufferHandle h;
+
 		uint8* data = nullptr;
 		uint32 stride = 0;
 		DX12Descriptor cbv = {};
@@ -83,6 +85,8 @@ namespace vast::gfx
 	{
 		DX12Texture() : DX12Resource() { type = ResourceType::TEXTURE; }
 
+		TextureHandle h;
+
 		DX12Descriptor rtv = {};
 		DX12Descriptor dsv = {};
 		DX12Descriptor srv = {};
@@ -91,6 +95,8 @@ namespace vast::gfx
 
 	struct DX12Shader
 	{
+		ShaderHandle h;
+
 		IDxcBlob* shaderBlob = nullptr;
 	};
 
