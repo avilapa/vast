@@ -169,7 +169,10 @@ namespace vast::gfx
 		VAST_ASSERT(m_Device);
 		auto [h, buf] = m_Buffers->AcquireResource();
 		m_Device->CreateBuffer(desc, buf);
-		buf->SetMappedData(initialData, dataSize);
+		if (initialData != nullptr)
+		{
+			buf->SetMappedData(initialData, dataSize);
+		}
 		return h;
 	}
 	

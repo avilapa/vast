@@ -56,14 +56,23 @@ namespace vast
 			return { h, nullptr };
 		}
 
-		void FreeResource(HANDLE h)
+		void FreeResource(const HANDLE& h)
 		{
-			// TODO: Reset resource for reuse.
 			VAST_ASSERTF(h.IsValid(), "Cannot free invalid index.");
-			m_FreeSlotsQueue[--m_UsedSlots] = h.m_Index;
+			T* rsc = LookupResource(h);
+			if (rsc)
+			{
+				rsc->h = HANDLE();
+				FreeHandle(h);
+			}
+			else
+			{
+				VAST_ERROR("Failed to free handle. Mismatched index with internal resource.");
+			}
 		}
 
-		T* LookupResource(HANDLE h)
+		// Returned pointers should never be stored anywhere, and they should only be used within small code blocks.
+		T* LookupResource(const HANDLE& h)
 		{
 			// Access resource with matching index check.
 			if (h.IsValid())
@@ -100,10 +109,15 @@ namespace vast
 			return HANDLE(slotIdx);
 		}
 
-		T* AccessResource(HANDLE h)
+		uint32 GetSlotIndexFromHandle(const HANDLE& h) const
+		{
+			return static_cast<uint32>(h.GetIdx());
+		}
+
+		T* AccessResource(const HANDLE& h)
 		{
 			// Access resource without matching index check.
-			return &m_Resources[h.GetIdx()];
+			return &m_Resources[GetSlotIndexFromHandle(h)];
 		}
 
 		uint32 GetNextAvailableSlot()
@@ -119,6 +133,11 @@ namespace vast
 				VAST_ASSERTF(0, "Handle pool capacity exhausted."); // TODO: Resize
 				return kInvalidResourceHandle;
 			}
+		}
+
+		void FreeHandle(const HANDLE& h)
+		{
+			m_FreeSlotsQueue[--m_UsedSlots] = GetSlotIndexFromHandle(h);
 		}
 
 		uint32 m_UsedSlots;
