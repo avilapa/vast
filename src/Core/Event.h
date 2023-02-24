@@ -57,7 +57,7 @@ namespace vast
 #define EVENT_CLASS_DECL_TYPE(type)											\
 	static EventType GetStaticType() { return EventType::type; }			\
 	virtual EventType GetType() const override { return GetStaticType(); }	\
-	static std::string GetName() { return STR(type##Event); }
+	static constexpr char* GetName() { return STR(type##Event); }
 
 	class EventSystem
 	{
@@ -69,7 +69,7 @@ namespace vast
 		{
 			VAST_PROFILE_FUNCTION();
 			uint32 eventIdx = static_cast<uint32>(T::GetStaticType());
-			VAST_TRACE("[events] {} registered new subscriber ({})", T::GetName(), (GetSubscriberCount(eventIdx) + 1));
+			VAST_TRACE("[events] {} registered new subscriber ({}).", T::GetName(), (GetSubscriberCount(eventIdx) + 1));
 			SubscribeToEvent(eventIdx, std::move(func));
 		}
 

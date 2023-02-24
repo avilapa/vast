@@ -3,41 +3,75 @@
 #include "Core/Core.h"
 #include "Core/Types.h"
 
-#include <utility> 
+#include <utility> // std::pair
 
-namespace vast
+// ==================================== RESOURCE HANDLING =========================================
+//
+// In vast, the user manages GPU resources via 'handles' rather than raw pointers. A handle is, in
+// essence, an opaque, trivially copyable, unique identifier. Resource ownership is delegated to
+// the engine and the user only holds handles that refer to each resource internally. You can read
+// more about the design pattern here: https://floooh.github.io/2018/06/17/handles-vs-pointers.html
+//
+// ResourceHandle is a type safe class to avoid type-checking IDs at runtime and to increase the
+// amount of handles supported by each pool.
+//
+// ResourceHandlePool is a fixed size pool holding an array T of the resources, and is in charge of
+// managing creation, validation and release of handles as well as ensuring the reusability of the
+// resources these point to after their previous instances are no longer needed.
+//
+// A successful call to AcquireResource returns a valid handle and a pointer to the data it handles
+// as an std::pair:
+//
+//		auto [h, buffer] = m_Buffers->AcquireResource();
+//
+// TODO: UNDER CONSTRUCTION
+//
+// ================================================================================================
+
+namespace vast::gfx
 {
-
-	static const uint16 kInvalidResourceHandle = UINT16_MAX;
-
 	template<typename T>
 	class ResourceHandle
 	{
 	public:
-		ResourceHandle() : m_Index(kInvalidResourceHandle) {}
-
-		inline const uint16 GetIdx() const { return m_Index; }
-		inline bool IsValid() const { return m_Index != vast::kInvalidResourceHandle; }
+		ResourceHandle() : m_Bits({ 0, 0 }) {}
+		inline bool IsValid() const { return m_Bits.gen != 0; }
 
 	private:
+		ResourceHandle(const uint32 idx, const uint32 gen) : m_Bits({ idx, gen }) {}
+
+		inline const uint32 GetIndex() const { return m_Bits.idx; }
+		inline const uint32 GetGeneration() const { return m_Bits.gen; }
+		inline const uint32 GetPackedId() const { return m_PackedId; }
+
+		static constexpr uint32 GetIndexBits() { return 20; }
+		static constexpr uint32 GetGenerationBits() { return (sizeof(uint32) * 8) - GetIndexBits(); }
+
+		union
+		{
+			struct Bitfield { uint32 idx : GetIndexBits(), gen : GetGenerationBits(); } m_Bits;
+			uint32 m_PackedId;
+
+			// This doesn't count single bits, but it rounds to bytes. But at least it prevents using +32 bits!
+			static_assert(sizeof(Bitfield) <= sizeof(m_PackedId), "Mismatched index bits in resource handle.");
+		};
+
 		template<typename T, typename H, const uint32 numResources> friend class ResourceHandlePool;
-		ResourceHandle(uint32 idx) : m_Index(static_cast<uint16>(idx)) {}
-		uint16 m_Index;
 	};
 
 	template<typename T, typename H, const uint32 numResources>
 	class ResourceHandlePool
 	{
 		typedef ResourceHandle<H> HANDLE;
+		static_assert(numResources > 0 && numResources < (1 << HANDLE::GetIndexBits()), "Invalid pool size.");
 	public:
 		ResourceHandlePool() : m_UsedSlots(0) 
 		{
-			static_assert(sizeof(decltype(numResources)) >= sizeof(decltype(kInvalidResourceHandle)));
-			static_assert(numResources > 0 && numResources < kInvalidResourceHandle, "Invalid pool size.");
 			// Set up free queue with increasing indices.
 			for (uint32 i = 0; i < numResources; ++i)
 			{
 				m_FreeSlotsQueue[i] = i;
+				m_GenerationCounters[i] = 0;
 			}
 		}
 
@@ -74,13 +108,13 @@ namespace vast
 		// Returned pointers should never be stored anywhere, and they should only be used within small code blocks.
 		T* LookupResource(const HANDLE& h)
 		{
-			// Access resource with matching index check.
+			// Access resource with matching id check.
 			if (h.IsValid())
 			{
-				VAST_ASSERT(h.GetIdx() < numResources);
+				VAST_ASSERT(h.GetIndex() < numResources);
 				T* rsc = AccessResource(h);
 				VAST_ASSERT(rsc);
-				if (rsc->h.GetIdx() == h.GetIdx())
+				if (rsc->h.GetPackedId() == h.GetPackedId())
 				{
 					return rsc;
 				}
@@ -92,9 +126,12 @@ namespace vast
 		HANDLE AcquireHandle()
 		{
 			uint32 slotIdx = GetNextAvailableSlot();
-			if (slotIdx != kInvalidResourceHandle)
+			if (slotIdx != kInvalidSlotIndex)
 			{
-				return AllocHandleFromSlot(slotIdx);
+				
+				HANDLE h = AllocHandleFromSlot(slotIdx);
+				VAST_TRACE("[resource] Acquired new {} handle with index {}, gen {} ({}/{}).", H::GetResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
+				return h;
 			}
 			else
 			{
@@ -105,18 +142,18 @@ namespace vast
 
 		HANDLE AllocHandleFromSlot(uint32 slotIdx)
 		{
-			// TODO: Add generation counter to avoid dangling handle / use-after-free.
-			return HANDLE(slotIdx);
+			// TODO: We don't handle overflow on the generation counters.
+			return HANDLE({ slotIdx, ++m_GenerationCounters[slotIdx] });
 		}
 
 		uint32 GetSlotIndexFromHandle(const HANDLE& h) const
 		{
-			return static_cast<uint32>(h.GetIdx());
+			return static_cast<uint32>(h.GetIndex());
 		}
 
 		T* AccessResource(const HANDLE& h)
 		{
-			// Access resource without matching index check.
+			// Access resource without matching id check.
 			return &m_Resources[GetSlotIndexFromHandle(h)];
 		}
 
@@ -130,18 +167,22 @@ namespace vast
 			}
 			else
 			{
-				VAST_ASSERTF(0, "Handle pool capacity exhausted."); // TODO: Resize
-				return kInvalidResourceHandle;
+				VAST_ASSERTF(0, "Handle pool capacity exhausted.");
+				return kInvalidSlotIndex;
 			}
 		}
 
 		void FreeHandle(const HANDLE& h)
 		{
 			m_FreeSlotsQueue[--m_UsedSlots] = GetSlotIndexFromHandle(h);
+			VAST_TRACE("[resource] Freed {} handle with index {}, gen {} ({}/{}).", H::GetResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
 		}
+
+		static const uint32 kInvalidSlotIndex = UINT32_MAX;
 
 		uint32 m_UsedSlots;
 		Array<uint32, numResources> m_FreeSlotsQueue;
+		Array<uint32, numResources> m_GenerationCounters;
 		Array<T, numResources> m_Resources;
 	};
 

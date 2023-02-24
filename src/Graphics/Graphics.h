@@ -64,7 +64,17 @@ namespace vast::gfx
 		UNKNOWN,
 		BUFFER,
 		TEXTURE,
+		SHADER,
+		COUNT,
 	};
+	constexpr char* g_ResourceTypeNames[]
+	{
+		"Unknown",
+		"Buffer",
+		"Texture",
+		"Shader",
+	};
+	static_assert(NELEM(g_ResourceTypeNames) == IDX(ResourceType::COUNT));
 
 	enum class ResourceState
 	{
@@ -73,6 +83,22 @@ namespace vast::gfx
 	};
 
 	// TODO: Provide functions to more easily build common configurations of Desc objects.
+	struct TextureDesc
+	{
+		TextureType type = TextureType::TEXTURE_2D;
+		Format format = Format::RGBA8_UNORM_SRGB;
+		uint32 width = 1;
+		uint32 height = 1;
+		uint32 depthOrArraySize = 1;
+		uint32 mipCount = 1;
+		TextureViewFlags viewFlags = TextureViewFlags::NONE;
+	};
+
+	struct Texture
+	{
+		static constexpr char* GetResourceTypeName() { return g_ResourceTypeNames[IDX(ResourceType::TEXTURE)]; }
+		// TODO: dummy for now
+	};
 
 	struct BufferDesc
 	{
@@ -85,22 +111,7 @@ namespace vast::gfx
 
 	struct Buffer
 	{
-		// TODO: dummy for now
-	};
-
-	struct TextureDesc
-	{
-		TextureType type = TextureType::TEXTURE_2D;
-		Format format = Format::RGBA8_UNORM_SRGB;
-		uint32 width = 1;
-		uint32 height = 1;
-		uint32 depthOrArraySize = 1;
-		uint32 mipCount = 1;
-		TextureViewFlags viewFlags = TextureViewFlags::NONE;
-	};
-
-	class Texture
-	{
+		static constexpr char* GetResourceTypeName() { return g_ResourceTypeNames[IDX(ResourceType::BUFFER)]; }
 		// TODO: dummy for now
 	};
 
@@ -111,9 +122,9 @@ namespace vast::gfx
 		std::wstring entryPoint;
 	};
 
-	class Shader
+	struct Shader
 	{
+		static constexpr char* GetResourceTypeName() { return g_ResourceTypeNames[IDX(ResourceType::SHADER)]; }
 		// TODO: dummy for now
 	};
-
 }

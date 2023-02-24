@@ -57,6 +57,7 @@ namespace vast::gfx
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
+		// TODO: These should ideally be holding the API agnostic types instead of the DX12 ones.
 		Ptr<ResourceHandlePool<DX12Texture, Texture, NUM_TEXTURES>> m_Textures;
 		Ptr<ResourceHandlePool<DX12Buffer, Buffer, NUM_BUFFERS>> m_Buffers;
 		Ptr<ResourceHandlePool<DX12Shader, Shader, NUM_SHADERS>> m_Shaders;

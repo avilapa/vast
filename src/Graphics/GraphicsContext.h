@@ -8,8 +8,8 @@
 namespace vast::gfx
 {
 	using TextureHandle = ResourceHandle<Texture>;
-	using BufferHandle = ResourceHandle<Buffer>;
-	using ShaderHandle = ResourceHandle<Shader>;
+	using BufferHandle	= ResourceHandle<Buffer>;
+	using ShaderHandle	= ResourceHandle<Shader>;
 
 	struct GraphicsParams
 	{
