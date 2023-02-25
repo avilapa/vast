@@ -1,4 +1,5 @@
 #include "vastpch.h"
+#include "Graphics/Resources.h"
 #include "Graphics/API/DX12/DX12_GraphicsContext.h"
 #include "Graphics/API/DX12/DX12_Device.h"
 #include "Graphics/API/DX12/DX12_SwapChain.h"
@@ -29,9 +30,9 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_Textures = MakePtr<ResourceHandlePool<DX12Texture, Texture, NUM_TEXTURES>>();
-		m_Buffers = MakePtr<ResourceHandlePool<DX12Buffer, Buffer, NUM_BUFFERS>>();
-		m_Shaders = MakePtr<ResourceHandlePool<DX12Shader, Shader, NUM_SHADERS>>();
+		m_Textures = MakePtr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>>();
+		m_Buffers  = MakePtr<ResourceHandlePool<Buffer,  DX12Buffer,  NUM_BUFFERS>>();
+		m_Shaders  = MakePtr<ResourceHandlePool<Shader,  DX12Shader,  NUM_SHADERS>>();
 
 		m_Device = MakePtr<DX12Device>();
 

@@ -2,6 +2,7 @@
 
 namespace vast::gfx
 {
+	// - Graphics Enums --------------------------------------------------------------------------- //
 
 	enum class Format
 	{
@@ -21,7 +22,6 @@ namespace vast::gfx
 		UAV = BIT(2),
 	};
 	ENUM_CLASS_ALLOW_FLAGS(BufferViewFlags);
-
 
 	enum class BufferAccessFlags
 	{
@@ -58,29 +58,7 @@ namespace vast::gfx
 		PIXEL,
 	};
 
-
-	enum class ResourceType
-	{
-		UNKNOWN,
-		BUFFER,
-		TEXTURE,
-		SHADER,
-		COUNT,
-	};
-	constexpr char* g_ResourceTypeNames[]
-	{
-		"Unknown",
-		"Buffer",
-		"Texture",
-		"Shader",
-	};
-	static_assert(NELEM(g_ResourceTypeNames) == IDX(ResourceType::COUNT));
-
-	enum class ResourceState
-	{
-		RENDER_TARGET,
-		PRESENT,
-	};
+	// - Resource Descriptors --------------------------------------------------------------------- //
 
 	// TODO: Provide functions to more easily build common configurations of Desc objects.
 	struct TextureDesc
@@ -94,12 +72,6 @@ namespace vast::gfx
 		TextureViewFlags viewFlags = TextureViewFlags::NONE;
 	};
 
-	struct Texture
-	{
-		static constexpr char* GetResourceTypeName() { return g_ResourceTypeNames[IDX(ResourceType::TEXTURE)]; }
-		// TODO: dummy for now
-	};
-
 	struct BufferDesc
 	{
 		uint32 size = 0;
@@ -109,12 +81,6 @@ namespace vast::gfx
 		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
 	};
 
-	struct Buffer
-	{
-		static constexpr char* GetResourceTypeName() { return g_ResourceTypeNames[IDX(ResourceType::BUFFER)]; }
-		// TODO: dummy for now
-	};
-
 	struct ShaderDesc
 	{
 		ShaderType type = ShaderType::COMPUTE;
@@ -122,9 +88,4 @@ namespace vast::gfx
 		std::wstring entryPoint;
 	};
 
-	struct Shader
-	{
-		static constexpr char* GetResourceTypeName() { return g_ResourceTypeNames[IDX(ResourceType::SHADER)]; }
-		// TODO: dummy for now
-	};
 }

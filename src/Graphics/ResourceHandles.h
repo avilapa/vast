@@ -56,13 +56,13 @@ namespace vast::gfx
 			static_assert(sizeof(Bitfield) <= sizeof(m_PackedId), "Mismatched index bits in resource handle.");
 		};
 
-		template<typename T, typename H, const uint32 numResources> friend class ResourceHandlePool;
+		template<typename T, typename Timpl, const uint32 numResources> friend class ResourceHandlePool;
 	};
 
-	template<typename T, typename H, const uint32 numResources>
+	template<typename T, typename Timpl, const uint32 numResources>
 	class ResourceHandlePool
 	{
-		typedef ResourceHandle<H> HANDLE;
+		typedef ResourceHandle<T> HANDLE;
 		static_assert(numResources > 0 && numResources < (1 << HANDLE::GetIndexBits()), "Invalid pool size.");
 	public:
 		ResourceHandlePool() : m_UsedSlots(0) 
@@ -77,14 +77,14 @@ namespace vast::gfx
 
 		~ResourceHandlePool() {}
 
-		std::pair<HANDLE, T*> AcquireResource()
+		std::pair<HANDLE, Timpl*> AcquireResource()
 		{
 			HANDLE h = AcquireHandle();
 			if (h.IsValid())
 			{
-				T* rsc = AccessResource(h);
+				Timpl* rsc = AccessResource(h);
 				VAST_ASSERT(rsc);
-				rsc->h = h;
+				rsc->m_Handle = h;
 				return { h, rsc };
 			}
 			return { h, nullptr };
@@ -93,10 +93,10 @@ namespace vast::gfx
 		void FreeResource(const HANDLE& h)
 		{
 			VAST_ASSERTF(h.IsValid(), "Cannot free invalid index.");
-			T* rsc = LookupResource(h);
+			Timpl* rsc = LookupResource(h);
 			if (rsc)
 			{
-				rsc->h = HANDLE();
+				rsc->m_Handle = HANDLE();
 				FreeHandle(h);
 			}
 			else
@@ -106,15 +106,15 @@ namespace vast::gfx
 		}
 
 		// Returned pointers should never be stored anywhere, and they should only be used within small code blocks.
-		T* LookupResource(const HANDLE& h)
+		Timpl* LookupResource(const HANDLE& h)
 		{
 			// Access resource with matching id check.
 			if (h.IsValid())
 			{
 				VAST_ASSERT(h.GetIndex() < numResources);
-				T* rsc = AccessResource(h);
+				Timpl* rsc = AccessResource(h);
 				VAST_ASSERT(rsc);
-				if (rsc->h.GetPackedId() == h.GetPackedId())
+				if (rsc->m_Handle.GetPackedId() == h.GetPackedId())
 				{
 					return rsc;
 				}
@@ -130,7 +130,7 @@ namespace vast::gfx
 			{
 				
 				HANDLE h = AllocHandleFromSlot(slotIdx);
-				VAST_TRACE("[resource] Acquired new {} handle with index {}, gen {} ({}/{}).", H::GetResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
+				VAST_TRACE("[resource] Acquired new {} handle with index {}, gen {} ({}/{}).", T::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
 				return h;
 			}
 			else
@@ -151,7 +151,7 @@ namespace vast::gfx
 			return static_cast<uint32>(h.GetIndex());
 		}
 
-		T* AccessResource(const HANDLE& h)
+		Timpl* AccessResource(const HANDLE& h)
 		{
 			// Access resource without matching id check.
 			return &m_Resources[GetSlotIndexFromHandle(h)];
@@ -175,7 +175,7 @@ namespace vast::gfx
 		void FreeHandle(const HANDLE& h)
 		{
 			m_FreeSlotsQueue[--m_UsedSlots] = GetSlotIndexFromHandle(h);
-			VAST_TRACE("[resource] Freed {} handle with index {}, gen {} ({}/{}).", H::GetResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
+			VAST_TRACE("[resource] Freed {} handle with index {}, gen {} ({}/{}).", T::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
 		}
 
 		static const uint32 kInvalidSlotIndex = UINT32_MAX;
@@ -183,7 +183,7 @@ namespace vast::gfx
 		uint32 m_UsedSlots;
 		Array<uint32, numResources> m_FreeSlotsQueue;
 		Array<uint32, numResources> m_GenerationCounters;
-		Array<T, numResources> m_Resources;
+		Array<Timpl,  numResources> m_Resources;
 	};
 
 }

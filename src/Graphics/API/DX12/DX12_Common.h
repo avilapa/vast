@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Graphics/GraphicsContext.h"
+#include "Graphics/Graphics.h"
+#include "Graphics/Resources.h"
 
 #include "dx12/DirectXAgilitySDK/include/d3d12.h"
 
@@ -51,7 +52,6 @@ namespace vast::gfx
 
 	struct DX12Resource
 	{
-		ResourceType type = ResourceType::UNKNOWN;
 		ID3D12Resource* resource = nullptr;
 		D3D12MA::Allocation* allocation = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;
@@ -60,12 +60,8 @@ namespace vast::gfx
 		bool isReady = false;
 	};
 
-	struct DX12Buffer : public DX12Resource
+	struct DX12Buffer : public Buffer, public DX12Resource
 	{
-		DX12Buffer() : DX12Resource() { type = ResourceType::BUFFER; }
-
-		BufferHandle h;
-
 		uint8* data = nullptr;
 		uint32 stride = 0;
 		DX12Descriptor cbv = {};
@@ -81,22 +77,16 @@ namespace vast::gfx
 		}
 	};
 
-	struct DX12Texture : public DX12Resource
+	struct DX12Texture : public Texture, public DX12Resource
 	{
-		DX12Texture() : DX12Resource() { type = ResourceType::TEXTURE; }
-
-		TextureHandle h;
-
 		DX12Descriptor rtv = {};
 		DX12Descriptor dsv = {};
 		DX12Descriptor srv = {};
 		DX12Descriptor uav = {};
 	};
 
-	struct DX12Shader
+	struct DX12Shader : public Shader
 	{
-		ShaderHandle h;
-
 		IDxcBlob* shaderBlob = nullptr;
 	};
 
@@ -152,16 +142,6 @@ namespace vast::gfx
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return Format::RGBA8_UNORM_SRGB;
 		case DXGI_FORMAT_D32_FLOAT:				return Format::D32_FLOAT;
 		default: VAST_ASSERTF(0, "Unknown Format."); return Format::UNKNOWN;
-		}
-	}
-
-	constexpr D3D12_RESOURCE_STATES TranslateToDX12(const ResourceState& v)
-	{
-		switch (v)
-		{
-		case ResourceState::RENDER_TARGET:	return D3D12_RESOURCE_STATE_RENDER_TARGET;
-		case ResourceState::PRESENT:		return D3D12_RESOURCE_STATE_PRESENT;
-		default: VAST_ASSERTF(0, "ResourceState not supported on this platform."); return D3D12_RESOURCE_STATE_COMMON;
 		}
 	}
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/GraphicsContext.h"
 #include "Graphics/API/DX12/DX12_Common.h"
 
 namespace vast::gfx
@@ -57,10 +58,9 @@ namespace vast::gfx
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
-		// TODO: These should ideally be holding the API agnostic types instead of the DX12 ones.
-		Ptr<ResourceHandlePool<DX12Texture, Texture, NUM_TEXTURES>> m_Textures;
-		Ptr<ResourceHandlePool<DX12Buffer, Buffer, NUM_BUFFERS>> m_Buffers;
-		Ptr<ResourceHandlePool<DX12Shader, Shader, NUM_SHADERS>> m_Shaders;
+		Ptr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>> m_Textures;
+		Ptr<ResourceHandlePool<Buffer,  DX12Buffer,  NUM_BUFFERS>>  m_Buffers;
+		Ptr<ResourceHandlePool<Shader,  DX12Shader,  NUM_SHADERS>>  m_Shaders;
 
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
