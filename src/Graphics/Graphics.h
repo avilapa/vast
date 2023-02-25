@@ -70,6 +70,8 @@ namespace vast::gfx
 		uint32 depthOrArraySize = 1;
 		uint32 mipCount = 1;
 		TextureViewFlags viewFlags = TextureViewFlags::NONE;
+
+		struct Builder;
 	};
 
 	struct BufferDesc
@@ -79,6 +81,8 @@ namespace vast::gfx
 		BufferViewFlags viewFlags = BufferViewFlags::NONE;
 		BufferAccessFlags accessFlags = BufferAccessFlags::HOST_WRITABLE;
 		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
+
+		struct Builder;
 	};
 
 	struct ShaderDesc
@@ -86,6 +90,43 @@ namespace vast::gfx
 		ShaderType type = ShaderType::COMPUTE;
 		std::wstring shaderName;
 		std::wstring entryPoint;
+
+		struct Builder;
 	};
 
+	struct TextureDesc::Builder
+	{
+		Builder& TextureType(const TextureType& type) { desc.type = type; return *this; }
+		Builder& Format(const Format& format) { desc.format = format; return *this; }
+		Builder& Width(const uint32& width) { desc.width = width; return *this; }
+		Builder& Height(const uint32& height) { desc.height = height; return *this; }
+		Builder& DepthOrArraySize(const uint32& depthOrArraySize) { desc.depthOrArraySize = depthOrArraySize; return *this; }
+		Builder& MipCount(const uint32& mipCount) { desc.mipCount = mipCount; return *this; }
+		Builder& ViewFlags(const TextureViewFlags& viewFlags) { desc.viewFlags = viewFlags; return *this; }
+
+		operator TextureDesc() { return desc; }
+		TextureDesc desc;
+	};
+
+	struct BufferDesc::Builder
+	{
+		Builder& Size(const uint32& size) { desc.size = size; return *this; }
+		Builder& Stride(const uint32& stride) { desc.stride = stride; return *this; }
+		Builder& ViewFlags(const BufferViewFlags& viewFlags) { desc.viewFlags = viewFlags; return *this; }
+		Builder& AccessFlags(const BufferAccessFlags& accessFlags) { desc.accessFlags = accessFlags; return *this; }
+		Builder& IsRawAccess(const bool& isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
+
+		operator BufferDesc() { return desc; }
+		BufferDesc desc;
+	};
+
+	struct ShaderDesc::Builder
+	{
+		Builder& Type(const ShaderType& type) { desc.type = type; return *this; }
+		Builder& ShaderName(const std::wstring& shaderName) { desc.shaderName = shaderName; return *this; }
+		Builder& EntryPoint(const std::wstring& entryPoint) { desc.entryPoint = entryPoint; return *this; }
+
+		operator ShaderDesc() { return desc; }
+		ShaderDesc desc;
+	};
 }

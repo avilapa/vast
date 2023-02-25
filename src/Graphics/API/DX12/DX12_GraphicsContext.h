@@ -63,7 +63,7 @@ namespace vast::gfx
 		Ptr<ResourceHandlePool<Shader,  DX12Shader,  NUM_SHADERS>>  m_Shaders;
 
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
-		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
+		Array<Vector<BufferHandle>,  NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
 
 		DX12Texture* m_CurrentRT;
 

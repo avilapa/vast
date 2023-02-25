@@ -12,16 +12,16 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
 	{
-		gfx::ShaderDesc vsDesc;
-		vsDesc.type = gfx::ShaderType::VERTEX;
-		vsDesc.shaderName = L"triangle.hlsl";
-		vsDesc.entryPoint = L"VS_Main";
-		m_TriangleShaderHandles[0] = ctx.CreateShader(vsDesc);
+		auto vsDesc = gfx::ShaderDesc::Builder()
+			.Type(gfx::ShaderType::VERTEX)
+			.ShaderName(L"triangle.hlsl")
+			.EntryPoint(L"VS_Main");
 
-		gfx::ShaderDesc psDesc;
-		psDesc.type = gfx::ShaderType::PIXEL;
-		psDesc.shaderName = L"triangle.hlsl";
-		psDesc.entryPoint = L"PS_Main";
+		auto psDesc = gfx::ShaderDesc::Builder()
+			.Type(gfx::ShaderType::PIXEL)
+			.ShaderName(L"triangle.hlsl")
+			.EntryPoint(L"PS_Main");
+		m_TriangleShaderHandles[0] = ctx.CreateShader(vsDesc);
 		m_TriangleShaderHandles[1] = ctx.CreateShader(psDesc);
 	}
 	{
@@ -34,23 +34,20 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 		} };
 
 		// Create vertex buffer in CPU-writable/GPU-readable memory.
-		gfx::BufferDesc bufDesc;
-		bufDesc.size = sizeof(vertexData);
-		bufDesc.stride = sizeof(vertexData[0]);
-		bufDesc.viewFlags = gfx::BufferViewFlags::SRV;
-		bufDesc.isRawAccess = true;
-
+		auto bufDesc = gfx::BufferDesc::Builder()
+			.Size(sizeof(vertexData)).Stride(sizeof(vertexData[0]))
+			.ViewFlags(gfx::BufferViewFlags::SRV)
+			.IsRawAccess(true);
 		m_VertexBufferHandle = ctx.CreateBuffer(bufDesc, &vertexData, sizeof(vertexData));
 	}
 	{
 		// The constant buffer contains the index of the vertex buffer in the descriptor heap.
 		TriangleCBV cbvData = { ctx.GetBindlessHeapIndex(m_VertexBufferHandle) };
 
-		gfx::BufferDesc bufDesc;
-		bufDesc.size = sizeof(TriangleCBV);
-		bufDesc.viewFlags = gfx::BufferViewFlags::CBV;
-		bufDesc.isRawAccess = true;
-
+		auto bufDesc = gfx::BufferDesc::Builder()
+			.Size(sizeof(TriangleCBV))
+			.ViewFlags(gfx::BufferViewFlags::CBV)
+			.IsRawAccess(true);
 		m_TriangleCBVHandle = ctx.CreateBuffer(bufDesc, &cbvData, sizeof(cbvData));
 	}
 
