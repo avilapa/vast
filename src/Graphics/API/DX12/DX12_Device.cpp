@@ -282,21 +282,23 @@ namespace vast::gfx
 			break;
 		}
 
-		std::vector<LPCWSTR> arguments;
-		arguments.reserve(8);
-		arguments.push_back(desc.shaderName.c_str());
-		arguments.push_back(L"-E");
-		arguments.push_back(desc.entryPoint.c_str());
-		arguments.push_back(L"-T");
-		arguments.push_back(target);
-		arguments.push_back(L"-I");
-		arguments.push_back(SHADER_SOURCE_PATH);
-		arguments.push_back(L"-Zi");
-		arguments.push_back(L"-WX");
-		arguments.push_back(L"-Qstrip_reflect");
+		std::vector<LPCWSTR> arguments
+		{
+			desc.shaderName.c_str(), // TODO: This doesn't seem to be needed
+			L"-E", desc.entryPoint.c_str(),
+			L"-T", target,
+			L"-I", SHADER_SOURCE_PATH,
+#ifdef VAST_DEBUG
+			DXC_ARG_DEBUG,
+#else
+			DXC_ARG_OPTIMIZATION_LEVEL3,
+#endif
+			DXC_ARG_WARNINGS_ARE_ERRORS,
+			L"-Qstrip_reflect",
+		};
 
 		IDxcResult* compilationResults = nullptr;
-		dxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), dxcIncludeHandler, IID_PPV_ARGS(&compilationResults));
+		DX12Check(dxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), dxcIncludeHandler, IID_PPV_ARGS(&compilationResults)));
 
 		IDxcBlobUtf8* errors = nullptr;
 		HRESULT getCompilationResults = compilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
@@ -344,8 +346,9 @@ namespace vast::gfx
 			fclose(fp);
 		}
 
+#ifdef VAST_DEBUG
 		IDxcBlob* pdbBlob = nullptr;
-		compilationResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pdbBlob), nullptr);
+		DX12Check(compilationResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pdbBlob), nullptr));
 		{
 			FILE* fp = nullptr;
 
@@ -357,6 +360,8 @@ namespace vast::gfx
 		}
 
 		DX12SafeRelease(pdbBlob);
+#endif
+
 		DX12SafeRelease(errors);
 		DX12SafeRelease(compilationResults);
 		DX12SafeRelease(dxcIncludeHandler);
