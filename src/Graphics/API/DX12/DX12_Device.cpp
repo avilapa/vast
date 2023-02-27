@@ -284,7 +284,6 @@ namespace vast::gfx
 
 		std::vector<LPCWSTR> arguments
 		{
-			desc.shaderName.c_str(), // TODO: This doesn't seem to be needed
 			L"-E", desc.entryPoint.c_str(),
 			L"-T", target,
 			L"-I", SHADER_SOURCE_PATH,
