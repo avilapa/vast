@@ -10,6 +10,7 @@ namespace vast::gfx
 		BUFFER,
 		TEXTURE,
 		SHADER,
+		PIPELINE,
 		COUNT,
 	};
 
@@ -19,6 +20,7 @@ namespace vast::gfx
 		"Buffer",
 		"Texture",
 		"Shader",
+		"Pipeline",
 	};
 
 	static_assert(NELEM(g_ResourceTypeNames) == IDX(ResourceType::COUNT));	
@@ -61,6 +63,12 @@ namespace vast::gfx
 	{
 	public:
 		__VAST_RESOURCE_TYPE_COMMON_DECL(Shader, ResourceType::SHADER);
+	};
+	
+	class Pipeline : public Resource<Pipeline>
+	{
+	public:
+		__VAST_RESOURCE_TYPE_COMMON_DECL(Pipeline, ResourceType::PIPELINE);
 	};
 
 }

@@ -44,11 +44,19 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 		// The constant buffer contains the index of the vertex buffer in the descriptor heap.
 		TriangleCBV cbvData = { ctx.GetBindlessHeapIndex(m_VertexBufferHandle) };
 
-		auto bufDesc = gfx::BufferDesc::Builder()
+		m_TriangleCBVHandle = ctx.CreateBuffer(gfx::BufferDesc::Builder()
 			.Size(sizeof(TriangleCBV))
 			.ViewFlags(gfx::BufferViewFlags::CBV)
-			.IsRawAccess(true);
-		m_TriangleCBVHandle = ctx.CreateBuffer(bufDesc, &cbvData, sizeof(cbvData));
+			.IsRawAccess(true), 
+			&cbvData, sizeof(cbvData));
+	}
+	{
+		auto pipelineDesc = gfx::PipelineDesc::Builder()
+			.VS(m_TriangleShaderHandles[0])
+			.PS(m_TriangleShaderHandles[1])
+			.SetRenderTarget(gfx::Format::RGBA8_UNORM_SRGB); // TODO: This should internally query the backbuffer format.
+
+		m_PipelineHandle = ctx.CreatePipeline(pipelineDesc);
 	}
 
 }
@@ -61,6 +69,7 @@ Dev::~Dev()
 	ctx.DestroyShader(m_TriangleShaderHandles[1]);
 	ctx.DestroyBuffer(m_VertexBufferHandle);
 	ctx.DestroyBuffer(m_TriangleCBVHandle);
+	ctx.DestroyPipeline(m_PipelineHandle);
 }
 
 void Dev::OnUpdate()

@@ -18,4 +18,5 @@ private:
 
 	gfx::BufferHandle m_VertexBufferHandle;
 	gfx::BufferHandle m_TriangleCBVHandle;
+	gfx::PipelineHandle m_PipelineHandle;
 };

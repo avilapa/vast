@@ -34,10 +34,12 @@ namespace vast::gfx
 		TextureHandle CreateTexture(const TextureDesc& desc) override;
 		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
 		ShaderHandle CreateShader(const ShaderDesc& desc) override;
+		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
 		void DestroyTexture(const TextureHandle& h) override;
 		void DestroyBuffer(const BufferHandle& h) override;
 		void DestroyShader(const ShaderHandle& h) override;
+		void DestroyPipeline(const PipelineHandle& h) override;
 
 		uint32 GetBindlessHeapIndex(const BufferHandle& h) override;
 

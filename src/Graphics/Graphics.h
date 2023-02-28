@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Graphics/ResourceHandles.h"
+
 namespace vast::gfx
 {
 	// - Graphics Enums --------------------------------------------------------------------------- //
@@ -94,6 +96,18 @@ namespace vast::gfx
 		struct Builder;
 	};
 
+	struct PipelineDesc // TODO: Decide on a name for our pipeline/render pass
+	{
+		ResourceHandle<class Shader> vs;
+		ResourceHandle<class Shader> ps;
+		uint8 rtCount = 0;
+		Array<Format, 8> rtFormats; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
+		// TODO: Depth Stencil format
+		// TODO: Pipeline state stuff
+
+		struct Builder;
+	};
+
 	struct TextureDesc::Builder
 	{
 		Builder& TextureType(const TextureType& type) { desc.type = type; return *this; }
@@ -128,5 +142,15 @@ namespace vast::gfx
 
 		operator ShaderDesc() { return desc; }
 		ShaderDesc desc;
+	};
+
+	struct PipelineDesc::Builder
+	{
+		Builder& VS(const ResourceHandle<class Shader>& vs) { desc.vs = vs; return *this; }
+		Builder& PS(const ResourceHandle<class Shader>& ps) { desc.vs = ps; return *this; }
+		Builder& SetRenderTarget(const Format& format) { desc.rtFormats[desc.rtCount++] = format; return *this; }
+
+		operator PipelineDesc() { return desc; }
+		PipelineDesc desc;
 	};
 }

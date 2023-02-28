@@ -65,8 +65,6 @@ namespace vast::gfx
 			m_CommandQueues[i] = nullptr;
 		}
 
-		// TODO: WaitForIdle?
-
 		m_Device = nullptr;
 
 		m_Textures = nullptr;
@@ -185,6 +183,15 @@ namespace vast::gfx
 		return h;
 	}
 
+	PipelineHandle DX12GraphicsContext::CreatePipeline(const PipelineDesc& desc)
+	{
+// 		VAST_ASSERT(m_Device);
+// 		auto [h, pipeline] = m_Pipelines->AcquireResource();
+// 		m_Device->CreatePipeline(desc, pipeline);
+// 		return h;
+		return PipelineHandle();
+	}
+
 	void DX12GraphicsContext::DestroyTexture(const TextureHandle& h)
 	{
 		VAST_ASSERT(h.IsValid());
@@ -205,6 +212,12 @@ namespace vast::gfx
 		VAST_ASSERT(shader);
 		m_Device->DestroyShader(shader);
 		m_Shaders->FreeResource(h);
+	}
+
+	void DX12GraphicsContext::DestroyPipeline(const PipelineHandle& h)
+	{
+// 		VAST_ASSERT(h.IsValid());
+// 		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)
