@@ -7,10 +7,10 @@
 
 namespace vast::gfx
 {
-	using TextureHandle		= ResourceHandle<class Texture>;
-	using BufferHandle		= ResourceHandle<class Buffer>;
-	using ShaderHandle		= ResourceHandle<class Shader>;
-	using PipelineHandle	= ResourceHandle<class Pipeline>;
+	using TextureHandle	= ResourceHandle<class Texture>;
+	using BufferHandle = ResourceHandle<class Buffer>;
+	using ShaderHandle = ResourceHandle<class Shader>;
+	using PipelineHandle = ResourceHandle<class Pipeline>;
 
 	struct GraphicsParams
 	{

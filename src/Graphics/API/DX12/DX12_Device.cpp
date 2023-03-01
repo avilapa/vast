@@ -162,11 +162,20 @@ namespace vast::gfx
 		DX12SafeRelease(m_DXGIFactory);
 	}
 
+	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* tex)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(tex);
+
+		(void)desc;
+		(void)tex;
+	}
+
 	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* buf)
 	{
 		VAST_PROFILE_FUNCTION();
-
 		VAST_ASSERT(buf);
+
 		buf->stride = desc.stride;
 
 		uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
@@ -233,17 +242,10 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* tex)
-	{
-		VAST_PROFILE_FUNCTION();
-
-		(void)desc;
-		(void)tex;
-	}
-
 	void DX12Device::CreateShader(const ShaderDesc& desc, DX12Shader* shader)
 	{
 		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(shader);
 
 		IDxcUtils* dxcUtils = nullptr;
 		IDxcCompiler3* dxcCompiler = nullptr;
@@ -370,6 +372,15 @@ namespace vast::gfx
 		shader->shaderBlob = shaderBlob;
 	}
 
+	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(pipeline);
+
+		(void)desc;
+		(void)pipeline;
+	}
+
 	void DX12Device::DestroyTexture(DX12Texture* tex)
 	{
 		VAST_ASSERTF(tex, "Attempted to destroy an empty texture.");
@@ -432,6 +443,13 @@ namespace vast::gfx
 	{
 		VAST_ASSERTF(shader, "Attempted to destroy an empty shader.");
 		DX12SafeRelease(shader->shaderBlob);
+	}
+
+	void DX12Device::DestroyPipeline(DX12Pipeline* pipeline)
+	{
+		VAST_ASSERTF(pipeline, "Attempted to destroy an empty pipeline.");
+		DX12SafeRelease(pipeline->m_RootSignature);
+		DX12SafeRelease(pipeline->m_PipelineState);
 	}
 
 	ID3D12Device5* DX12Device::GetDevice() const

@@ -31,8 +31,9 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 
 		m_Textures = MakePtr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>>();
-		m_Buffers  = MakePtr<ResourceHandlePool<Buffer,  DX12Buffer,  NUM_BUFFERS>>();
-		m_Shaders  = MakePtr<ResourceHandlePool<Shader,  DX12Shader,  NUM_SHADERS>>();
+		m_Buffers = MakePtr<ResourceHandlePool<Buffer, DX12Buffer, NUM_BUFFERS>>();
+		m_Shaders = MakePtr<ResourceHandlePool<Shader, DX12Shader, NUM_SHADERS>>();
+		m_Pipelines = MakePtr<ResourceHandlePool<Pipeline, DX12Pipeline, NUM_PIPELINES>>();
 
 		m_Device = MakePtr<DX12Device>();
 
@@ -185,11 +186,10 @@ namespace vast::gfx
 
 	PipelineHandle DX12GraphicsContext::CreatePipeline(const PipelineDesc& desc)
 	{
-// 		VAST_ASSERT(m_Device);
-// 		auto [h, pipeline] = m_Pipelines->AcquireResource();
-// 		m_Device->CreatePipeline(desc, pipeline);
-// 		return h;
-		return PipelineHandle();
+		VAST_ASSERT(m_Device);
+		auto [h, pipeline] = m_Pipelines->AcquireResource();
+		m_Device->CreatePipeline(desc, pipeline);
+		return h;
 	}
 
 	void DX12GraphicsContext::DestroyTexture(const TextureHandle& h)
@@ -216,8 +216,8 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::DestroyPipeline(const PipelineHandle& h)
 	{
-// 		VAST_ASSERT(h.IsValid());
-// 		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
+		VAST_ASSERT(h.IsValid());
+		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)
@@ -248,6 +248,14 @@ namespace vast::gfx
 		}
 		m_BuffersMarkedForDestruction[frameId].clear();
 
+		for (auto& h : m_PipelinesMarkedForDestruction[frameId])
+		{
+			DX12Pipeline* pipeline = m_Pipelines->LookupResource(h);
+			VAST_ASSERT(pipeline);
+			m_Device->DestroyPipeline(pipeline);
+			m_Pipelines->FreeResource(h);
+		}
+		m_PipelinesMarkedForDestruction[frameId].clear();
 	}
 
 	void DX12GraphicsContext::OnWindowResizeEvent(WindowResizeEvent& event)

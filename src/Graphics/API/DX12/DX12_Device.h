@@ -21,10 +21,12 @@ namespace vast::gfx
 		void CreateTexture(const TextureDesc& desc, DX12Texture* tex);
 		void CreateBuffer(const BufferDesc& desc, DX12Buffer* buf);
 		void CreateShader(const ShaderDesc& desc, DX12Shader* shader);
+		void CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline);
 
 		void DestroyTexture(DX12Texture* tex);
 		void DestroyBuffer(DX12Buffer* buf);
 		void DestroyShader(DX12Shader* shader);
+		void DestroyPipeline(DX12Pipeline* pipeline);
 
 		ID3D12Device5* GetDevice() const;
 		IDXGIFactory7* GetDXGIFactory() const;

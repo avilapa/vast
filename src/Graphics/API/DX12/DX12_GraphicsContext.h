@@ -61,11 +61,13 @@ namespace vast::gfx
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
 		Ptr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>> m_Textures;
-		Ptr<ResourceHandlePool<Buffer,  DX12Buffer,  NUM_BUFFERS>>  m_Buffers;
-		Ptr<ResourceHandlePool<Shader,  DX12Shader,  NUM_SHADERS>>  m_Shaders;
+		Ptr<ResourceHandlePool<Buffer, DX12Buffer, NUM_BUFFERS>> m_Buffers;
+		Ptr<ResourceHandlePool<Shader, DX12Shader, NUM_SHADERS>> m_Shaders;
+		Ptr<ResourceHandlePool<Pipeline, DX12Pipeline, NUM_PIPELINES>> m_Pipelines;
 
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<BufferHandle>,  NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
+		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
 
 		DX12Texture* m_CurrentRT;
 

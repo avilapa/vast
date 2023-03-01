@@ -101,7 +101,7 @@ namespace vast::gfx
 		ResourceHandle<class Shader> vs;
 		ResourceHandle<class Shader> ps;
 		uint8 rtCount = 0;
-		Array<Format, 8> rtFormats; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
+		Array<Format, 8> rtFormats = { Format::UNKNOWN }; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
 		// TODO: Depth Stencil format
 		// TODO: Pipeline state stuff
 

@@ -28,6 +28,7 @@ namespace vast::gfx
 	constexpr uint32 NUM_TEXTURES = 512;
 	constexpr uint32 NUM_BUFFERS = 512;
 	constexpr uint32 NUM_SHADERS = 64;
+	constexpr uint32 NUM_PIPELINES = 64;
 
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
@@ -88,6 +89,12 @@ namespace vast::gfx
 	struct DX12Shader : public Shader
 	{
 		IDxcBlob* shaderBlob = nullptr;
+	};
+
+	struct DX12Pipeline : public Pipeline
+	{
+		ID3D12PipelineState* m_PipelineState = nullptr;
+		ID3D12RootSignature* m_RootSignature = nullptr;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //
