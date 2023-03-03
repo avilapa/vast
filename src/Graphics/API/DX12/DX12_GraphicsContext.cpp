@@ -188,7 +188,10 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(m_Device);
 		auto [h, pipeline] = m_Pipelines->AcquireResource();
-		m_Device->CreatePipeline(desc, pipeline);
+		auto vs = m_Shaders->LookupResource(desc.vs);
+		auto ps = m_Shaders->LookupResource(desc.ps);
+		auto cbv = m_Buffers->LookupResource(desc.cbv); // TODO TEMP: cbv
+		m_Device->CreatePipeline(desc, pipeline, vs, ps, cbv);
 		return h;
 	}
 

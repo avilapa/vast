@@ -372,13 +372,117 @@ namespace vast::gfx
 		shader->shaderBlob = shaderBlob;
 	}
 
-	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline)
+	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps, DX12Buffer* cbv)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(pipeline);
 
-		(void)desc;
-		(void)pipeline;
+		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
+
+		if (cbv)
+		{
+			D3D12_ROOT_PARAMETER1 rpCbv = {};
+			rpCbv.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+			rpCbv.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			rpCbv.Descriptor.RegisterSpace = 0; // TODO: define spaces
+			rpCbv.Descriptor.ShaderRegister = 0;
+
+			rootParameters.push_back(rpCbv);
+		}
+
+		D3D12_VERSIONED_ROOT_SIGNATURE_DESC vrsDesc = {};
+		vrsDesc.Desc_1_1.NumParameters = static_cast<uint32>(rootParameters.size());
+		vrsDesc.Desc_1_1.pParameters = rootParameters.data();
+		vrsDesc.Desc_1_1.NumStaticSamplers = 0;
+		vrsDesc.Desc_1_1.pStaticSamplers = nullptr;
+		vrsDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
+		vrsDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+
+		D3D12_RASTERIZER_DESC rsDesc = {};
+		rsDesc.FillMode = D3D12_FILL_MODE_SOLID;
+		rsDesc.CullMode = D3D12_CULL_MODE_NONE;
+		rsDesc.FrontCounterClockwise = false;
+		rsDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+		rsDesc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+		rsDesc.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+		rsDesc.DepthClipEnable = true;
+		rsDesc.MultisampleEnable = false;
+		rsDesc.AntialiasedLineEnable = false;
+		rsDesc.ForcedSampleCount = 0;
+		rsDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+		D3D12_BLEND_DESC bsDesc = {};
+		bsDesc.AlphaToCoverageEnable = false;
+		bsDesc.IndependentBlendEnable = false;
+		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
+		{
+			bsDesc.RenderTarget[i].BlendEnable				= false;
+			bsDesc.RenderTarget[i].LogicOpEnable			= false;
+			bsDesc.RenderTarget[i].SrcBlend					= D3D12_BLEND_SRC_ALPHA;
+			bsDesc.RenderTarget[i].DestBlend				= D3D12_BLEND_INV_SRC_ALPHA;
+			bsDesc.RenderTarget[i].BlendOp					= D3D12_BLEND_OP_ADD;
+			bsDesc.RenderTarget[i].SrcBlendAlpha			= D3D12_BLEND_ONE;
+			bsDesc.RenderTarget[i].DestBlendAlpha			= D3D12_BLEND_ONE;
+			bsDesc.RenderTarget[i].BlendOpAlpha				= D3D12_BLEND_OP_ADD;
+			bsDesc.RenderTarget[i].LogicOp					= D3D12_LOGIC_OP_NOOP;
+			bsDesc.RenderTarget[i].RenderTargetWriteMask	= D3D12_COLOR_WRITE_ENABLE_ALL;
+		}
+
+		D3D12_DEPTH_STENCIL_DESC dssDesc = {};
+		dssDesc.DepthEnable = false;
+		dssDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		dssDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		dssDesc.StencilEnable = false;
+		dssDesc.FrontFace.StencilFailOp = dssDesc.FrontFace.StencilDepthFailOp = dssDesc.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+		dssDesc.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+		dssDesc.BackFace = dssDesc.FrontFace;
+
+		// TODO: Multisample support
+		DXGI_SAMPLE_DESC msDesc = {};
+		msDesc.Count = 1;
+		msDesc.Quality = 0;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
+		psDesc.NodeMask = 0;
+		psDesc.SampleMask = 0xFFFFFFFF;
+		psDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		psDesc.RasterizerState = rsDesc;
+		psDesc.BlendState = bsDesc;
+		psDesc.SampleDesc = msDesc;
+		psDesc.DepthStencilState = dssDesc;
+		psDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psDesc.NumRenderTargets = desc.rtCount;
+		for (uint32 i = 0; i < psDesc.NumRenderTargets; ++i)
+		{
+			psDesc.RTVFormats[i] = TranslateToDX12(desc.rtFormats[i]);
+		}
+
+		if (vs)
+		{
+			psDesc.VS.pShaderBytecode = vs->shaderBlob->GetBufferPointer();
+			psDesc.VS.BytecodeLength = vs->shaderBlob->GetBufferSize();
+		}
+
+		if (ps)
+		{
+			psDesc.PS.pShaderBytecode = ps->shaderBlob->GetBufferPointer();
+			psDesc.PS.BytecodeLength = ps->shaderBlob->GetBufferSize();
+		}
+
+		psDesc.InputLayout.pInputElementDescs = nullptr;
+		psDesc.InputLayout.NumElements = 0;
+
+		ID3DBlob* rootSignatureBlob = nullptr;
+		ID3DBlob* errorBlob = nullptr;
+		DX12Check(D3D12SerializeVersionedRootSignature(&vrsDesc, &rootSignatureBlob, &errorBlob));
+
+		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
+
+		ID3D12PipelineState* graphicsPipeline = nullptr;
+		DX12Check(m_Device->CreateGraphicsPipelineState(&psDesc, IID_PPV_ARGS(&graphicsPipeline)));
+
+		pipeline->m_PipelineState = graphicsPipeline;
+		pipeline->m_RootSignature = psDesc.pRootSignature;
 	}
 
 	void DX12Device::DestroyTexture(DX12Texture* tex)

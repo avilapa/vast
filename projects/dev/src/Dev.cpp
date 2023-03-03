@@ -51,9 +51,11 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 			&cbvData, sizeof(cbvData));
 	}
 	{
+		// TODO: Can we defer binding RT layout to a PSO until it's used for rendering? (e.g. Separate RenderPassLayout object).
 		auto pipelineDesc = gfx::PipelineDesc::Builder()
 			.VS(m_TriangleShaderHandles[0])
 			.PS(m_TriangleShaderHandles[1])
+			.CBV(m_TriangleCBVHandle) // TODO TEMP: cbv
 			.SetRenderTarget(gfx::Format::RGBA8_UNORM_SRGB); // TODO: This should internally query the backbuffer format.
 
 		m_PipelineHandle = ctx.CreatePipeline(pipelineDesc);
