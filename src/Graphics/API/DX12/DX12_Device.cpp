@@ -247,6 +247,7 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(shader);
 
+		// TODO: Compiler objects can be created once per thread in advance.
 		IDxcUtils* dxcUtils = nullptr;
 		IDxcCompiler3* dxcCompiler = nullptr;
 		IDxcIncludeHandler* dxcIncludeHandler = nullptr;
@@ -254,7 +255,7 @@ namespace vast::gfx
  		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
 		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
  		dxcUtils->CreateDefaultIncludeHandler(&dxcIncludeHandler);
- 
+		
  		std::wstring sourcePath;
  		sourcePath.append(SHADER_SOURCE_PATH);
  		sourcePath.append(desc.shaderName);
@@ -286,6 +287,7 @@ namespace vast::gfx
 
 		std::vector<LPCWSTR> arguments
 		{
+			desc.shaderName.c_str(),
 			L"-E", desc.entryPoint.c_str(),
 			L"-T", target,
 			L"-I", SHADER_SOURCE_PATH,
@@ -302,17 +304,11 @@ namespace vast::gfx
 		DX12Check(dxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), dxcIncludeHandler, IID_PPV_ARGS(&compilationResults)));
 
 		IDxcBlobUtf8* errors = nullptr;
-		HRESULT getCompilationResults = compilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
-
-		if (FAILED(getCompilationResults))
-		{
-			VAST_ASSERTF(0, "Failed to get compilation result.");
-		}
+		DX12Check(compilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr));
 
 		if (errors != nullptr && errors->GetStringLength() != 0)
 		{
-			wprintf(L"Shader compilation error:\n%S\n", errors->GetStringPointer());
-			VAST_ASSERTF(0, "Shader compilation error.");
+			VAST_CRITICAL("Shader compilation error in:\n{}", errors->GetStringPointer());
 		}
 
 		HRESULT statusResult;
