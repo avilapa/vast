@@ -169,7 +169,7 @@ namespace vast::gfx
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
 
-		m_CurrentRT = nullptr; //////////////// TODO ?
+		m_CurrentRT = nullptr;
 	}
 
 	void DX12GraphicsContext::Draw(const uint32 vtxCount, const uint32 vtxStartLocation /* = 0 */)
