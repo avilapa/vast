@@ -100,7 +100,6 @@ namespace vast::gfx
 	{
 		ResourceHandle<class Shader> vs;
 		ResourceHandle<class Shader> ps;
-		ResourceHandle<class Buffer> cbv; // TODO TEMP: cbv
 		uint8 rtCount = 0;
 		Array<Format, 8> rtFormats = { Format::UNKNOWN }; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
 		// TODO: Depth Stencil format
@@ -149,7 +148,6 @@ namespace vast::gfx
 	{
 		Builder& VS(const ResourceHandle<class Shader>& vs) { desc.vs = vs; return *this; }
 		Builder& PS(const ResourceHandle<class Shader>& ps) { desc.ps = ps; return *this; }
-		Builder& CBV(const ResourceHandle<class Buffer>& cbv) { desc.cbv = cbv; return *this; }
 		Builder& SetRenderTarget(const Format& format) { desc.rtFormats[desc.rtCount++] = format; return *this; }
 
 		operator PipelineDesc() { return desc; }

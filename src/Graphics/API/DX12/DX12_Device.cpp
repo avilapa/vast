@@ -387,22 +387,39 @@ namespace vast::gfx
 		shader->reflection = shaderReflection;
 	}
 
-	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps, DX12Buffer* cbv)
+	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(pipeline);
 
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
 
-		if (cbv)
-		{
-			D3D12_ROOT_PARAMETER1 rpCbv = {};
-			rpCbv.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-			rpCbv.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-			rpCbv.Descriptor.RegisterSpace = 0; // TODO: define spaces
-			rpCbv.Descriptor.ShaderRegister = 0;
+		D3D12_SHADER_DESC shaderDesc{};
+		vs->reflection->GetDesc(&shaderDesc);
 
-			rootParameters.push_back(rpCbv);
+		// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
+
+		for (uint32 i = 0; i < shaderDesc.BoundResources; ++i)
+		{
+			D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
+			DX12Check(vs->reflection->GetResourceBindingDesc(i, &sibDesc));
+
+			if (sibDesc.Type == D3D_SIT_CBUFFER)
+			{
+				// TODO: Could identify here parameter num and bind it to parameter name using sibDesc.Name
+				ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = vs->reflection->GetConstantBufferByIndex(i);
+				D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
+				shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
+
+				D3D12_ROOT_PARAMETER1 rootParameter = {};
+				rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+				rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+				rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
+				rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
+				rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
+
+				rootParameters.push_back(rootParameter);
+			}
 		}
 
 		D3D12_VERSIONED_ROOT_SIGNATURE_DESC vrsDesc = {};

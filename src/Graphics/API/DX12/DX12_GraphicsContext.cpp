@@ -211,8 +211,7 @@ namespace vast::gfx
 		auto [h, pipeline] = m_Pipelines->AcquireResource();
 		auto vs = m_Shaders->LookupResource(desc.vs);
 		auto ps = m_Shaders->LookupResource(desc.ps);
-		auto cbv = m_Buffers->LookupResource(desc.cbv); // TODO TEMP: cbv
-		m_Device->CreatePipeline(desc, pipeline, vs, ps, cbv);
+		m_Device->CreatePipeline(desc, pipeline, vs, ps);
 		return h;
 	}
 
