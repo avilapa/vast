@@ -11,6 +11,7 @@ namespace D3D12MA
 }
 
 struct IDxcBlob;
+struct ID3D12ShaderReflection;
 
 namespace vast::gfx
 {
@@ -88,13 +89,14 @@ namespace vast::gfx
 
 	struct DX12Shader : public Shader
 	{
-		IDxcBlob* shaderBlob = nullptr;
+		IDxcBlob* blob = nullptr;
+		ID3D12ShaderReflection* reflection = nullptr;
 	};
 
 	struct DX12Pipeline : public Pipeline
 	{
-		ID3D12PipelineState* m_PipelineState = nullptr;
-		ID3D12RootSignature* m_RootSignature = nullptr;
+		ID3D12PipelineState* pipelineState = nullptr;
+		ID3D12RootSignature* rootSignature = nullptr;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //

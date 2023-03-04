@@ -4,6 +4,7 @@
 #include "Graphics/API/DX12/DX12_CommandQueue.h"
 
 #include "dx12/D3D12MemoryAllocator/include/D3D12MemAlloc.h"
+#include "dx12/DirectXAgilitySDK/include/d3d12shader.h"
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
 #include <dxgi1_6.h>
@@ -158,6 +159,7 @@ namespace vast::gfx
 			m_SRVRenderPassDescriptorHeaps[i] = nullptr;
 		}
 
+		DX12SafeRelease(m_Allocator);
 		DX12SafeRelease(m_Device);
 		DX12SafeRelease(m_DXGIFactory);
 	}
@@ -263,10 +265,12 @@ namespace vast::gfx
  		IDxcBlobEncoding* sourceBlobEncoding = nullptr;
 		DX12Check(dxcUtils->LoadFile(sourcePath.c_str(), nullptr, &sourceBlobEncoding));
 
-		DxcBuffer sourceBuffer = {};
-		sourceBuffer.Ptr = sourceBlobEncoding->GetBufferPointer();
-		sourceBuffer.Size = sourceBlobEncoding->GetBufferSize();
-		sourceBuffer.Encoding = DXC_CP_ACP;
+		const DxcBuffer sourceBuffer
+		{
+			sourceBlobEncoding->GetBufferPointer(),
+			sourceBlobEncoding->GetBufferSize(),
+			DXC_CP_ACP
+		};
 
 		LPCWSTR target = nullptr;
 		switch (desc.type)
@@ -300,11 +304,11 @@ namespace vast::gfx
 			L"-Qstrip_reflect",
 		};
 
-		IDxcResult* compilationResults = nullptr;
-		DX12Check(dxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), dxcIncludeHandler, IID_PPV_ARGS(&compilationResults)));
+		IDxcResult* compiledShader = nullptr;
+		DX12Check(dxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), dxcIncludeHandler, IID_PPV_ARGS(&compiledShader)));
 
 		IDxcBlobUtf8* errors = nullptr;
-		DX12Check(compilationResults->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr));
+		DX12Check(compiledShader->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr));
 
 		if (errors != nullptr && errors->GetStringLength() != 0)
 		{
@@ -312,12 +316,26 @@ namespace vast::gfx
 		}
 
 		HRESULT statusResult;
-		compilationResults->GetStatus(&statusResult);
+		compiledShader->GetStatus(&statusResult);
 		if (FAILED(statusResult))
 		{
 			VAST_ASSERTF(0, "Shader compilation failed.");
 		}
 
+		
+		IDxcBlob* reflectionBlob = nullptr;
+		DX12Check(compiledShader->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr));
+
+		const DxcBuffer reflectionBuffer
+		{
+			reflectionBlob->GetBufferPointer(),
+			reflectionBlob->GetBufferSize(),
+			DXC_CP_ACP
+		};
+
+		ID3D12ShaderReflection* shaderReflection = nullptr;
+		dxcUtils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&shaderReflection));
+		
 		std::wstring dxilPath;
 		std::wstring pdbPath;
 
@@ -330,7 +348,7 @@ namespace vast::gfx
 		pdbPath.append(L".pdb");
 
 		IDxcBlob* shaderBlob = nullptr;
-		compilationResults->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
+		compiledShader->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 		if (shaderBlob != nullptr)
 		{
 			FILE* fp = nullptr;
@@ -345,7 +363,7 @@ namespace vast::gfx
 
 #ifdef VAST_DEBUG
 		IDxcBlob* pdbBlob = nullptr;
-		DX12Check(compilationResults->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pdbBlob), nullptr));
+		DX12Check(compiledShader->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pdbBlob), nullptr));
 		{
 			FILE* fp = nullptr;
 
@@ -358,14 +376,15 @@ namespace vast::gfx
 
 		DX12SafeRelease(pdbBlob);
 #endif
-
+		DX12SafeRelease(reflectionBlob);
 		DX12SafeRelease(errors);
-		DX12SafeRelease(compilationResults);
+		DX12SafeRelease(compiledShader);
 		DX12SafeRelease(dxcIncludeHandler);
 		DX12SafeRelease(dxcCompiler);
 		DX12SafeRelease(dxcUtils);
 
-		shader->shaderBlob = shaderBlob;
+		shader->blob = shaderBlob;
+		shader->reflection = shaderReflection;
 	}
 
 	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps, DX12Buffer* cbv)
@@ -455,14 +474,14 @@ namespace vast::gfx
 
 		if (vs)
 		{
-			psDesc.VS.pShaderBytecode = vs->shaderBlob->GetBufferPointer();
-			psDesc.VS.BytecodeLength = vs->shaderBlob->GetBufferSize();
+			psDesc.VS.pShaderBytecode = vs->blob->GetBufferPointer();
+			psDesc.VS.BytecodeLength = vs->blob->GetBufferSize();
 		}
 
 		if (ps)
 		{
-			psDesc.PS.pShaderBytecode = ps->shaderBlob->GetBufferPointer();
-			psDesc.PS.BytecodeLength = ps->shaderBlob->GetBufferSize();
+			psDesc.PS.pShaderBytecode = ps->blob->GetBufferPointer();
+			psDesc.PS.BytecodeLength = ps->blob->GetBufferSize();
 		}
 
 		psDesc.InputLayout.pInputElementDescs = nullptr;
@@ -477,8 +496,8 @@ namespace vast::gfx
 		ID3D12PipelineState* graphicsPipeline = nullptr;
 		DX12Check(m_Device->CreateGraphicsPipelineState(&psDesc, IID_PPV_ARGS(&graphicsPipeline)));
 
-		pipeline->m_PipelineState = graphicsPipeline;
-		pipeline->m_RootSignature = psDesc.pRootSignature;
+		pipeline->pipelineState = graphicsPipeline;
+		pipeline->rootSignature = psDesc.pRootSignature;
 	}
 
 	void DX12Device::DestroyTexture(DX12Texture* tex)
@@ -542,14 +561,15 @@ namespace vast::gfx
 	void DX12Device::DestroyShader(DX12Shader* shader)
 	{
 		VAST_ASSERTF(shader, "Attempted to destroy an empty shader.");
-		DX12SafeRelease(shader->shaderBlob);
+		DX12SafeRelease(shader->blob);
+		DX12SafeRelease(shader->reflection);
 	}
 
 	void DX12Device::DestroyPipeline(DX12Pipeline* pipeline)
 	{
 		VAST_ASSERTF(pipeline, "Attempted to destroy an empty pipeline.");
-		DX12SafeRelease(pipeline->m_RootSignature);
-		DX12SafeRelease(pipeline->m_PipelineState);
+		DX12SafeRelease(pipeline->rootSignature);
+		DX12SafeRelease(pipeline->pipelineState);
 	}
 
 	ID3D12Device5* DX12Device::GetDevice() const

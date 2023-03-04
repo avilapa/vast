@@ -129,8 +129,8 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline& pipeline)
 	{
-		m_CommandList->SetPipelineState(pipeline.m_PipelineState);
-		m_CommandList->SetGraphicsRootSignature(pipeline.m_RootSignature);
+		m_CommandList->SetPipelineState(pipeline.pipelineState);
+		m_CommandList->SetGraphicsRootSignature(pipeline.rootSignature);
 
 		m_CurrentPipeline = &pipeline;
 	}
@@ -156,7 +156,7 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetPipelineResources(uint32 spaceId, DX12Buffer& cbv)
 	{
-		// TODO
+		(void)spaceId; // TODO
 		m_CommandList->SetGraphicsRootConstantBufferView(0, cbv.gpuAddress);
 	}
 
