@@ -27,9 +27,11 @@ namespace vast::gfx
 		void BeginFrame() override;
 		void EndFrame() override;
 
-		void BeginRenderPass() override;
-		void BeginRenderPass(const TextureHandle& h) override;
+		void SetRenderTarget(const TextureHandle& h) override;
+		void BeginRenderPass(const PipelineHandle& h, const BufferHandle& cbvHandle) override; // TODO TEMP: cbv
 		void EndRenderPass() override;
+
+		void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) override;
 
 		TextureHandle CreateTexture(const TextureDesc& desc) override;
 		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
@@ -48,8 +50,6 @@ namespace vast::gfx
 		void SignalEndOfFrame(const QueueType& type);
 		void WaitForIdle();
 
-		void BeginRenderPassInternal();
-
 		void OnWindowResizeEvent(WindowResizeEvent& event);
 
 		void ProcessDestructions(uint32 frameId);
@@ -66,7 +66,7 @@ namespace vast::gfx
 		Ptr<ResourceHandlePool<Pipeline, DX12Pipeline, NUM_PIPELINES>> m_Pipelines;
 
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
-		Array<Vector<BufferHandle>,  NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
+		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
 		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
 
 		DX12Texture* m_CurrentRT;

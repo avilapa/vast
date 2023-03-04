@@ -32,9 +32,11 @@ namespace vast::gfx
 		virtual void EndFrame() = 0;
 
 		// TODO: Clear flags
-		virtual void BeginRenderPass() = 0;
-		virtual void BeginRenderPass(const TextureHandle& h) = 0;
+		virtual void SetRenderTarget(const TextureHandle& h) = 0;
+		virtual void BeginRenderPass(const PipelineHandle& h, const BufferHandle& cbvHandle) = 0; // TODO TEMP: cbv
 		virtual void EndRenderPass() = 0;
+
+		virtual void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) = 0;
 
 		virtual TextureHandle CreateTexture(const TextureDesc& desc) = 0;
 		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) = 0;

@@ -39,10 +39,21 @@ namespace vast::gfx
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
 
+		void SetPipeline(DX12Pipeline& pipeline);
+		void SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds);
+		void SetPipelineResources(uint32 spaceId, DX12Buffer& cbv); // TODO TEMP: cbv
+
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 
 		void ClearRenderTarget(const DX12Texture& rt, float4 color);
 		void ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil);
+
+		void DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0);
+		void Draw(uint32 vtxCount, uint32 vtxStartLocation = 0);
+		void DrawFullscreenTriangle();
+
+	private:
+		DX12Pipeline* m_CurrentPipeline;
 	};
 
 }

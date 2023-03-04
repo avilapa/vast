@@ -60,7 +60,6 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 
 		m_PipelineHandle = ctx.CreatePipeline(pipelineDesc);
 	}
-
 }
 
 Dev::~Dev()
@@ -79,7 +78,10 @@ void Dev::OnUpdate()
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
 	ctx.BeginFrame();
-	ctx.BeginRenderPass();
+	ctx.BeginRenderPass(m_PipelineHandle, m_TriangleCBVHandle);
+	{
+		ctx.Draw(3);
+	}
 	ctx.EndRenderPass();
 	ctx.EndFrame();
 }

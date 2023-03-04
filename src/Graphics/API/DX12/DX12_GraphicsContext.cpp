@@ -123,37 +123,58 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12GraphicsContext::BeginRenderPass()
-	{
-		m_CurrentRT = &m_SwapChain->GetCurrentBackBuffer();
-		BeginRenderPassInternal();
-	}
-
-	void DX12GraphicsContext::BeginRenderPass(const TextureHandle& h)
+	void DX12GraphicsContext::SetRenderTarget(const TextureHandle& h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_CurrentRT = m_Textures->LookupResource(h);
-
-		BeginRenderPassInternal();
 	}
 
-	void DX12GraphicsContext::BeginRenderPassInternal()
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle& h, const BufferHandle& cbvHandle) // TODO TEMP: cbv
 	{
+		VAST_ASSERT(h.IsValid());
+
+		if (!m_CurrentRT)
+		{
+			m_CurrentRT = &m_SwapChain->GetCurrentBackBuffer();
+		}
+
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_GraphicsCommandList->FlushBarriers();
-		
+
 		if (true) // TODO: Clear flags
 		{
 			float4 color = float4(0.6, 0.2, 0.9, 1.0);
 			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT, color);
 		}
+
+		auto pipeline = m_Pipelines->LookupResource(h);
+		VAST_ASSERT(pipeline);
+
+		m_GraphicsCommandList->SetPipeline(*pipeline);
+		m_GraphicsCommandList->SetRenderTargets(&m_CurrentRT, 1, nullptr);
+
+		auto cbv = m_Buffers->LookupResource(cbvHandle);
+		if (cbv)
+		{
+			m_GraphicsCommandList->SetPipelineResources(0, *cbv);
+		}
+
+		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
+
 	}
 
 	void DX12GraphicsContext::EndRenderPass()
 	{
-		VAST_ASSERT(m_CurrentRT);
+		VAST_ASSERTF(m_CurrentRT, "EndRenderPass called without matching BeginRenderPass call.");
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
+
+		m_CurrentRT = nullptr; //////////////// TODO ?
+	}
+
+	void DX12GraphicsContext::Draw(const uint32 vtxCount, const uint32 vtxStartLocation /* = 0 */)
+	{
+		m_GraphicsCommandList->Draw(vtxCount, vtxStartLocation);
 	}
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc)

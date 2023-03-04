@@ -127,6 +127,39 @@ namespace vast::gfx
 	{
 	}
 
+	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline& pipeline)
+	{
+		m_CommandList->SetPipelineState(pipeline.m_PipelineState);
+		m_CommandList->SetGraphicsRootSignature(pipeline.m_RootSignature);
+
+		m_CurrentPipeline = &pipeline;
+	}
+
+	void DX12GraphicsCommandList::SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds)
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE rtHandles[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+		D3D12_CPU_DESCRIPTOR_HANDLE dsHandle{ 0 };
+
+		for (uint32 i = 0; i < count; ++i)
+		{
+			VAST_ASSERTF(rt[i], "Attempted to bind NULL render target");
+			rtHandles[i] = rt[i]->rtv.cpuHandle;
+		}
+
+		if (ds)
+		{
+			dsHandle = ds->dsv.cpuHandle;
+		}
+
+		m_CommandList->OMSetRenderTargets(count, rtHandles, false, dsHandle.ptr != 0 ? &dsHandle : nullptr);
+	}
+
+	void DX12GraphicsCommandList::SetPipelineResources(uint32 spaceId, DX12Buffer& cbv)
+	{
+		// TODO
+		m_CommandList->SetGraphicsRootConstantBufferView(0, cbv.gpuAddress);
+	}
+
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -162,6 +195,23 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 
 		m_CommandList->ClearDepthStencilView(dst.dsv.cpuHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+	}
+
+	void DX12GraphicsCommandList::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation, uint32 instStartLocation)
+	{
+		m_CommandList->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
+	}
+
+	void DX12GraphicsCommandList::Draw(uint32 vtxCount, uint32 vtxStartLocation)
+	{
+		DrawInstanced(vtxCount, 1, vtxStartLocation, 0);
+	}
+
+	void DX12GraphicsCommandList::DrawFullscreenTriangle()
+	{
+		m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		m_CommandList->IASetIndexBuffer(nullptr);
+		Draw(3);
 	}
 
 }
