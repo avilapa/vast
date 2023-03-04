@@ -5,6 +5,8 @@
 
 #include "dx12/DirectXAgilitySDK/include/d3d12.h"
 
+#include <unordered_map>
+
 namespace D3D12MA
 {
 	class Allocation;
@@ -97,6 +99,7 @@ namespace vast::gfx
 	{
 		ID3D12PipelineState* pipelineState = nullptr;
 		ID3D12RootSignature* rootSignature = nullptr;
+		std::unordered_map<std::string, uint32> resourceProxys;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //

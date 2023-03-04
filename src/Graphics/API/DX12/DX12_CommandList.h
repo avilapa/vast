@@ -39,9 +39,9 @@ namespace vast::gfx
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
 
-		void SetPipeline(DX12Pipeline& pipeline);
+		void SetPipeline(DX12Pipeline* pipeline);
 		void SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds);
-		void SetPipelineResources(uint32 spaceId, DX12Buffer& cbv); // TODO TEMP: cbv
+		void SetShaderResource(const DX12Buffer& cbv, const std::string& shaderResourceName);
 
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 

@@ -406,7 +406,7 @@ namespace vast::gfx
 
 			if (sibDesc.Type == D3D_SIT_CBUFFER)
 			{
-				// TODO: Could identify here parameter num and bind it to parameter name using sibDesc.Name
+				pipeline->resourceProxys[sibDesc.Name] = static_cast<uint32>(rootParameters.size());
 				ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = vs->reflection->GetConstantBufferByIndex(i);
 				D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
 				shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
@@ -438,6 +438,9 @@ namespace vast::gfx
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
 		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
+
+		DX12SafeRelease(rootSignatureBlob);
+		DX12SafeRelease(errorBlob);
 
 		if (vs)
 		{

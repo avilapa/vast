@@ -77,8 +77,10 @@ void Dev::OnUpdate()
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
 	ctx.BeginFrame();
-	ctx.BeginRenderPass(m_PipelineHandle, m_TriangleCBVHandle);
+	ctx.BeginRenderPass(m_PipelineHandle);
 	{
+		// TODO: Create a ShaderResourceProxy class to preload these.
+		ctx.SetShaderResource(m_TriangleCBVHandle, "ObjectConstantBuffer");
 		ctx.Draw(3);
 	}
 	ctx.EndRenderPass();

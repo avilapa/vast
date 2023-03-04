@@ -28,7 +28,8 @@ namespace vast::gfx
 		void EndFrame() override;
 
 		void SetRenderTarget(const TextureHandle& h) override;
-		void BeginRenderPass(const PipelineHandle& h, const BufferHandle& cbvHandle) override; // TODO TEMP: cbv
+		void SetShaderResource(const BufferHandle& h, const std::string& shaderResourceName) override;
+		void BeginRenderPass(const PipelineHandle& h) override;
 		void EndRenderPass() override;
 
 		void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) override;

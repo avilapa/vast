@@ -124,15 +124,18 @@ namespace vast::gfx
 
 	DX12GraphicsCommandList::DX12GraphicsCommandList(DX12Device& device)
 		: DX12CommandList(device, D3D12_COMMAND_LIST_TYPE_DIRECT)
+		, m_CurrentPipeline(nullptr)
 	{
 	}
 
-	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline& pipeline)
+	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline* pipeline)
 	{
-		m_CommandList->SetPipelineState(pipeline.pipelineState);
-		m_CommandList->SetGraphicsRootSignature(pipeline.rootSignature);
-
-		m_CurrentPipeline = &pipeline;
+		if (pipeline)
+		{
+			m_CommandList->SetPipelineState(pipeline->pipelineState);
+			m_CommandList->SetGraphicsRootSignature(pipeline->rootSignature);
+		}
+		m_CurrentPipeline = pipeline;
 	}
 
 	void DX12GraphicsCommandList::SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds)
@@ -154,10 +157,10 @@ namespace vast::gfx
 		m_CommandList->OMSetRenderTargets(count, rtHandles, false, dsHandle.ptr != 0 ? &dsHandle : nullptr);
 	}
 
-	void DX12GraphicsCommandList::SetPipelineResources(uint32 spaceId, DX12Buffer& cbv)
+	void DX12GraphicsCommandList::SetShaderResource(const DX12Buffer& cbv, const std::string& shaderResourceName)
 	{
-		(void)spaceId; // TODO
-		m_CommandList->SetGraphicsRootConstantBufferView(0, cbv.gpuAddress);
+		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind shader resource outside of a render pass.");
+		m_CommandList->SetGraphicsRootConstantBufferView(m_CurrentPipeline->resourceProxys[shaderResourceName], cbv.gpuAddress);
 	}
 
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)

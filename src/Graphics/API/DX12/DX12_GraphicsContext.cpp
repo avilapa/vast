@@ -96,12 +96,12 @@ namespace vast::gfx
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
-	void DX12GraphicsContext::SubmitCommandList(DX12CommandList& ctx)
+	void DX12GraphicsContext::SubmitCommandList(DX12CommandList& cmdList)
 	{
-		switch (ctx.GetCommandType())
+		switch (cmdList.GetCommandType())
 		{
 		case D3D12_COMMAND_LIST_TYPE_DIRECT:
-			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(ctx.GetCommandList());
+			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
 		default:
 			VAST_ASSERTF(0, "Unsupported context submit type.");
@@ -129,7 +129,15 @@ namespace vast::gfx
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle& h, const BufferHandle& cbvHandle) // TODO TEMP: cbv
+	void DX12GraphicsContext::SetShaderResource(const BufferHandle& h, const std::string& shaderResourceName)
+	{
+		VAST_ASSERT(h.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		m_GraphicsCommandList->SetShaderResource(*buf, shaderResourceName);
+	}
+
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle& h)
 	{
 		VAST_ASSERT(h.IsValid());
 
@@ -150,17 +158,10 @@ namespace vast::gfx
 		auto pipeline = m_Pipelines->LookupResource(h);
 		VAST_ASSERT(pipeline);
 
-		m_GraphicsCommandList->SetPipeline(*pipeline);
+		m_GraphicsCommandList->SetPipeline(pipeline);
 		m_GraphicsCommandList->SetRenderTargets(&m_CurrentRT, 1, nullptr);
 
-		auto cbv = m_Buffers->LookupResource(cbvHandle);
-		if (cbv)
-		{
-			m_GraphicsCommandList->SetPipelineResources(0, *cbv);
-		}
-
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
-
 	}
 
 	void DX12GraphicsContext::EndRenderPass()
@@ -169,6 +170,7 @@ namespace vast::gfx
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
 
+		m_GraphicsCommandList->SetPipeline(nullptr);
 		m_CurrentRT = nullptr;
 	}
 
