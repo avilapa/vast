@@ -395,30 +395,46 @@ namespace vast::gfx
 		// Create Root Signature
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
 		
-		D3D12_SHADER_DESC shaderDesc{};
-		vs->reflection->GetDesc(&shaderDesc); // TODO: This doesn't take into account the pixel shader!
-
-		// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
-		for (uint32 i = 0; i < shaderDesc.BoundResources; ++i)
+		Array<DX12Shader*, 2> shaders = { vs, ps };
+		for (auto& shader : shaders)
 		{
-			D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
-			DX12Check(vs->reflection->GetResourceBindingDesc(i, &sibDesc));
-
-			if (sibDesc.Type == D3D_SIT_CBUFFER)
+			if (shader)
 			{
-				pipeline->resourceProxys[sibDesc.Name] = static_cast<uint32>(rootParameters.size());
-				ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = vs->reflection->GetConstantBufferByIndex(i);
-				D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
-				shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
+				D3D12_SHADER_DESC shaderDesc{};
+				VAST_ASSERTF(shader->reflection, "Shader reflection data not found.");
+				shader->reflection->GetDesc(&shaderDesc);
 
-				D3D12_ROOT_PARAMETER1 rootParameter = {};
-				rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-				rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-				rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
-				rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
-				rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
+				// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
+				for (uint32 i = 0; i < shaderDesc.BoundResources; ++i)
+				{
+					D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
+					DX12Check(shader->reflection->GetResourceBindingDesc(i, &sibDesc));
 
-				rootParameters.push_back(rootParameter);
+					if (pipeline->resourceProxys.find(sibDesc.Name) != pipeline->resourceProxys.end())
+					{
+						continue; // Check if the key has already been registered.
+					}
+					else
+					{
+						pipeline->resourceProxys[sibDesc.Name] = static_cast<uint32>(rootParameters.size());
+					}
+
+					if (sibDesc.Type == D3D_SIT_CBUFFER)
+					{
+						ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = shader->reflection->GetConstantBufferByIndex(i);
+						D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
+						shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
+
+						D3D12_ROOT_PARAMETER1 rootParameter = {};
+						rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+						rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+						rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
+						rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
+						rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
+
+						rootParameters.push_back(rootParameter);
+					}
+				}
 			}
 		}
 
@@ -438,9 +454,9 @@ namespace vast::gfx
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
 		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
-
 		DX12SafeRelease(rootSignatureBlob);
 		DX12SafeRelease(errorBlob);
+
 
 		if (vs)
 		{
