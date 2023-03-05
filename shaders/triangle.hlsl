@@ -1,6 +1,6 @@
 #include "shaders_shared.h"
 
-ConstantBuffer<TriangleCBV> ObjectConstantBuffer : register(b0, space0);
+ConstantBuffer<TriangleCBV> ObjectConstantBuffer : register(b0, PerObjectSpace);
 
 struct VertexOutput
 {

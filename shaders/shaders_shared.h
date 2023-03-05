@@ -1,6 +1,8 @@
 #ifndef __SHARED_HLSL__
 #define __SHARED_HLSL__
 
+#define PerObjectSpace space0
+
 #if defined(__cplusplus)
 using namespace vast;
 #else

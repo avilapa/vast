@@ -18,4 +18,7 @@ private:
 	gfx::BufferHandle m_VertexBufferHandle;
 	gfx::BufferHandle m_TriangleCBVHandle;
 	gfx::PipelineHandle m_PipelineHandle;
+
+	gfx::ShaderHandle m_ImguiShaderHandles[2];
+
 };

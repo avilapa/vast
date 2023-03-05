@@ -11,12 +11,12 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
  	m_GraphicsContext = gfx::GraphicsContext::Create();
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
+	// Triangle
 	{
 		auto vsDesc = gfx::ShaderDesc::Builder()
 			.Type(gfx::ShaderType::VERTEX)
 			.ShaderName(L"triangle.hlsl")
 			.EntryPoint(L"VS_Main");
-
 		auto psDesc = gfx::ShaderDesc::Builder()
 			.Type(gfx::ShaderType::PIXEL)
 			.ShaderName(L"triangle.hlsl")
@@ -59,6 +59,20 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 
 		m_PipelineHandle = ctx.CreatePipeline(pipelineDesc);
 	}
+
+	// Imgui
+	{
+		auto vsDesc = gfx::ShaderDesc::Builder()
+			.Type(gfx::ShaderType::VERTEX)
+			.ShaderName(L"imgui.hlsl")
+			.EntryPoint(L"VS_Main");
+		auto psDesc = gfx::ShaderDesc::Builder()
+			.Type(gfx::ShaderType::PIXEL)
+			.ShaderName(L"imgui.hlsl")
+			.EntryPoint(L"PS_Main");
+		m_ImguiShaderHandles[0] = ctx.CreateShader(vsDesc);
+		m_ImguiShaderHandles[1] = ctx.CreateShader(psDesc);
+	}
 }
 
 Dev::~Dev()
@@ -70,6 +84,10 @@ Dev::~Dev()
 	ctx.DestroyBuffer(m_VertexBufferHandle);
 	ctx.DestroyBuffer(m_TriangleCBVHandle);
 	ctx.DestroyPipeline(m_PipelineHandle);
+
+	ctx.DestroyShader(m_ImguiShaderHandles[0]);
+	ctx.DestroyShader(m_ImguiShaderHandles[1]);
+
 }
 
 void Dev::OnUpdate()
