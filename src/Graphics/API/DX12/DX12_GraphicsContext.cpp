@@ -131,13 +131,14 @@ namespace vast::gfx
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
-	void DX12GraphicsContext::SetShaderResource(const BufferHandle& h, const std::string& shaderResourceName)
+	void DX12GraphicsContext::SetShaderResource(const BufferHandle& h, const ShaderResourceProxy& shaderResourceProxy)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(shaderResourceProxy.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetShaderResource(*buf, shaderResourceName);
+		m_GraphicsCommandList->SetShaderResource(*buf, shaderResourceProxy.idx);
 	}
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle& h)
@@ -252,6 +253,17 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
+	}
+
+	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName)
+	{
+		VAST_ASSERT(h.IsValid());
+		auto pipeline = m_Pipelines->LookupResource(h);
+		if (pipeline && pipeline->resourceProxyTable.IsRegistered(shaderResourceName))
+		{
+			return pipeline->resourceProxyTable.LookupShaderResource(shaderResourceName);
+		}
+		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)

@@ -159,11 +159,11 @@ namespace vast::gfx
 		m_CommandList->OMSetRenderTargets(count, rtHandles, false, dsHandle.ptr != 0 ? &dsHandle : nullptr);
 	}
 
-	void DX12GraphicsCommandList::SetShaderResource(const DX12Buffer& cbv, const std::string& shaderResourceName)
+	void DX12GraphicsCommandList::SetShaderResource(const DX12Buffer& cbv, uint32 slotIndex)
 	{
 		VAST_PROFILE_FUNCTION();
-		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind shader resource outside of a render pass.");
-		m_CommandList->SetGraphicsRootConstantBufferView(m_CurrentPipeline->resourceProxyTable[shaderResourceName], cbv.gpuAddress);
+		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind shader resource before setting a render pipeline."); // TODO: What about global/per frame resources
+		m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, cbv.gpuAddress);
 	}
 
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)

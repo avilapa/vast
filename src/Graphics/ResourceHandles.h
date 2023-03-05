@@ -130,7 +130,7 @@ namespace vast::gfx
 			{
 				
 				HANDLE h = AllocHandleFromSlot(slotIdx);
-				VAST_TRACE("[resource] Acquired new {} handle with index {}, gen {} ({}/{}).", T::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
+				VAST_INFO("[resource] Acquired new {} handle with index {}, gen {} ({}/{}).", T::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
 				return h;
 			}
 			else
@@ -175,7 +175,7 @@ namespace vast::gfx
 		void FreeHandle(const HANDLE& h)
 		{
 			m_FreeSlotsQueue[--m_UsedSlots] = GetSlotIndexFromHandle(h);
-			VAST_TRACE("[resource] Freed {} handle with index {}, gen {} ({}/{}).", T::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
+			VAST_INFO("[resource] Freed {} handle with index {}, gen {} ({}/{}).", T::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, numResources);
 		}
 
 		static const uint32 kInvalidSlotIndex = UINT32_MAX;

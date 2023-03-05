@@ -21,8 +21,8 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 			.Type(gfx::ShaderType::PIXEL)
 			.ShaderName(L"triangle.hlsl")
 			.EntryPoint(L"PS_Main");
-		m_TriangleShaderHandles[0] = ctx.CreateShader(vsDesc);
-		m_TriangleShaderHandles[1] = ctx.CreateShader(psDesc);
+		m_TriangleShaders[0] = ctx.CreateShader(vsDesc);
+		m_TriangleShaders[1] = ctx.CreateShader(psDesc);
 	}
 	{
 		// The vertex layout struct is declared in the shared.h file.
@@ -38,13 +38,13 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 			.Size(sizeof(vertexData)).Stride(sizeof(vertexData[0]))
 			.ViewFlags(gfx::BufferViewFlags::SRV)
 			.IsRawAccess(true);
-		m_VertexBufferHandle = ctx.CreateBuffer(bufDesc, &vertexData, sizeof(vertexData));
+		m_TriangleVtxBuf = ctx.CreateBuffer(bufDesc, &vertexData, sizeof(vertexData));
 	}
 	{
 		// The constant buffer contains the index of the vertex buffer in the descriptor heap.
-		TriangleCBV cbvData = { ctx.GetBindlessHeapIndex(m_VertexBufferHandle) };
+		TriangleCBV cbvData = { ctx.GetBindlessHeapIndex(m_TriangleVtxBuf) };
 
-		m_TriangleCBVHandle = ctx.CreateBuffer(gfx::BufferDesc::Builder()
+		m_TriangleCbv = ctx.CreateBuffer(gfx::BufferDesc::Builder()
 			.Size(sizeof(TriangleCBV))
 			.ViewFlags(gfx::BufferViewFlags::CBV)
 			.IsRawAccess(true), 
@@ -53,11 +53,14 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	{
 		// TODO: Can we defer binding RT layout to a PSO until it's used for rendering? (e.g. Separate RenderPassLayout object).
 		auto pipelineDesc = gfx::PipelineDesc::Builder()
-			.VS(m_TriangleShaderHandles[0])
-			.PS(m_TriangleShaderHandles[1])
+			.VS(m_TriangleShaders[0])
+			.PS(m_TriangleShaders[1])
 			.SetRenderTarget(gfx::Format::RGBA8_UNORM_SRGB); // TODO: This should internally query the backbuffer format.
 
-		m_PipelineHandle = ctx.CreatePipeline(pipelineDesc);
+		m_TrianglePipeline = ctx.CreatePipeline(pipelineDesc);
+
+		m_TriangleCbvProxy = ctx.LookupShaderResource(m_TrianglePipeline, "ObjectConstantBuffer");
+
 	}
 
 	// Imgui
@@ -70,8 +73,8 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 			.Type(gfx::ShaderType::PIXEL)
 			.ShaderName(L"imgui.hlsl")
 			.EntryPoint(L"PS_Main");
-		m_ImguiShaderHandles[0] = ctx.CreateShader(vsDesc);
-		m_ImguiShaderHandles[1] = ctx.CreateShader(psDesc);
+		m_ImguiShaders[0] = ctx.CreateShader(vsDesc);
+		m_ImguiShaders[1] = ctx.CreateShader(psDesc);
 	}
 }
 
@@ -79,14 +82,14 @@ Dev::~Dev()
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	ctx.DestroyShader(m_TriangleShaderHandles[0]);
-	ctx.DestroyShader(m_TriangleShaderHandles[1]);
-	ctx.DestroyBuffer(m_VertexBufferHandle);
-	ctx.DestroyBuffer(m_TriangleCBVHandle);
-	ctx.DestroyPipeline(m_PipelineHandle);
+	ctx.DestroyShader(m_TriangleShaders[0]);
+	ctx.DestroyShader(m_TriangleShaders[1]);
+	ctx.DestroyBuffer(m_TriangleVtxBuf);
+	ctx.DestroyBuffer(m_TriangleCbv);
+	ctx.DestroyPipeline(m_TrianglePipeline);
 
-	ctx.DestroyShader(m_ImguiShaderHandles[0]);
-	ctx.DestroyShader(m_ImguiShaderHandles[1]);
+	ctx.DestroyShader(m_ImguiShaders[0]);
+	ctx.DestroyShader(m_ImguiShaders[1]);
 
 }
 
@@ -95,10 +98,9 @@ void Dev::OnUpdate()
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
 	ctx.BeginFrame();
-	ctx.BeginRenderPass(m_PipelineHandle);
+	ctx.BeginRenderPass(m_TrianglePipeline);
 	{
-		// TODO: Create a ShaderResourceProxy class to preload these.
-		ctx.SetShaderResource(m_TriangleCBVHandle, "ObjectConstantBuffer");
+		ctx.SetShaderResource(m_TriangleCbv, m_TriangleCbvProxy);
 		ctx.Draw(3);
 	}
 	ctx.EndRenderPass();

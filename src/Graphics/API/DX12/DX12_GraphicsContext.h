@@ -28,7 +28,7 @@ namespace vast::gfx
 		void EndFrame() override;
 
 		void SetRenderTarget(const TextureHandle& h) override;
-		void SetShaderResource(const BufferHandle& h, const std::string& shaderResourceName) override;
+		void SetShaderResource(const BufferHandle& h, const ShaderResourceProxy& shaderResourceProxy) override;
 		void BeginRenderPass(const PipelineHandle& h) override;
 		void EndRenderPass() override;
 
@@ -43,6 +43,8 @@ namespace vast::gfx
 		void DestroyBuffer(const BufferHandle& h) override;
 		void DestroyShader(const ShaderHandle& h) override;
 		void DestroyPipeline(const PipelineHandle& h) override;
+
+		ShaderResourceProxy LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName) override;
 
 		uint32 GetBindlessHeapIndex(const BufferHandle& h) override;
 

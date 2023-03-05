@@ -4,6 +4,7 @@
 #include "Core/Types.h"
 #include "Graphics/Graphics.h"
 #include "Graphics/ResourceHandles.h"
+#include "Graphics/ShaderResourceProxy.h"
 
 namespace vast::gfx
 {
@@ -33,7 +34,7 @@ namespace vast::gfx
 
 		// TODO: Clear flags
 		virtual void SetRenderTarget(const TextureHandle& h) = 0;
-		virtual void SetShaderResource(const BufferHandle& h, const std::string& shaderResourceName) = 0;
+		virtual void SetShaderResource(const BufferHandle& h, const ShaderResourceProxy& shaderResourceProxy) = 0;
 		virtual void BeginRenderPass(const PipelineHandle& h) = 0;
 		virtual void EndRenderPass() = 0;
 
@@ -48,6 +49,8 @@ namespace vast::gfx
 		virtual void DestroyBuffer(const BufferHandle& h) = 0;
 		virtual void DestroyShader(const ShaderHandle& h) = 0;
 		virtual void DestroyPipeline(const PipelineHandle& h) = 0;
+
+		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName) = 0;
 
 		virtual uint32 GetBindlessHeapIndex(const BufferHandle& h) = 0;
 	};

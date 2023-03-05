@@ -387,7 +387,7 @@ namespace vast::gfx
 		shader->reflection = shaderReflection;
 	}
 
-	ID3D12RootSignature* DX12Device::CreateRootSignatureFromShaderReflection(Array<DX12Shader*, 2> shaders, ResourceProxyTable& resourceProxyTable)
+	ID3D12RootSignature* DX12Device::CreateRootSignatureFromShaderReflection(Array<DX12Shader*, 2> shaders, ShaderResourceProxyTable& resourceProxyTable)
 	{
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
 		for (auto shader : shaders)
@@ -395,24 +395,23 @@ namespace vast::gfx
 			if (!shader)
 				continue;
 
-			ID3D12ShaderReflection* refl = shader->reflection;
 			D3D12_SHADER_DESC shaderDesc{};
-			refl->GetDesc(&shaderDesc);
+			shader->reflection->GetDesc(&shaderDesc);
 
 			// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
 			for (uint32 rscIdx = 0; rscIdx < shaderDesc.BoundResources; ++rscIdx)
 			{
 				D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
-				DX12Check(refl->GetResourceBindingDesc(rscIdx, &sibDesc));
+				DX12Check(shader->reflection->GetResourceBindingDesc(rscIdx, &sibDesc));
 
-				if (resourceProxyTable.find(sibDesc.Name) != resourceProxyTable.end())
-					continue; // Check if the key has already been registered.
+				if (resourceProxyTable.IsRegistered(sibDesc.Name))
+					continue;
 
-				resourceProxyTable[sibDesc.Name] = static_cast<uint32>(rootParameters.size());
+				resourceProxyTable.Register(sibDesc.Name, ShaderResourceProxy{ static_cast<uint32>(rootParameters.size()) });
 
 				if (sibDesc.Type == D3D_SIT_CBUFFER)
 				{
-					ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = refl->GetConstantBufferByIndex(rscIdx);
+					ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = shader->reflection->GetConstantBufferByIndex(rscIdx);
 					D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
 					shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
 

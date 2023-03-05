@@ -2,10 +2,9 @@
 
 #include "Graphics/Graphics.h"
 #include "Graphics/Resources.h"
+#include "Graphics/ShaderResourceProxy.h"
 
 #include "dx12/DirectXAgilitySDK/include/d3d12.h"
-
-#include <unordered_map>
 
 namespace D3D12MA
 {
@@ -95,13 +94,11 @@ namespace vast::gfx
 		ID3D12ShaderReflection* reflection = nullptr;
 	};
 
-	using ResourceProxyTable = std::unordered_map<std::string, uint32>;
-
 	struct DX12Pipeline : public Pipeline
 	{
 		ID3D12PipelineState* pipelineState = nullptr;
 		ID3D12RootSignature* rootSignature = nullptr;
-		ResourceProxyTable resourceProxyTable;
+		ShaderResourceProxyTable resourceProxyTable;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //

@@ -41,7 +41,7 @@ namespace vast::gfx
 	private:
 		void CopySRVHandleToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex);
 
-		ID3D12RootSignature* CreateRootSignatureFromShaderReflection(Array<DX12Shader*, 2> shaders, ResourceProxyTable& resourceProxyTable);
+		ID3D12RootSignature* CreateRootSignatureFromShaderReflection(Array<DX12Shader*, 2> shaders, ShaderResourceProxyTable& resourceProxyTable);
 
 		ID3D12Device5* m_Device;
 		IDXGIFactory7* m_DXGIFactory;
