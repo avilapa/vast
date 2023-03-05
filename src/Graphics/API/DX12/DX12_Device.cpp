@@ -387,53 +387,43 @@ namespace vast::gfx
 		shader->reflection = shaderReflection;
 	}
 
-	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps)
+	ID3D12RootSignature* DX12Device::CreateRootSignatureFromShaderReflection(Array<DX12Shader*, 2> shaders, ResourceProxyTable& resourceProxyTable)
 	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(pipeline);
-
-		// Create Root Signature
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
-		
-		Array<DX12Shader*, 2> shaders = { vs, ps };
-		for (auto& shader : shaders)
+		for (auto shader : shaders)
 		{
-			if (shader)
+			if (!shader)
+				continue;
+
+			ID3D12ShaderReflection* refl = shader->reflection;
+			D3D12_SHADER_DESC shaderDesc{};
+			refl->GetDesc(&shaderDesc);
+
+			// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
+			for (uint32 rscIdx = 0; rscIdx < shaderDesc.BoundResources; ++rscIdx)
 			{
-				D3D12_SHADER_DESC shaderDesc{};
-				VAST_ASSERTF(shader->reflection, "Shader reflection data not found.");
-				shader->reflection->GetDesc(&shaderDesc);
+				D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
+				DX12Check(refl->GetResourceBindingDesc(rscIdx, &sibDesc));
 
-				// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
-				for (uint32 i = 0; i < shaderDesc.BoundResources; ++i)
+				if (resourceProxyTable.find(sibDesc.Name) != resourceProxyTable.end())
+					continue; // Check if the key has already been registered.
+
+				resourceProxyTable[sibDesc.Name] = static_cast<uint32>(rootParameters.size());
+
+				if (sibDesc.Type == D3D_SIT_CBUFFER)
 				{
-					D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
-					DX12Check(shader->reflection->GetResourceBindingDesc(i, &sibDesc));
+					ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = refl->GetConstantBufferByIndex(rscIdx);
+					D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
+					shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
 
-					if (pipeline->resourceProxys.find(sibDesc.Name) != pipeline->resourceProxys.end())
-					{
-						continue; // Check if the key has already been registered.
-					}
-					else
-					{
-						pipeline->resourceProxys[sibDesc.Name] = static_cast<uint32>(rootParameters.size());
-					}
+					D3D12_ROOT_PARAMETER1 rootParameter = {};
+					rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+					rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+					rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
+					rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
+					rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
 
-					if (sibDesc.Type == D3D_SIT_CBUFFER)
-					{
-						ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = shader->reflection->GetConstantBufferByIndex(i);
-						D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
-						shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
-
-						D3D12_ROOT_PARAMETER1 rootParameter = {};
-						rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-						rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-						rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
-						rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
-						rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
-
-						rootParameters.push_back(rootParameter);
-					}
+					rootParameters.push_back(rootParameter);
 				}
 			}
 		}
@@ -449,14 +439,22 @@ namespace vast::gfx
 		ID3DBlob* rootSignatureBlob = nullptr;
 		ID3DBlob* errorBlob = nullptr;
 		DX12Check(D3D12SerializeVersionedRootSignature(&vrsDesc, &rootSignatureBlob, &errorBlob));
-
-		// Create Graphics Pipeline State
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
-
-		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
+		ID3D12RootSignature* rootSignature = nullptr;
+		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 		DX12SafeRelease(rootSignatureBlob);
 		DX12SafeRelease(errorBlob);
 
+		return rootSignature;
+	}
+
+	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(pipeline);
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
+
+		psDesc.pRootSignature = CreateRootSignatureFromShaderReflection({ vs, ps }, pipeline->resourceProxyTable);
 
 		if (vs)
 		{

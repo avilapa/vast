@@ -163,7 +163,7 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind shader resource outside of a render pass.");
-		m_CommandList->SetGraphicsRootConstantBufferView(m_CurrentPipeline->resourceProxys[shaderResourceName], cbv.gpuAddress);
+		m_CommandList->SetGraphicsRootConstantBufferView(m_CurrentPipeline->resourceProxyTable[shaderResourceName], cbv.gpuAddress);
 	}
 
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)
