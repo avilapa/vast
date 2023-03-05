@@ -75,6 +75,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginFrame()
 	{
+		VAST_PROFILE_FUNCTION();
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
 
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
@@ -89,6 +90,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndFrame()
 	{
+		VAST_PROFILE_FUNCTION();
 		SubmitCommandList(*m_GraphicsCommandList);
 
 		m_SwapChain->Present();
@@ -131,6 +133,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetShaderResource(const BufferHandle& h, const std::string& shaderResourceName)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
@@ -139,6 +142,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle& h)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
 
 		if (!m_CurrentRT)
@@ -166,6 +170,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndRenderPass()
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERTF(m_CurrentRT, "EndRenderPass called without matching BeginRenderPass call.");
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
@@ -181,6 +186,7 @@ namespace vast::gfx
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
 		auto [h, tex] = m_Textures->AcquireResource();
 		m_Device->CreateTexture(desc, tex);
@@ -189,6 +195,7 @@ namespace vast::gfx
 
 	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, size_t dataSize /*= 0*/)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
 		auto [h, buf] = m_Buffers->AcquireResource();
 		m_Device->CreateBuffer(desc, buf);
@@ -201,6 +208,7 @@ namespace vast::gfx
 	
 	ShaderHandle DX12GraphicsContext::CreateShader(const ShaderDesc& desc)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
 		auto [h, shader] = m_Shaders->AcquireResource();
 		m_Device->CreateShader(desc, shader);
@@ -209,6 +217,7 @@ namespace vast::gfx
 
 	PipelineHandle DX12GraphicsContext::CreatePipeline(const PipelineDesc& desc)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
 		auto [h, pipeline] = m_Pipelines->AcquireResource();
 		auto vs = m_Shaders->LookupResource(desc.vs);
@@ -253,6 +262,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::ProcessDestructions(uint32 frameId)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
 
 		for (auto& h : m_TexturesMarkedForDestruction[frameId])

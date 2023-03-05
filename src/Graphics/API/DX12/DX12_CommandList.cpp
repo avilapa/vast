@@ -132,6 +132,7 @@ namespace vast::gfx
 	{
 		if (pipeline)
 		{
+			VAST_PROFILE_FUNCTION();
 			m_CommandList->SetPipelineState(pipeline->pipelineState);
 			m_CommandList->SetGraphicsRootSignature(pipeline->rootSignature);
 		}
@@ -140,6 +141,7 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds)
 	{
+		VAST_PROFILE_FUNCTION();
 		D3D12_CPU_DESCRIPTOR_HANDLE rtHandles[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
 		D3D12_CPU_DESCRIPTOR_HANDLE dsHandle{ 0 };
 
@@ -159,6 +161,7 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetShaderResource(const DX12Buffer& cbv, const std::string& shaderResourceName)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind shader resource outside of a render pass.");
 		m_CommandList->SetGraphicsRootConstantBufferView(m_CurrentPipeline->resourceProxys[shaderResourceName], cbv.gpuAddress);
 	}
@@ -166,7 +169,6 @@ namespace vast::gfx
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)
 	{
 		VAST_PROFILE_FUNCTION();
-
 		D3D12_VIEWPORT viewport;
 		viewport.Width = static_cast<float>(windowSize.x);
 		viewport.Height = static_cast<float>(windowSize.y);
@@ -189,19 +191,18 @@ namespace vast::gfx
 	void DX12GraphicsCommandList::ClearRenderTarget(const DX12Texture& rt, float4 color)
 	{
 		VAST_PROFILE_FUNCTION();
-
 		m_CommandList->ClearRenderTargetView(rt.rtv.cpuHandle, (float*)&color, 0, nullptr);
 	}
 
 	void DX12GraphicsCommandList::ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil)
 	{
 		VAST_PROFILE_FUNCTION();
-
 		m_CommandList->ClearDepthStencilView(dst.dsv.cpuHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
 	}
 
 	void DX12GraphicsCommandList::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation, uint32 instStartLocation)
 	{
+		VAST_PROFILE_FUNCTION();
 		m_CommandList->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
 	}
 
@@ -212,6 +213,7 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::DrawFullscreenTriangle()
 	{
+		VAST_PROFILE_FUNCTION();
 		m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		m_CommandList->IASetIndexBuffer(nullptr);
 		Draw(3);
