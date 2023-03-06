@@ -20,19 +20,17 @@ namespace vast::gfx
 		, m_GraphicsCommandList(nullptr)
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
+		, m_Buffers(nullptr)
 		, m_Textures(nullptr)
- 		, m_Buffers(nullptr)
-		, m_Shaders(nullptr)
-		, m_TexturesMarkedForDestruction({})
 		, m_BuffersMarkedForDestruction({})
+		, m_TexturesMarkedForDestruction({})
 		, m_CurrentRT(nullptr)
 		, m_FrameId(0)
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_Textures = MakePtr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>>();
 		m_Buffers = MakePtr<ResourceHandlePool<Buffer, DX12Buffer, NUM_BUFFERS>>();
-		m_Shaders = MakePtr<ResourceHandlePool<Shader, DX12Shader, NUM_SHADERS>>();
+		m_Textures = MakePtr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>>();
 		m_Pipelines = MakePtr<ResourceHandlePool<Pipeline, DX12Pipeline, NUM_PIPELINES>>();
 
 		m_Device = MakePtr<DX12Device>();
@@ -68,9 +66,8 @@ namespace vast::gfx
 
 		m_Device = nullptr;
 
-		m_Textures = nullptr;
 		m_Buffers = nullptr;
-		m_Shaders = nullptr;
+		m_Textures = nullptr;
 	}
 
 	void DX12GraphicsContext::BeginFrame()
@@ -206,24 +203,13 @@ namespace vast::gfx
 		}
 		return h;
 	}
-	
-	ShaderHandle DX12GraphicsContext::CreateShader(const ShaderDesc& desc)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(m_Device);
-		auto [h, shader] = m_Shaders->AcquireResource();
-		m_Device->CreateShader(desc, shader);
-		return h;
-	}
 
 	PipelineHandle DX12GraphicsContext::CreatePipeline(const PipelineDesc& desc)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
 		auto [h, pipeline] = m_Pipelines->AcquireResource();
-		auto vs = m_Shaders->LookupResource(desc.vs);
-		auto ps = m_Shaders->LookupResource(desc.ps);
-		m_Device->CreatePipeline(desc, pipeline, vs, ps);
+		m_Device->CreatePipeline(desc, pipeline);
 		return h;
 	}
 
@@ -237,16 +223,6 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		m_BuffersMarkedForDestruction[m_FrameId].push_back(h);
-	}
-
-	void DX12GraphicsContext::DestroyShader(const ShaderHandle& h)
-	{
-		VAST_ASSERT(m_Device);
-		VAST_ASSERT(h.IsValid());
-		DX12Shader* shader = m_Shaders->LookupResource(h);
-		VAST_ASSERT(shader);
-		m_Device->DestroyShader(shader);
-		m_Shaders->FreeResource(h);
 	}
 
 	void DX12GraphicsContext::DestroyPipeline(const PipelineHandle& h)
@@ -316,6 +292,5 @@ namespace vast::gfx
 			WaitForIdle();
 			m_FrameId = m_SwapChain->Resize(event.m_WindowSize);
 		}
-
 	}
 }

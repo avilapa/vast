@@ -12,20 +12,20 @@ namespace D3D12MA
 
 namespace vast::gfx
 {
+	class DX12ShaderCompiler;
+
 	class DX12Device
 	{
 	public:
 		DX12Device();
 		~DX12Device();
 
-		void CreateTexture(const TextureDesc& desc, DX12Texture* tex);
-		void CreateBuffer(const BufferDesc& desc, DX12Buffer* buf);
-		void CreateShader(const ShaderDesc& desc, DX12Shader* shader);
-		void CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps);
+		void CreateBuffer(const BufferDesc& desc, DX12Buffer* outBuf);
+		void CreateTexture(const TextureDesc& desc, DX12Texture* outTex);
+		void CreatePipeline(const PipelineDesc& desc, DX12Pipeline* outPipeline);
 
-		void DestroyTexture(DX12Texture* tex);
 		void DestroyBuffer(DX12Buffer* buf);
-		void DestroyShader(DX12Shader* shader);
+		void DestroyTexture(DX12Texture* tex);
 		void DestroyPipeline(DX12Pipeline* pipeline);
 
 		ID3D12Device5* GetDevice() const;
@@ -41,11 +41,10 @@ namespace vast::gfx
 	private:
 		void CopySRVHandleToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex);
 
-		ID3D12RootSignature* CreateRootSignatureFromShaderReflection(Array<DX12Shader*, 2> shaders, ShaderResourceProxyTable& resourceProxyTable);
-
-		ID3D12Device5* m_Device;
 		IDXGIFactory7* m_DXGIFactory;
+		ID3D12Device5* m_Device;
 		D3D12MA::Allocator* m_Allocator;
+		Ptr<DX12ShaderCompiler> m_ShaderCompiler;
 
 		Ptr<DX12StagingDescriptorHeap> m_RTVStagingDescriptorHeap;
 		Ptr<DX12StagingDescriptorHeap> m_DSVStagingDescriptorHeap;

@@ -9,7 +9,6 @@ namespace vast::gfx
 		UNKNOWN,
 		BUFFER,
 		TEXTURE,
-		SHADER,
 		PIPELINE,
 		COUNT,
 	};
@@ -19,7 +18,6 @@ namespace vast::gfx
 		"Unknown",
 		"Buffer",
 		"Texture",
-		"Shader",
 		"Pipeline",
 	};
 
@@ -47,24 +45,18 @@ namespace vast::gfx
 	static constexpr ResourceType GetStaticResourceType() { return resourceType; }							\
 	static constexpr char* GetStaticResourceTypeName() { return g_ResourceTypeNames[IDX(resourceType)]; }
 
-	class Texture : public Resource<Texture>
-	{
-	public:
-		__VAST_RESOURCE_TYPE_COMMON_DECL(Texture, ResourceType::TEXTURE);
-	};
-
 	class Buffer : public Resource<Buffer>
 	{
 	public:
 		__VAST_RESOURCE_TYPE_COMMON_DECL(Buffer, ResourceType::BUFFER);
 	};
 
-	class Shader : public Resource<Shader>
+	class Texture : public Resource<Texture>
 	{
 	public:
-		__VAST_RESOURCE_TYPE_COMMON_DECL(Shader, ResourceType::SHADER);
+		__VAST_RESOURCE_TYPE_COMMON_DECL(Texture, ResourceType::TEXTURE);
 	};
-	
+
 	class Pipeline : public Resource<Pipeline>
 	{
 	public:

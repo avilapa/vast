@@ -1,5 +1,6 @@
 #include "vastpch.h"
 #include "Graphics/API/DX12/DX12_Device.h"
+#include "Graphics/API/DX12/DX12_ShaderCompiler.h"
 #include "Graphics/API/DX12/DX12_CommandList.h"
 #include "Graphics/API/DX12/DX12_CommandQueue.h"
 
@@ -18,6 +19,8 @@ namespace vast::gfx
 	DX12Device::DX12Device()
 		: m_DXGIFactory(nullptr)
 		, m_Device(nullptr)
+		, m_Allocator(nullptr)
+		, m_ShaderCompiler(nullptr)
 		, m_RTVStagingDescriptorHeap(nullptr)
 		, m_DSVStagingDescriptorHeap(nullptr)
 		, m_SRVStagingDescriptorHeap(nullptr)
@@ -95,6 +98,11 @@ namespace vast::gfx
 			D3D12MA::CreateAllocator(&desc, &m_Allocator);
 		}
 
+		{
+			VAST_INFO("[gfx] [dx12] Creating shader compiler.");
+			m_ShaderCompiler = MakePtr<DX12ShaderCompiler>();
+		}
+
 		DX12SafeRelease(adapter);
 
 #ifdef VAST_DEBUG
@@ -159,48 +167,40 @@ namespace vast::gfx
 			m_SRVRenderPassDescriptorHeaps[i] = nullptr;
 		}
 
+		m_ShaderCompiler = nullptr;
 		DX12SafeRelease(m_Allocator);
 		DX12SafeRelease(m_Device);
 		DX12SafeRelease(m_DXGIFactory);
 	}
 
-	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* tex)
+	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* outBuf)
 	{
 		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(tex);
+		VAST_ASSERT(outBuf);
 
-		(void)desc;
-		(void)tex;
-	}
-
-	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* buf)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(buf);
-
-		buf->stride = desc.stride;
+		outBuf->stride = desc.stride;
 
 		uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
 		bool isHostVisible = ((desc.accessFlags & BufferAccessFlags::HOST_WRITABLE) == BufferAccessFlags::HOST_WRITABLE);
 
 		D3D12_RESOURCE_STATES rscState = isHostVisible ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST;
-		buf->state = rscState;
+		outBuf->state = rscState;
 
 		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
 		allocDesc.HeapType = isHostVisible ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
-		m_Allocator->CreateResource(&allocDesc, &rscDesc, rscState, nullptr, &buf->allocation, IID_PPV_ARGS(&buf->resource));
-		buf->gpuAddress = buf->resource->GetGPUVirtualAddress();
+		m_Allocator->CreateResource(&allocDesc, &rscDesc, rscState, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
+		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
 
 		if ((desc.viewFlags & BufferViewFlags::CBV) == BufferViewFlags::CBV)
 		{
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-			cbvDesc.BufferLocation = buf->gpuAddress;
+			cbvDesc.BufferLocation = outBuf->gpuAddress;
 			cbvDesc.SizeInBytes = static_cast<uint32>(rscDesc.Width);
 
-			buf->cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateConstantBufferView(&cbvDesc, buf->cbv.cpuHandle);
+			outBuf->cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateConstantBufferView(&cbvDesc, outBuf->cbv.cpuHandle);
 		}
 
 		if ((desc.viewFlags & BufferViewFlags::SRV) == BufferViewFlags::SRV)
@@ -214,13 +214,13 @@ namespace vast::gfx
 			srvDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			srvDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
 
-			buf->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateShaderResourceView(buf->resource, &srvDesc, buf->srv.cpuHandle);
+			outBuf->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateShaderResourceView(outBuf->resource, &srvDesc, outBuf->srv.cpuHandle);
 
-			buf->heapIdx = m_FreeReservedDescriptorIndices.back();
+			outBuf->heapIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
-			CopySRVHandleToReservedTable(buf->srv, buf->heapIdx);
+			CopySRVHandleToReservedTable(outBuf->srv, outBuf->heapIdx);
 		}
 
 		if ((desc.viewFlags & BufferViewFlags::UAV) == BufferViewFlags::UAV)
@@ -234,239 +234,46 @@ namespace vast::gfx
 			uavDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			uavDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
-			buf->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateUnorderedAccessView(buf->resource, nullptr, &uavDesc, buf->uav.cpuHandle);
+			outBuf->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
 		}
 
 		if (isHostVisible)
 		{
-			buf->resource->Map(0, nullptr, reinterpret_cast<void**>(&buf->data));
+			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
 		}
 	}
 
-	void DX12Device::CreateShader(const ShaderDesc& desc, DX12Shader* shader)
+	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* outTex)
 	{
 		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(shader);
+		VAST_ASSERT(outTex);
 
-		// TODO: Compiler objects can be created once per thread in advance.
-		IDxcUtils* dxcUtils = nullptr;
-		IDxcCompiler3* dxcCompiler = nullptr;
-		IDxcIncludeHandler* dxcIncludeHandler = nullptr;
-
- 		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
-		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
- 		dxcUtils->CreateDefaultIncludeHandler(&dxcIncludeHandler);
-		
- 		std::wstring sourcePath;
- 		sourcePath.append(SHADER_SOURCE_PATH);
- 		sourcePath.append(desc.shaderName);
-
- 		IDxcBlobEncoding* sourceBlobEncoding = nullptr;
-		DX12Check(dxcUtils->LoadFile(sourcePath.c_str(), nullptr, &sourceBlobEncoding));
-
-		const DxcBuffer sourceBuffer
-		{
-			sourceBlobEncoding->GetBufferPointer(),
-			sourceBlobEncoding->GetBufferSize(),
-			DXC_CP_ACP
-		};
-
-		LPCWSTR target = nullptr;
-		switch (desc.type)
-		{
-		case ShaderType::COMPUTE:
-			target = L"cs_6_6";
-			break;
-		case ShaderType::VERTEX:
-			target = L"vs_6_6";
-			break;
-		case ShaderType::PIXEL:
-			target = L"ps_6_6";
-			break;
-		default:
-			VAST_ASSERTF(0, "Shader type not supported.");
-			break;
-		}
-
-		std::vector<LPCWSTR> arguments
-		{
-			desc.shaderName.c_str(),
-			L"-E", desc.entryPoint.c_str(),
-			L"-T", target,
-			L"-I", SHADER_SOURCE_PATH,
-#ifdef VAST_DEBUG
-			DXC_ARG_DEBUG,
-#else
-			DXC_ARG_OPTIMIZATION_LEVEL3,
-#endif
-			DXC_ARG_WARNINGS_ARE_ERRORS,
-			L"-Qstrip_reflect",
-		};
-
-		IDxcResult* compiledShader = nullptr;
-		DX12Check(dxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), dxcIncludeHandler, IID_PPV_ARGS(&compiledShader)));
-
-		IDxcBlobUtf8* errors = nullptr;
-		DX12Check(compiledShader->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr));
-
-		if (errors != nullptr && errors->GetStringLength() != 0)
-		{
-			VAST_CRITICAL("Shader compilation error in:\n{}", errors->GetStringPointer());
-		}
-
-		HRESULT statusResult;
-		compiledShader->GetStatus(&statusResult);
-		if (FAILED(statusResult))
-		{
-			VAST_ASSERTF(0, "Shader compilation failed.");
-		}
-
-		
-		IDxcBlob* reflectionBlob = nullptr;
-		DX12Check(compiledShader->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr));
-
-		const DxcBuffer reflectionBuffer
-		{
-			reflectionBlob->GetBufferPointer(),
-			reflectionBlob->GetBufferSize(),
-			DXC_CP_ACP
-		};
-
-		ID3D12ShaderReflection* shaderReflection = nullptr;
-		dxcUtils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&shaderReflection));
-		
-		std::wstring dxilPath;
-		std::wstring pdbPath;
-
-		dxilPath.append(SHADER_OUTPUT_PATH);
-		dxilPath.append(desc.shaderName);
-		dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
-		dxilPath.append(L".dxil");
-
-		pdbPath = dxilPath;
-		pdbPath.append(L".pdb");
-
-		IDxcBlob* shaderBlob = nullptr;
-		compiledShader->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
-		if (shaderBlob != nullptr)
-		{
-			FILE* fp = nullptr;
-
-			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
-			// TODO: Create "compiled" folder if not found, will crash newly cloned builds from repo otherwise.
-			VAST_ASSERTF(fp, "Cannot find specified path.");
-
-			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
-			fclose(fp);
-		}
-
-#ifdef VAST_DEBUG
-		IDxcBlob* pdbBlob = nullptr;
-		DX12Check(compiledShader->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pdbBlob), nullptr));
-		{
-			FILE* fp = nullptr;
-
-			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
-			VAST_ASSERTF(fp, "Cannot find specified path.");
-
-			fwrite(pdbBlob->GetBufferPointer(), pdbBlob->GetBufferSize(), 1, fp);
-			fclose(fp);
-		}
-
-		DX12SafeRelease(pdbBlob);
-#endif
-		DX12SafeRelease(reflectionBlob);
-		DX12SafeRelease(errors);
-		DX12SafeRelease(compiledShader);
-		DX12SafeRelease(dxcIncludeHandler);
-		DX12SafeRelease(dxcCompiler);
-		DX12SafeRelease(dxcUtils);
-
-		shader->blob = shaderBlob;
-		shader->reflection = shaderReflection;
+		(void)desc;
+		(void)outTex;
 	}
 
-	ID3D12RootSignature* DX12Device::CreateRootSignatureFromShaderReflection(Array<DX12Shader*, 2> shaders, ShaderResourceProxyTable& resourceProxyTable)
-	{
-		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
-		for (auto shader : shaders)
-		{
-			if (!shader)
-				continue;
-
-			D3D12_SHADER_DESC shaderDesc{};
-			shader->reflection->GetDesc(&shaderDesc);
-
-			// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
-			for (uint32 rscIdx = 0; rscIdx < shaderDesc.BoundResources; ++rscIdx)
-			{
-				D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
-				DX12Check(shader->reflection->GetResourceBindingDesc(rscIdx, &sibDesc));
-
-				if (resourceProxyTable.IsRegistered(sibDesc.Name))
-					continue;
-
-				resourceProxyTable.Register(sibDesc.Name, ShaderResourceProxy{ static_cast<uint32>(rootParameters.size()) });
-
-				if (sibDesc.Type == D3D_SIT_CBUFFER)
-				{
-					ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = shader->reflection->GetConstantBufferByIndex(rscIdx);
-					D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
-					shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
-
-					D3D12_ROOT_PARAMETER1 rootParameter = {};
-					rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-					rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-					rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
-					rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
-					rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
-
-					rootParameters.push_back(rootParameter);
-				}
-			}
-		}
-
-		D3D12_VERSIONED_ROOT_SIGNATURE_DESC vrsDesc = {};
-		vrsDesc.Desc_1_1.NumParameters = static_cast<uint32>(rootParameters.size());
-		vrsDesc.Desc_1_1.pParameters = rootParameters.data();
-		vrsDesc.Desc_1_1.NumStaticSamplers = 0;
-		vrsDesc.Desc_1_1.pStaticSamplers = nullptr;
-		vrsDesc.Desc_1_1.Flags = D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED | D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED;
-		vrsDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
-
-		ID3DBlob* rootSignatureBlob = nullptr;
-		ID3DBlob* errorBlob = nullptr;
-		DX12Check(D3D12SerializeVersionedRootSignature(&vrsDesc, &rootSignatureBlob, &errorBlob));
-		ID3D12RootSignature* rootSignature = nullptr;
-		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
-		DX12SafeRelease(rootSignatureBlob);
-		DX12SafeRelease(errorBlob);
-
-		return rootSignature;
-	}
-
-	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* pipeline, DX12Shader* vs, DX12Shader* ps)
+	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* outPipeline)
 	{
 		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(pipeline);
+		VAST_ASSERT(outPipeline);
+		// TODO: Review shader ownership
+		// TODO: What if a pipeline doesn't define a vs/ps?
+		outPipeline->vs = MakePtr<DX12Shader>();
+		m_ShaderCompiler->Compile(desc.vs, outPipeline->vs.get());
+		outPipeline->ps = MakePtr<DX12Shader>();
+		m_ShaderCompiler->Compile(desc.ps, outPipeline->ps.get());
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
+		ID3DBlob* rsBlob = m_ShaderCompiler->CreateRootSignatureFromReflection(outPipeline);
+		DX12Check(m_Device->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
+		DX12SafeRelease(rsBlob);
 
-		psDesc.pRootSignature = CreateRootSignatureFromShaderReflection({ vs, ps }, pipeline->resourceProxyTable);
-
-		if (vs)
-		{
-			psDesc.VS.pShaderBytecode = vs->blob->GetBufferPointer();
-			psDesc.VS.BytecodeLength = vs->blob->GetBufferSize();
-		}
-
-		if (ps)
-		{
-			psDesc.PS.pShaderBytecode = ps->blob->GetBufferPointer();
-			psDesc.PS.BytecodeLength = ps->blob->GetBufferSize();
-		}
-
+		psDesc.VS.pShaderBytecode = outPipeline->vs->blob->GetBufferPointer();
+		psDesc.VS.BytecodeLength  = outPipeline->vs->blob->GetBufferSize();
+		psDesc.PS.pShaderBytecode = outPipeline->ps->blob->GetBufferPointer();
+		psDesc.PS.BytecodeLength  = outPipeline->ps->blob->GetBufferSize();
+		
 		psDesc.BlendState.AlphaToCoverageEnable = false;
 		psDesc.BlendState.IndependentBlendEnable = false;
 		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
@@ -530,8 +337,8 @@ namespace vast::gfx
 		ID3D12PipelineState* graphicsPipeline = nullptr;
 		DX12Check(m_Device->CreateGraphicsPipelineState(&psDesc, IID_PPV_ARGS(&graphicsPipeline)));
 
-		pipeline->pipelineState = graphicsPipeline;
-		pipeline->rootSignature = psDesc.pRootSignature;
+		outPipeline->pipelineState = graphicsPipeline;
+		outPipeline->rootSignature = psDesc.pRootSignature;
 	}
 
 	void DX12Device::DestroyTexture(DX12Texture* tex)
@@ -592,16 +399,21 @@ namespace vast::gfx
 		DX12SafeRelease(buf->allocation);
 	}
 
-	void DX12Device::DestroyShader(DX12Shader* shader)
-	{
-		VAST_ASSERTF(shader, "Attempted to destroy an empty shader.");
-		DX12SafeRelease(shader->blob);
-		DX12SafeRelease(shader->reflection);
-	}
-
 	void DX12Device::DestroyPipeline(DX12Pipeline* pipeline)
 	{
 		VAST_ASSERTF(pipeline, "Attempted to destroy an empty pipeline.");
+		auto destroyShader = [](Ptr<DX12Shader> shader)
+		{
+			if (shader)
+			{
+				DX12SafeRelease(shader->blob);
+				DX12SafeRelease(shader->reflection);
+				shader = nullptr;
+			}
+		};
+
+		destroyShader(std::move(pipeline->vs));
+		destroyShader(std::move(pipeline->ps));
 		DX12SafeRelease(pipeline->rootSignature);
 		DX12SafeRelease(pipeline->pipelineState);
 	}

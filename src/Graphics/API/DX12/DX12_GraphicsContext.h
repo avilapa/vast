@@ -34,14 +34,12 @@ namespace vast::gfx
 
 		void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) override;
 
-		TextureHandle CreateTexture(const TextureDesc& desc) override;
 		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
-		ShaderHandle CreateShader(const ShaderDesc& desc) override;
+		TextureHandle CreateTexture(const TextureDesc& desc) override;
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
-		void DestroyTexture(const TextureHandle& h) override;
 		void DestroyBuffer(const BufferHandle& h) override;
-		void DestroyShader(const ShaderHandle& h) override;
+		void DestroyTexture(const TextureHandle& h) override;
 		void DestroyPipeline(const PipelineHandle& h) override;
 
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName) override;
@@ -63,13 +61,12 @@ namespace vast::gfx
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
-		Ptr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>> m_Textures;
 		Ptr<ResourceHandlePool<Buffer, DX12Buffer, NUM_BUFFERS>> m_Buffers;
-		Ptr<ResourceHandlePool<Shader, DX12Shader, NUM_SHADERS>> m_Shaders;
+		Ptr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>> m_Textures;
 		Ptr<ResourceHandlePool<Pipeline, DX12Pipeline, NUM_PIPELINES>> m_Pipelines;
 
-		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
+		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
 
 		DX12Texture* m_CurrentRT;

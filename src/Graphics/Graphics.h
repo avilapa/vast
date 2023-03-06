@@ -63,6 +63,28 @@ namespace vast::gfx
 	// - Resource Descriptors --------------------------------------------------------------------- //
 
 	// TODO: Provide functions to more easily build common configurations of Desc objects.
+	struct BufferDesc
+	{
+		uint32 size = 0;
+		uint32 stride = 0;
+		BufferViewFlags viewFlags = BufferViewFlags::NONE;
+		BufferAccessFlags accessFlags = BufferAccessFlags::HOST_WRITABLE;
+		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
+
+		struct Builder;
+	};
+	struct BufferDesc::Builder
+	{
+		Builder& Size(const uint32& size) { desc.size = size; return *this; }
+		Builder& Stride(const uint32& stride) { desc.stride = stride; return *this; }
+		Builder& ViewFlags(const BufferViewFlags& viewFlags) { desc.viewFlags = viewFlags; return *this; }
+		Builder& AccessFlags(const BufferAccessFlags& accessFlags) { desc.accessFlags = accessFlags; return *this; }
+		Builder& IsRawAccess(const bool& isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
+
+		operator BufferDesc() { return desc; }
+		BufferDesc desc;
+	};
+
 	struct TextureDesc
 	{
 		TextureType type = TextureType::TEXTURE_2D;
@@ -75,39 +97,6 @@ namespace vast::gfx
 
 		struct Builder;
 	};
-
-	struct BufferDesc
-	{
-		uint32 size = 0;
-		uint32 stride = 0;
-		BufferViewFlags viewFlags = BufferViewFlags::NONE;
-		BufferAccessFlags accessFlags = BufferAccessFlags::HOST_WRITABLE;
-		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
-
-		struct Builder;
-	};
-
-	struct ShaderDesc
-	{
-		ShaderType type = ShaderType::COMPUTE;
-		std::wstring shaderName;
-		std::wstring entryPoint;
-
-		struct Builder;
-	};
-
-	struct PipelineDesc // TODO: Decide on a name for our pipeline/render pass
-	{
-		ResourceHandle<class Shader> vs;
-		ResourceHandle<class Shader> ps;
-		uint8 rtCount = 0;
-		Array<Format, 8> rtFormats = { Format::UNKNOWN }; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
-		// TODO: Depth Stencil format
-		// TODO: Pipeline state stuff
-
-		struct Builder;
-	};
-
 	struct TextureDesc::Builder
 	{
 		Builder& TextureType(const TextureType& type) { desc.type = type; return *this; }
@@ -122,32 +111,28 @@ namespace vast::gfx
 		TextureDesc desc;
 	};
 
-	struct BufferDesc::Builder
+	struct ShaderDesc
 	{
-		Builder& Size(const uint32& size) { desc.size = size; return *this; }
-		Builder& Stride(const uint32& stride) { desc.stride = stride; return *this; }
-		Builder& ViewFlags(const BufferViewFlags& viewFlags) { desc.viewFlags = viewFlags; return *this; }
-		Builder& AccessFlags(const BufferAccessFlags& accessFlags) { desc.accessFlags = accessFlags; return *this; }
-		Builder& IsRawAccess(const bool& isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
-
-		operator BufferDesc() { return desc; }
-		BufferDesc desc;
+		ShaderType type = ShaderType::COMPUTE;
+		std::wstring shaderName;
+		std::wstring entryPoint;
 	};
 
-	struct ShaderDesc::Builder
+	struct PipelineDesc // TODO: Decide on a name for our pipeline/render pass
 	{
-		Builder& Type(const ShaderType& type) { desc.type = type; return *this; }
-		Builder& ShaderName(const std::wstring& shaderName) { desc.shaderName = shaderName; return *this; }
-		Builder& EntryPoint(const std::wstring& entryPoint) { desc.entryPoint = entryPoint; return *this; }
+		ShaderDesc vs;
+		ShaderDesc ps;
+		uint8 rtCount = 0;
+		Array<Format, 8> rtFormats = { Format::UNKNOWN }; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
+		// TODO: Depth Stencil format
+		// TODO: Pipeline state stuff
 
-		operator ShaderDesc() { return desc; }
-		ShaderDesc desc;
+		struct Builder;
 	};
-
 	struct PipelineDesc::Builder
 	{
-		Builder& VS(const ResourceHandle<class Shader>& vs) { desc.vs = vs; return *this; }
-		Builder& PS(const ResourceHandle<class Shader>& ps) { desc.ps = ps; return *this; }
+		Builder& VS(const std::wstring& fileName, const std::wstring& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
+ 		Builder& PS(const std::wstring& fileName, const std::wstring& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
 		Builder& SetRenderTarget(const Format& format) { desc.rtFormats[desc.rtCount++] = format; return *this; }
 
 		operator PipelineDesc() { return desc; }

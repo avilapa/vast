@@ -8,10 +8,13 @@
 
 namespace vast::gfx
 {
-	using TextureHandle	= ResourceHandle<class Texture>;
-	using BufferHandle = ResourceHandle<class Buffer>;
-	using ShaderHandle = ResourceHandle<class Shader>;
-	using PipelineHandle = ResourceHandle<class Pipeline>;
+	class Buffer;
+	class Texture;
+	class Pipeline;
+
+	using BufferHandle = ResourceHandle<Buffer>;
+	using TextureHandle	= ResourceHandle<Texture>;
+	using PipelineHandle = ResourceHandle<Pipeline>;
 
 	struct GraphicsParams
 	{
@@ -40,14 +43,12 @@ namespace vast::gfx
 
 		virtual void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) = 0;
 
-		virtual TextureHandle CreateTexture(const TextureDesc& desc) = 0;
 		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) = 0;
-		virtual ShaderHandle CreateShader(const ShaderDesc& desc) = 0;
+		virtual TextureHandle CreateTexture(const TextureDesc& desc) = 0;
 		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
 
-		virtual void DestroyTexture(const TextureHandle& h) = 0;
 		virtual void DestroyBuffer(const BufferHandle& h) = 0;
-		virtual void DestroyShader(const ShaderHandle& h) = 0;
+		virtual void DestroyTexture(const TextureHandle& h) = 0;
 		virtual void DestroyPipeline(const PipelineHandle& h) = 0;
 
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName) = 0;

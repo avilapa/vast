@@ -29,15 +29,10 @@ namespace vast::gfx
 	// TODO: Set sensible defaults
 	constexpr uint32 NUM_TEXTURES = 512;
 	constexpr uint32 NUM_BUFFERS = 512;
-	constexpr uint32 NUM_SHADERS = 64;
 	constexpr uint32 NUM_PIPELINES = 64;
 
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
-
-	constexpr wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
-	// TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
-	constexpr wchar_t* SHADER_OUTPUT_PATH = L"../../shaders/compiled/";
 
 	// - Resources -------------------------------------------------------------------------------- //
 
@@ -88,7 +83,7 @@ namespace vast::gfx
 		DX12Descriptor uav = {};
 	};
 
-	struct DX12Shader : public Shader
+	struct DX12Shader
 	{
 		IDxcBlob* blob = nullptr;
 		ID3D12ShaderReflection* reflection = nullptr;
@@ -96,6 +91,8 @@ namespace vast::gfx
 
 	struct DX12Pipeline : public Pipeline
 	{
+		Ptr<DX12Shader> vs = nullptr;
+		Ptr<DX12Shader> ps = nullptr;
 		ID3D12PipelineState* pipelineState = nullptr;
 		ID3D12RootSignature* rootSignature = nullptr;
 		ShaderResourceProxyTable resourceProxyTable;
