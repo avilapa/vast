@@ -91,11 +91,11 @@ namespace vast::gfx
 
 	struct DX12Pipeline : public Pipeline
 	{
-		Ptr<DX12Shader> vs = nullptr;
-		Ptr<DX12Shader> ps = nullptr;
+		Ref<DX12Shader> vs = nullptr;
+		Ref<DX12Shader> ps = nullptr;
 		ID3D12PipelineState* pipelineState = nullptr;
 		ID3D12RootSignature* rootSignature = nullptr;
-		ShaderResourceProxyTable resourceProxyTable;
+		Ptr<ShaderResourceProxyTable> resourceProxyTable;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //

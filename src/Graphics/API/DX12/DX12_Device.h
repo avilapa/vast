@@ -12,7 +12,7 @@ namespace D3D12MA
 
 namespace vast::gfx
 {
-	class DX12ShaderCompiler;
+	class DX12ShaderManager;
 
 	class DX12Device
 	{
@@ -44,7 +44,7 @@ namespace vast::gfx
 		IDXGIFactory7* m_DXGIFactory;
 		ID3D12Device5* m_Device;
 		D3D12MA::Allocator* m_Allocator;
-		Ptr<DX12ShaderCompiler> m_ShaderCompiler;
+		Ptr<DX12ShaderManager> m_ShaderManager;
 
 		Ptr<DX12StagingDescriptorHeap> m_RTVStagingDescriptorHeap;
 		Ptr<DX12StagingDescriptorHeap> m_DSVStagingDescriptorHeap;

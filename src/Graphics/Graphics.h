@@ -55,6 +55,7 @@ namespace vast::gfx
 
 	enum class ShaderType
 	{
+		UNKNOWN,
 		COMPUTE,
 		VERTEX,
 		PIXEL,
@@ -99,7 +100,7 @@ namespace vast::gfx
 	};
 	struct TextureDesc::Builder
 	{
-		Builder& TextureType(const TextureType& type) { desc.type = type; return *this; }
+		Builder& Type(const TextureType& type) { desc.type = type; return *this; }
 		Builder& Format(const Format& format) { desc.format = format; return *this; }
 		Builder& Width(const uint32& width) { desc.width = width; return *this; }
 		Builder& Height(const uint32& height) { desc.height = height; return *this; }
@@ -113,9 +114,9 @@ namespace vast::gfx
 
 	struct ShaderDesc
 	{
-		ShaderType type = ShaderType::COMPUTE;
-		std::wstring shaderName;
-		std::wstring entryPoint;
+		ShaderType type = ShaderType::UNKNOWN;
+		std::string shaderName;
+		std::string entryPoint;
 	};
 
 	struct PipelineDesc // TODO: Decide on a name for our pipeline/render pass
@@ -131,8 +132,8 @@ namespace vast::gfx
 	};
 	struct PipelineDesc::Builder
 	{
-		Builder& VS(const std::wstring& fileName, const std::wstring& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
- 		Builder& PS(const std::wstring& fileName, const std::wstring& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
+		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
+ 		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
 		Builder& SetRenderTarget(const Format& format) { desc.rtFormats[desc.rtCount++] = format; return *this; }
 
 		operator PipelineDesc() { return desc; }

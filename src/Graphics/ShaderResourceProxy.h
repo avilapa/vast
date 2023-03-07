@@ -16,15 +16,19 @@ namespace vast::gfx
 		uint32 idx = kInvalidShaderResourceProxy;
 	};
 
-	struct ShaderResourceProxyTable
+	class ShaderResourceProxyTable
 	{
+	public:
+		ShaderResourceProxyTable(const std::string& shaderName);
+
 		ShaderResourceProxy LookupShaderResource(const std::string& shaderResourceName);
 
 		void Register(const std::string& shaderResourceName, const ShaderResourceProxy& proxyIdx);
 		bool IsRegistered(const std::string& shaderResourceName);
 
 	private:
-		std::unordered_map<std::string, ShaderResourceProxy> map;
+		const std::string m_ShaderName;
+		std::unordered_map<std::string, ShaderResourceProxy> m_Map;
 	};
 
 }

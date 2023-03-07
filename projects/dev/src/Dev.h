@@ -1,5 +1,6 @@
 
 #include "vast.h"
+#include "Graphics/ImguiRenderer.h"
 
 using namespace vast;
 
@@ -13,6 +14,7 @@ private:
 	void OnUpdate() override;
 
 	Ptr<gfx::GraphicsContext> m_GraphicsContext;
+	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
 
 	gfx::BufferHandle m_TriangleVtxBuf;
 	gfx::BufferHandle m_TriangleCbv;

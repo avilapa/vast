@@ -35,7 +35,7 @@ namespace vast::gfx
 		void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) override;
 
 		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
-		TextureHandle CreateTexture(const TextureDesc& desc) override;
+		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
 		void DestroyBuffer(const BufferHandle& h) override;

@@ -1,11 +1,10 @@
 #include "vastpch.h"
 #include "Graphics/API/DX12/DX12_Device.h"
-#include "Graphics/API/DX12/DX12_ShaderCompiler.h"
+#include "Graphics/API/DX12/DX12_ShaderManager.h"
 #include "Graphics/API/DX12/DX12_CommandList.h"
 #include "Graphics/API/DX12/DX12_CommandQueue.h"
 
 #include "dx12/D3D12MemoryAllocator/include/D3D12MemAlloc.h"
-#include "dx12/DirectXAgilitySDK/include/d3d12shader.h"
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
 #include <dxgi1_6.h>
@@ -20,7 +19,7 @@ namespace vast::gfx
 		: m_DXGIFactory(nullptr)
 		, m_Device(nullptr)
 		, m_Allocator(nullptr)
-		, m_ShaderCompiler(nullptr)
+		, m_ShaderManager(nullptr)
 		, m_RTVStagingDescriptorHeap(nullptr)
 		, m_DSVStagingDescriptorHeap(nullptr)
 		, m_SRVStagingDescriptorHeap(nullptr)
@@ -100,7 +99,7 @@ namespace vast::gfx
 
 		{
 			VAST_INFO("[gfx] [dx12] Creating shader compiler.");
-			m_ShaderCompiler = MakePtr<DX12ShaderCompiler>();
+			m_ShaderManager = MakePtr<DX12ShaderManager>();
 		}
 
 		DX12SafeRelease(adapter);
@@ -167,7 +166,7 @@ namespace vast::gfx
 			m_SRVRenderPassDescriptorHeaps[i] = nullptr;
 		}
 
-		m_ShaderCompiler = nullptr;
+		m_ShaderManager = nullptr;
 		DX12SafeRelease(m_Allocator);
 		DX12SafeRelease(m_Device);
 		DX12SafeRelease(m_DXGIFactory);
@@ -253,26 +252,79 @@ namespace vast::gfx
 		(void)outTex;
 	}
 
+	static DXGI_FORMAT ConvertToDXGIFormat(D3D_REGISTER_COMPONENT_TYPE type, BYTE mask)
+	{
+		auto componentTypeSwitch = [](const D3D_REGISTER_COMPONENT_TYPE& type, DXGI_FORMAT optFloat, DXGI_FORMAT optUint, DXGI_FORMAT optSint) -> DXGI_FORMAT
+		{
+			switch (type)
+			{
+			case D3D_REGISTER_COMPONENT_FLOAT32: return optFloat;
+			case D3D_REGISTER_COMPONENT_UINT32:  return optUint;
+			case D3D_REGISTER_COMPONENT_SINT32:	 return optSint;
+			default: VAST_ASSERTF(0, "Unknown input parameter format."); return DXGI_FORMAT_UNKNOWN;
+			}
+		};
+
+		switch (mask)
+		{
+		case 0x01: return componentTypeSwitch(type, DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32_SINT, DXGI_FORMAT_R32_UINT);
+		case 0x03: return componentTypeSwitch(type, DXGI_FORMAT_R32G32_FLOAT, DXGI_FORMAT_R32G32_SINT, DXGI_FORMAT_R32G32_UINT);
+		case 0x07: return componentTypeSwitch(type, DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32_SINT, DXGI_FORMAT_R32G32B32_UINT);
+		case 0x0F: return componentTypeSwitch(type, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_R32G32B32A32_SINT, DXGI_FORMAT_R32G32B32A32_UINT);
+		default: VAST_ASSERTF(0, "Unknown input parameter format."); return DXGI_FORMAT_UNKNOWN;
+		}
+	}
+
 	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* outPipeline)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(outPipeline);
-		// TODO: Review shader ownership
-		// TODO: What if a pipeline doesn't define a vs/ps?
-		outPipeline->vs = MakePtr<DX12Shader>();
-		m_ShaderCompiler->Compile(desc.vs, outPipeline->vs.get());
-		outPipeline->ps = MakePtr<DX12Shader>();
-		m_ShaderCompiler->Compile(desc.ps, outPipeline->ps.get());
+		std::string shaderName = "Unknown";
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
-		ID3DBlob* rsBlob = m_ShaderCompiler->CreateRootSignatureFromReflection(outPipeline);
-		DX12Check(m_Device->CreateRootSignature(0, rsBlob->GetBufferPointer(), rsBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
-		DX12SafeRelease(rsBlob);
 
-		psDesc.VS.pShaderBytecode = outPipeline->vs->blob->GetBufferPointer();
-		psDesc.VS.BytecodeLength  = outPipeline->vs->blob->GetBufferSize();
-		psDesc.PS.pShaderBytecode = outPipeline->ps->blob->GetBufferPointer();
-		psDesc.PS.BytecodeLength  = outPipeline->ps->blob->GetBufferSize();
+		Vector<D3D12_INPUT_ELEMENT_DESC> inputElements;
+		if (desc.vs.type != ShaderType::UNKNOWN)
+		{
+			outPipeline->vs = m_ShaderManager->LoadShader(desc.vs);
+			psDesc.VS.pShaderBytecode = outPipeline->vs->blob->GetBufferPointer();
+			psDesc.VS.BytecodeLength  = outPipeline->vs->blob->GetBufferSize();
+
+			auto paramsDesc = m_ShaderManager->GetInputParametersFromReflection(outPipeline->vs->reflection);
+			inputElements.reserve(paramsDesc.size());
+
+			for (const auto& paramDesc : paramsDesc)
+			{
+				D3D12_INPUT_ELEMENT_DESC element = {};
+
+				element.SemanticName = paramDesc.SemanticName;
+				element.SemanticIndex = paramDesc.SemanticIndex;
+				element.Format = ConvertToDXGIFormat(paramDesc.ComponentType, paramDesc.Mask);
+				element.InputSlot = 0;
+				element.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT; // TODO: Imgui uses IM_OFFSETOF
+				element.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+				element.InstanceDataStepRate = (element.InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA) ? 1 : 0;
+
+				inputElements.emplace_back(element);
+			}
+
+			psDesc.InputLayout.pInputElementDescs = inputElements.data();
+			psDesc.InputLayout.NumElements = static_cast<uint32>(inputElements.size());
+		}
+
+		if (desc.ps.type != ShaderType::UNKNOWN)
+		{
+			outPipeline->ps = m_ShaderManager->LoadShader(desc.ps);
+			psDesc.PS.pShaderBytecode = outPipeline->ps->blob->GetBufferPointer();
+			psDesc.PS.BytecodeLength  = outPipeline->ps->blob->GetBufferSize();
+			shaderName = desc.ps.shaderName;
+		}
+
+		outPipeline->resourceProxyTable = MakePtr<ShaderResourceProxyTable>(shaderName);
+
+		ID3DBlob* rootSignatureBlob = m_ShaderManager->CreateRootSignatureFromReflection(outPipeline);
+		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
+		DX12SafeRelease(rootSignatureBlob);
 		
 		psDesc.BlendState.AlphaToCoverageEnable = false;
 		psDesc.BlendState.IndependentBlendEnable = false;
@@ -315,9 +367,6 @@ namespace vast::gfx
 		psDesc.DepthStencilState.StencilEnable	= false;
 		psDesc.DepthStencilState.FrontFace		= stencilOpDesc;
 		psDesc.DepthStencilState.BackFace		= stencilOpDesc;
-
-		psDesc.InputLayout.pInputElementDescs = nullptr;
-		psDesc.InputLayout.NumElements = 0;
 
 		psDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -402,18 +451,8 @@ namespace vast::gfx
 	void DX12Device::DestroyPipeline(DX12Pipeline* pipeline)
 	{
 		VAST_ASSERTF(pipeline, "Attempted to destroy an empty pipeline.");
-		auto destroyShader = [](Ptr<DX12Shader> shader)
-		{
-			if (shader)
-			{
-				DX12SafeRelease(shader->blob);
-				DX12SafeRelease(shader->reflection);
-				shader = nullptr;
-			}
-		};
-
-		destroyShader(std::move(pipeline->vs));
-		destroyShader(std::move(pipeline->ps));
+		pipeline->vs = nullptr;
+		pipeline->ps = nullptr;
 		DX12SafeRelease(pipeline->rootSignature);
 		DX12SafeRelease(pipeline->pipelineState);
 	}

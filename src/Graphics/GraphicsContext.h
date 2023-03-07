@@ -44,7 +44,7 @@ namespace vast::gfx
 		virtual void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) = 0;
 
 		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) = 0;
-		virtual TextureHandle CreateTexture(const TextureDesc& desc) = 0;
+		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) = 0;
 		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
 
 		virtual void DestroyBuffer(const BufferHandle& h) = 0;

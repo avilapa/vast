@@ -182,12 +182,16 @@ namespace vast::gfx
 		m_GraphicsCommandList->Draw(vtxCount, vtxStartLocation);
 	}
 
-	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc)
+	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
 		auto [h, tex] = m_Textures->AcquireResource();
 		m_Device->CreateTexture(desc, tex);
+		if (initialData != nullptr)
+		{
+			// TODO: Upload texture data.
+		}
 		return h;
 	}
 
@@ -235,9 +239,9 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		auto pipeline = m_Pipelines->LookupResource(h);
-		if (pipeline && pipeline->resourceProxyTable.IsRegistered(shaderResourceName))
+		if (pipeline && pipeline->resourceProxyTable->IsRegistered(shaderResourceName))
 		{
-			return pipeline->resourceProxyTable.LookupShaderResource(shaderResourceName);
+			return pipeline->resourceProxyTable->LookupShaderResource(shaderResourceName);
 		}
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
