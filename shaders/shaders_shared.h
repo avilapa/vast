@@ -1,8 +1,6 @@
 #ifndef __SHARED_HLSL__
 #define __SHARED_HLSL__
 
-#define PerObjectSpace space0
-
 #if defined(__cplusplus)
 using namespace vast;
 #else
@@ -14,6 +12,9 @@ using namespace vast;
 #define uint32		uint
 #define int32		int
 #endif
+
+#define PushConstant b999
+#define PerObjectSpace space0
 
 struct TriangleVtx
 {

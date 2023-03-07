@@ -279,7 +279,6 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(outPipeline);
-		std::string shaderName = "Unknown";
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
@@ -312,6 +311,7 @@ namespace vast::gfx
 			psDesc.InputLayout.NumElements = static_cast<uint32>(inputElements.size());
 		}
 
+		std::string shaderName = "Unknown";
 		if (desc.ps.type != ShaderType::UNKNOWN)
 		{
 			outPipeline->ps = m_ShaderManager->LoadShader(desc.ps);

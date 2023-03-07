@@ -7,6 +7,11 @@ constexpr wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
 // TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
 constexpr wchar_t* SHADER_OUTPUT_PATH = L"../../shaders/compiled/";
 
+// Note: Root 32 Bit constants are identified on shaders by using a reserved binding point b999.
+// This is because DXC shader reflection has no way to tell apart a CBV from a Root 32 Bit Constant.
+// TODO: We could also identify push constants by giving a descriptive name to the buffer itself, in case in the future more than one binding point is needed.
+static constexpr UINT PUSH_CONSTANT_REGISTER_INDEX = 999;
+
 namespace vast::gfx
 {
 	DX12ShaderManager::DX12ShaderManager()
@@ -220,16 +225,28 @@ namespace vast::gfx
 
 				if (sibDesc.Type == D3D_SIT_CBUFFER)
 				{
-					ID3D12ShaderReflectionConstantBuffer* shaderReflectionConstantBuffer = shader->reflection->GetConstantBufferByIndex(rscIdx);
-					D3D12_SHADER_BUFFER_DESC constantBufferDesc{};
-					shaderReflectionConstantBuffer->GetDesc(&constantBufferDesc);
+					ID3D12ShaderReflectionConstantBuffer* shaderReflectionCB = shader->reflection->GetConstantBufferByIndex(rscIdx);
+					D3D12_SHADER_BUFFER_DESC cbDesc{};
+					shaderReflectionCB->GetDesc(&cbDesc);
 
 					D3D12_ROOT_PARAMETER1 rootParameter = {};
-					rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-					rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-					rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
-					rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
-					rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
+
+					if (sibDesc.BindPoint == PUSH_CONSTANT_REGISTER_INDEX)
+					{
+						rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+						rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+						rootParameter.Constants.ShaderRegister = sibDesc.BindPoint;
+						rootParameter.Constants.RegisterSpace = sibDesc.Space;
+						rootParameter.Constants.Num32BitValues = cbDesc.Size / 4;
+					}
+					else
+					{
+						rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+						rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+						rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
+						rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
+						rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
+					}
 
 					rootParameters.push_back(rootParameter);
 				}
