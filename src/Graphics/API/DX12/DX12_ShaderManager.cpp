@@ -245,6 +245,7 @@ namespace vast::gfx
 						rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 						rootParameter.Descriptor.ShaderRegister = sibDesc.BindPoint;
 						rootParameter.Descriptor.RegisterSpace = sibDesc.Space;
+						// TODO: Review usage, ideally we can set D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC for most stuff.
 						rootParameter.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
 					}
 

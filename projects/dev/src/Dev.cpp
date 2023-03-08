@@ -2,6 +2,34 @@
 
 #include "shaders_shared.h"
 
+// ---------------------------------------- TODO LIST ------------------------------------------ //
+// Features coming up:
+//
+//	> Shader Hot Reload: allow shaders to be recompiled and reloaded live.
+//		- req: Imgui Renderer (or some sort of input)
+//	> Shader Precompilation: precompile shaders to avoid compiling at every start-up.
+//	> Shader Visual Studio integration 1: syntax coloring for hlsl files.
+//	> Shader Visual Studio integration 2: shader compilation from solution.
+//		- req: Shader Precompilation
+//
+//	> GFX Pipeline State: allow setting of rasterizer state, blend state, etc. per pipeline.
+//	> GFX Samplers.
+//	> GFX Render Pass / Render Pass Layout.
+//	> GFX Compute Shaders.
+//	> GFX Display List: command recording for later execution.
+//	> GFX Multithreading.
+//		- req: GFX Display List
+//
+//	> DX12 Upload Command List: allow loading of resources into GPU.
+//	> DX12 Textures: create textures and upload data.
+//		- req: DX12 Upload Command List
+//	> DX12 Dynamic Buffers: allow creation of non-static vertex/index buffers.
+//
+//	> Imgui Renderer.
+//		- req: GFX Pipeline State, DX12 Textures, DX12 Dynamic Buffers
+//
+// --------------------------------------------------------------------------------------------- //
+
 VAST_DEFINE_APP_MAIN(Dev)
 
 using namespace vast;
