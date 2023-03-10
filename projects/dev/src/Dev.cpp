@@ -69,6 +69,7 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	auto pipelineDesc = gfx::PipelineDesc::Builder()
 		.VS("triangle.hlsl", "VS_Main")
 		.PS("triangle.hlsl", "PS_Main")
+		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
 		.SetRenderTarget(gfx::Format::RGBA8_UNORM_SRGB); // TODO: This should internally query the backbuffer format.
 	m_TrianglePipeline = ctx.CreatePipeline(pipelineDesc);
 

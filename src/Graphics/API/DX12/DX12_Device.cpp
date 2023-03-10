@@ -361,9 +361,9 @@ namespace vast::gfx
 		stencilOpDesc.StencilFailOp = stencilOpDesc.StencilDepthFailOp = stencilOpDesc.StencilPassOp = D3D12_STENCIL_OP_KEEP;
 		stencilOpDesc.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 
-		psDesc.DepthStencilState.DepthEnable	= false;
-		psDesc.DepthStencilState.DepthWriteMask	= D3D12_DEPTH_WRITE_MASK_ZERO;
-		psDesc.DepthStencilState.DepthFunc		= D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		psDesc.DepthStencilState.DepthEnable	= desc.depthStencilState.depthEnable;
+		psDesc.DepthStencilState.DepthWriteMask	= desc.depthStencilState.depthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+		psDesc.DepthStencilState.DepthFunc		= TranslateToDX12(desc.depthStencilState.depthFunc);
 		psDesc.DepthStencilState.StencilEnable	= false;
 		psDesc.DepthStencilState.FrontFace		= stencilOpDesc;
 		psDesc.DepthStencilState.BackFace		= stencilOpDesc;

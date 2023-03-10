@@ -177,6 +177,23 @@ namespace vast::gfx
 		}
 	}
 
+	constexpr D3D12_COMPARISON_FUNC TranslateToDX12(const CompareFunc& v)
+	{
+		switch (v)
+		{
+		case CompareFunc::NONE:				return D3D12_COMPARISON_FUNC_NONE;
+		case CompareFunc::NEVER:			return D3D12_COMPARISON_FUNC_NEVER;
+		case CompareFunc::LESS:				return D3D12_COMPARISON_FUNC_LESS;
+		case CompareFunc::EQUAL:			return D3D12_COMPARISON_FUNC_EQUAL;
+		case CompareFunc::LESS_EQUAL:		return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		case CompareFunc::GREATER:			return D3D12_COMPARISON_FUNC_GREATER;
+		case CompareFunc::NOT_EQUAL:		return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+		case CompareFunc::GREATER_EQUAL:	return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		case CompareFunc::ALWAYS:			return D3D12_COMPARISON_FUNC_ALWAYS;
+		default: VAST_ASSERTF(0, "CompareFunc not supported on this platform."); return D3D12_COMPARISON_FUNC_NONE;
+		}
+	}
+
 	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const TextureDesc& v)
 	{
 		D3D12_RESOURCE_DESC desc = {};
