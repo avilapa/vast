@@ -132,11 +132,11 @@ namespace vast::gfx
 
 	struct BufferDesc::Builder
 	{
-		Builder& Size(const uint32& size) { desc.size = size; return *this; }
-		Builder& Stride(const uint32& stride) { desc.stride = stride; return *this; }
-		Builder& ViewFlags(const BufferViewFlags& viewFlags) { desc.viewFlags = viewFlags; return *this; }
-		Builder& AccessFlags(const BufferAccessFlags& accessFlags) { desc.accessFlags = accessFlags; return *this; }
-		Builder& IsRawAccess(const bool& isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
+		Builder& Size(uint32 size) { desc.size = size; return *this; }
+		Builder& Stride(uint32 stride) { desc.stride = stride; return *this; }
+		Builder& ViewFlags(BufferViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
+		Builder& AccessFlags(BufferAccessFlags accessFlags) { desc.accessFlags = accessFlags; return *this; }
+		Builder& IsRawAccess(bool isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
 
 		operator BufferDesc() { return desc; }
 		BufferDesc desc;
@@ -157,13 +157,13 @@ namespace vast::gfx
 
 	struct TextureDesc::Builder
 	{
-		Builder& Type(const TextureType& type) { desc.type = type; return *this; }
-		Builder& Format(const Format& format) { desc.format = format; return *this; }
-		Builder& Width(const uint32& width) { desc.width = width; return *this; }
-		Builder& Height(const uint32& height) { desc.height = height; return *this; }
-		Builder& DepthOrArraySize(const uint32& depthOrArraySize) { desc.depthOrArraySize = depthOrArraySize; return *this; }
-		Builder& MipCount(const uint32& mipCount) { desc.mipCount = mipCount; return *this; }
-		Builder& ViewFlags(const TextureViewFlags& viewFlags) { desc.viewFlags = viewFlags; return *this; }
+		Builder& Type(TextureType type) { desc.type = type; return *this; }
+		Builder& Format(Format format) { desc.format = format; return *this; }
+		Builder& Width(uint32 width) { desc.width = width; return *this; }
+		Builder& Height(uint32 height) { desc.height = height; return *this; }
+		Builder& DepthOrArraySize(uint32 depthOrArraySize) { desc.depthOrArraySize = depthOrArraySize; return *this; }
+		Builder& MipCount(uint32 mipCount) { desc.mipCount = mipCount; return *this; }
+		Builder& ViewFlags(TextureViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
 
 		operator TextureDesc() { return desc; }
 		TextureDesc desc;
@@ -215,9 +215,8 @@ namespace vast::gfx
 	{
 		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
  		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
-		Builder& DepthStencil(const DepthStencilState& ds) { desc.depthStencilState = ds; return *this; }
-		Builder& DepthStencil(bool depthEnable, bool depthWrite, CompareFunc depthFunc = CompareFunc::LESS_EQUAL) { desc.depthStencilState = DepthStencilState{ depthEnable, depthWrite, depthFunc }; return *this; }
-		Builder& SetRenderTarget(const Format& format) { desc.rtFormats[desc.rtCount++] = format; return *this; }
+		Builder& DepthStencil(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
+		Builder& SetRenderTarget(Format format) { desc.rtFormats[desc.rtCount++] = format; return *this; }
 
 		operator PipelineDesc() { return desc; }
 		PipelineDesc desc;

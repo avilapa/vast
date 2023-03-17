@@ -36,24 +36,24 @@ namespace vast::gfx
 		virtual void EndFrame() = 0;
 
 		// TODO: Clear flags
-		virtual void SetRenderTarget(const TextureHandle& h) = 0;
-		virtual void SetShaderResource(const BufferHandle& h, const ShaderResourceProxy& shaderResourceProxy) = 0;
-		virtual void BeginRenderPass(const PipelineHandle& h) = 0;
+		virtual void SetRenderTarget(const TextureHandle h) = 0;
+		virtual void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
+		virtual void BeginRenderPass(const PipelineHandle h) = 0;
 		virtual void EndRenderPass() = 0;
 
 		virtual void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) = 0;
 
-		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) = 0;
+		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) = 0;
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) = 0;
 		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
 
-		virtual void DestroyBuffer(const BufferHandle& h) = 0;
-		virtual void DestroyTexture(const TextureHandle& h) = 0;
-		virtual void DestroyPipeline(const PipelineHandle& h) = 0;
+		virtual void DestroyBuffer(const BufferHandle h) = 0;
+		virtual void DestroyTexture(const TextureHandle h) = 0;
+		virtual void DestroyPipeline(const PipelineHandle h) = 0;
 
-		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName) = 0;
+		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
 
-		virtual uint32 GetBindlessHeapIndex(const BufferHandle& h) = 0;
+		virtual uint32 GetBindlessHeapIndex(const BufferHandle h) = 0;
 	};
 
 }

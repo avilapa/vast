@@ -108,7 +108,7 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12GraphicsContext::SignalEndOfFrame(const QueueType& type)
+	void DX12GraphicsContext::SignalEndOfFrame(const QueueType type)
 	{
 		m_FrameFenceValues[IDX(type)][m_FrameId] = m_CommandQueues[IDX(type)]->SignalFence();
 	}
@@ -122,13 +122,13 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12GraphicsContext::SetRenderTarget(const TextureHandle& h)
+	void DX12GraphicsContext::SetRenderTarget(const TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
-	void DX12GraphicsContext::SetShaderResource(const BufferHandle& h, const ShaderResourceProxy& shaderResourceProxy)
+	void DX12GraphicsContext::SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
@@ -138,7 +138,7 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetShaderResource(*buf, shaderResourceProxy.idx);
 	}
 
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle& h)
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
@@ -195,7 +195,7 @@ namespace vast::gfx
 		return h;
 	}
 
-	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, size_t dataSize /*= 0*/)
+	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(m_Device);
@@ -217,25 +217,25 @@ namespace vast::gfx
 		return h;
 	}
 
-	void DX12GraphicsContext::DestroyTexture(const TextureHandle& h)
+	void DX12GraphicsContext::DestroyTexture(const TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_TexturesMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
-	void DX12GraphicsContext::DestroyBuffer(const BufferHandle& h)
+	void DX12GraphicsContext::DestroyBuffer(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_BuffersMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
-	void DX12GraphicsContext::DestroyPipeline(const PipelineHandle& h)
+	void DX12GraphicsContext::DestroyPipeline(const PipelineHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
-	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName)
+	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName)
 	{
 		VAST_ASSERT(h.IsValid());
 		auto pipeline = m_Pipelines->LookupResource(h);
@@ -246,7 +246,7 @@ namespace vast::gfx
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
 
-	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle& h)
+	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return m_Buffers->LookupResource(h)->heapIdx;

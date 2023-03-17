@@ -27,28 +27,28 @@ namespace vast::gfx
 		void BeginFrame() override;
 		void EndFrame() override;
 
-		void SetRenderTarget(const TextureHandle& h) override;
-		void SetShaderResource(const BufferHandle& h, const ShaderResourceProxy& shaderResourceProxy) override;
-		void BeginRenderPass(const PipelineHandle& h) override;
+		void SetRenderTarget(const TextureHandle h) override;
+		void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
+		void BeginRenderPass(const PipelineHandle h) override;
 		void EndRenderPass() override;
 
 		void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) override;
 
-		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, size_t dataSize = 0) override;
+		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) override;
 		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
-		void DestroyBuffer(const BufferHandle& h) override;
-		void DestroyTexture(const TextureHandle& h) override;
-		void DestroyPipeline(const PipelineHandle& h) override;
+		void DestroyBuffer(const BufferHandle h) override;
+		void DestroyTexture(const TextureHandle h) override;
+		void DestroyPipeline(const PipelineHandle h) override;
 
-		ShaderResourceProxy LookupShaderResource(const PipelineHandle& h, const std::string& shaderResourceName) override;
+		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
-		uint32 GetBindlessHeapIndex(const BufferHandle& h) override;
+		uint32 GetBindlessHeapIndex(const BufferHandle h) override;
 
 	private:
 		void SubmitCommandList(DX12CommandList& ctx);
-		void SignalEndOfFrame(const QueueType& type);
+		void SignalEndOfFrame(const QueueType type);
 		void WaitForIdle();
 
 		void OnWindowResizeEvent(WindowResizeEvent& event);
