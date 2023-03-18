@@ -12,7 +12,8 @@
 //	> Shader Visual Studio integration 2: shader compilation from solution.
 //		- req: Shader Precompilation
 //
-//	> GFX Pipeline State: allow setting of rasterizer state, etc. per pipeline.
+//	> GFX Rasterizer State.
+//	> GFX Stencil State.
 //	> GFX Samplers.
 //	> GFX Render Pass / Render Pass Layout.
 //	> GFX Compute Shaders.
@@ -26,7 +27,7 @@
 //	> DX12 Dynamic Buffers: allow creation of non-static vertex/index buffers.
 //
 //	> Imgui Renderer.
-//		- req: GFX Pipeline State, DX12 Textures, DX12 Dynamic Buffers
+//		- req: DX12 Textures, DX12 Dynamic Buffers
 //
 // --------------------------------------------------------------------------------------------- //
 
@@ -70,7 +71,7 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 		.VS("triangle.hlsl", "VS_Main")
 		.PS("triangle.hlsl", "PS_Main")
 		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-		.SetRenderTarget(gfx::Format::RGBA8_UNORM_SRGB); // TODO: This should internally query the backbuffer format.
+		.SetRenderTarget(ctx.GetBackBufferFormat());
 	m_TrianglePipeline = ctx.CreatePipeline(pipelineDesc);
 
 	m_TriangleCbvProxy = ctx.LookupShaderResource(m_TrianglePipeline, "ObjectConstantBuffer");

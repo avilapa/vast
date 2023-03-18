@@ -246,6 +246,11 @@ namespace vast::gfx
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
 
+	Format DX12GraphicsContext::GetBackBufferFormat() const
+	{
+		return m_SwapChain->GetBackBufferFormat();
+	}
+
 	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());

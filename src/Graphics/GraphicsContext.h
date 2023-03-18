@@ -53,6 +53,7 @@ namespace vast::gfx
 
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
 
+		virtual Format GetBackBufferFormat() const = 0;
 		virtual uint32 GetBindlessHeapIndex(const BufferHandle h) = 0;
 	};
 

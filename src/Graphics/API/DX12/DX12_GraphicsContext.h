@@ -44,6 +44,7 @@ namespace vast::gfx
 
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
+		Format GetBackBufferFormat() const override;
 		uint32 GetBindlessHeapIndex(const BufferHandle h) override;
 
 	private:
