@@ -331,16 +331,16 @@ namespace vast::gfx
 		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
 		{
 			D3D12_RENDER_TARGET_BLEND_DESC* rtBlendDesc = &psDesc.BlendState.RenderTarget[i];
-			rtBlendDesc->BlendEnable			= false;
+			rtBlendDesc->BlendEnable			= desc.rtBlendStates[i].blendEnable;
 			rtBlendDesc->LogicOpEnable			= false;
-			rtBlendDesc->SrcBlend				= D3D12_BLEND_SRC_ALPHA;
-			rtBlendDesc->DestBlend				= D3D12_BLEND_INV_SRC_ALPHA;
-			rtBlendDesc->BlendOp				= D3D12_BLEND_OP_ADD;
-			rtBlendDesc->SrcBlendAlpha			= D3D12_BLEND_ONE;
-			rtBlendDesc->DestBlendAlpha			= D3D12_BLEND_ONE;
-			rtBlendDesc->BlendOpAlpha			= D3D12_BLEND_OP_ADD;
+			rtBlendDesc->SrcBlend				= TranslateToDX12(desc.rtBlendStates[i].srcBlend);
+			rtBlendDesc->DestBlend				= TranslateToDX12(desc.rtBlendStates[i].dstBlend);
+			rtBlendDesc->BlendOp				= TranslateToDX12(desc.rtBlendStates[i].blendOp);
+			rtBlendDesc->SrcBlendAlpha			= TranslateToDX12(desc.rtBlendStates[i].srcBlendAlpha);
+			rtBlendDesc->DestBlendAlpha			= TranslateToDX12(desc.rtBlendStates[i].dstBlendAlpha);
+			rtBlendDesc->BlendOpAlpha			= TranslateToDX12(desc.rtBlendStates[i].blendOpAlpha);
 			rtBlendDesc->LogicOp				= D3D12_LOGIC_OP_NOOP;
-			rtBlendDesc->RenderTargetWriteMask	= D3D12_COLOR_WRITE_ENABLE_ALL;
+			rtBlendDesc->RenderTargetWriteMask	= TranslateToDX12(desc.rtBlendStates[i].writeMask);
 		}
 
 		psDesc.SampleMask = 0xFFFFFFFF;

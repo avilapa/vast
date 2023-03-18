@@ -12,7 +12,7 @@
 //	> Shader Visual Studio integration 2: shader compilation from solution.
 //		- req: Shader Precompilation
 //
-//	> GFX Pipeline State: allow setting of rasterizer state, blend state, etc. per pipeline.
+//	> GFX Pipeline State: allow setting of rasterizer state, etc. per pipeline.
 //	> GFX Samplers.
 //	> GFX Render Pass / Render Pass Layout.
 //	> GFX Compute Shaders.

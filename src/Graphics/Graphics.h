@@ -186,6 +186,8 @@ namespace vast::gfx
 		Blend dstBlendAlpha = Blend::ONE;
 		BlendOp blendOpAlpha = BlendOp::ADD;
 		ColorWrite writeMask = ColorWrite::ALL;
+
+		struct Preset;
 	};
 
 	struct DepthStencilState
@@ -198,15 +200,27 @@ namespace vast::gfx
 		struct Preset;
 	};
 
+	struct DepthStencilState::Preset
+	{
+		static constexpr DepthStencilState kDisabled{ false, false,	CompareFunc::LESS_EQUAL };
+		static constexpr DepthStencilState kEnabled{ true,  false,	CompareFunc::LESS_EQUAL };
+		static constexpr DepthStencilState kEnabledWrite{ true,  true,	CompareFunc::LESS_EQUAL };
+	};
+
+	struct BlendState::Preset
+	{
+		static constexpr BlendState kDisabled{ false };
+		static constexpr BlendState kAdditive{ true };
+	};
+
 	struct PipelineDesc // TODO: Decide on a name for our pipeline/render pass
 	{
 		ShaderDesc vs;
 		ShaderDesc ps;
 		DepthStencilState depthStencilState;
 		Array<BlendState, 8> rtBlendStates; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
-		// TODO: Pipeline state stuff
-		uint8 rtCount = 0;
 		Array<Format, 8> rtFormats = { Format::UNKNOWN }; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
+		uint8 rtCount = 0;
 
 		struct Builder;
 	};
@@ -216,16 +230,9 @@ namespace vast::gfx
 		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
  		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
 		Builder& DepthStencil(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
-		Builder& SetRenderTarget(Format format) { desc.rtFormats[desc.rtCount++] = format; return *this; }
+		Builder& SetRenderTarget(Format format, BlendState bs = BlendState::Preset::kDisabled) { desc.rtFormats[desc.rtCount] = format; desc.rtBlendStates[desc.rtCount] = bs; ++desc.rtCount; return *this; }
 
 		operator PipelineDesc() { return desc; }
 		PipelineDesc desc;
-	};
-
-	struct DepthStencilState::Preset
-	{
-		static constexpr DepthStencilState kDisabled		{ false, false,	CompareFunc::LESS_EQUAL };
-		static constexpr DepthStencilState kEnabled			{ true,  false,	CompareFunc::LESS_EQUAL };
-		static constexpr DepthStencilState kEnabledWrite	{ true,  true,	CompareFunc::LESS_EQUAL };
 	};
 }

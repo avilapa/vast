@@ -194,6 +194,60 @@ namespace vast::gfx
 		}
 	}
 
+	constexpr D3D12_BLEND TranslateToDX12(const Blend& v)
+	{
+		switch (v)
+		{
+		case Blend::ZERO:					return D3D12_BLEND_ZERO;
+		case Blend::ONE:					return D3D12_BLEND_ONE;
+		case Blend::SRC_COLOR:				return D3D12_BLEND_SRC_COLOR;
+		case Blend::INV_SRC_COLOR:			return D3D12_BLEND_INV_SRC_COLOR;
+		case Blend::SRC_ALPHA:				return D3D12_BLEND_SRC_ALPHA;
+		case Blend::INV_SRC_ALPHA:			return D3D12_BLEND_INV_SRC_ALPHA;
+		case Blend::DST_ALPHA:				return D3D12_BLEND_DEST_ALPHA;
+		case Blend::INV_DST_ALPHA:			return D3D12_BLEND_INV_DEST_ALPHA;
+		case Blend::DST_COLOR:				return D3D12_BLEND_DEST_COLOR;
+		case Blend::INV_DST_COLOR:			return D3D12_BLEND_INV_DEST_COLOR;
+		case Blend::SRC_ALPHA_SAT:			return D3D12_BLEND_SRC_ALPHA_SAT;
+		case Blend::BLEND_FACTOR:			return D3D12_BLEND_BLEND_FACTOR;
+		case Blend::INV_BLEND_FACTOR:		return D3D12_BLEND_INV_BLEND_FACTOR;
+		case Blend::SRC1_COLOR:				return D3D12_BLEND_SRC1_COLOR;
+		case Blend::INV_SRC1_COLOR:			return D3D12_BLEND_INV_SRC1_COLOR;
+		case Blend::SRC1_ALPHA:				return D3D12_BLEND_SRC1_ALPHA;
+		case Blend::INV_SRC1_ALPHA:			return D3D12_BLEND_INV_SRC1_ALPHA;
+		case Blend::BLEND_ALPHA_FACTOR:		return D3D12_BLEND_ALPHA_FACTOR;
+		case Blend::INV_BLEND_ALPHA_FACTOR:	return D3D12_BLEND_INV_ALPHA_FACTOR;
+		default: VAST_ASSERTF(0, "Blend type not supported on this platform."); return D3D12_BLEND_ZERO;
+		}
+	}
+
+	constexpr D3D12_BLEND_OP TranslateToDX12(const BlendOp& v)
+	{
+		switch (v)
+		{
+		case BlendOp::ADD:			return D3D12_BLEND_OP_ADD;
+		case BlendOp::SUBTRACT:		return D3D12_BLEND_OP_SUBTRACT;
+		case BlendOp::REV_SUBTRACT:	return D3D12_BLEND_OP_REV_SUBTRACT;
+		case BlendOp::MIN:			return D3D12_BLEND_OP_MIN;
+		case BlendOp::MAX:			return D3D12_BLEND_OP_MAX;
+		default: VAST_ASSERTF(0, "Blend op not supported on this platform."); return D3D12_BLEND_OP_ADD;
+		}
+	}
+	
+	constexpr UINT8 TranslateToDX12(const ColorWrite& v)
+	{
+		switch (v)
+		{
+		case ColorWrite::DISABLE:	return 0;
+		case ColorWrite::RED:		return D3D12_COLOR_WRITE_ENABLE_RED;
+		case ColorWrite::GREEN:		return D3D12_COLOR_WRITE_ENABLE_GREEN;
+		case ColorWrite::BLUE:		return D3D12_COLOR_WRITE_ENABLE_BLUE;
+		case ColorWrite::ALPHA:		return D3D12_COLOR_WRITE_ENABLE_ALPHA;
+		case ColorWrite::ALL:		return D3D12_COLOR_WRITE_ENABLE_ALL;
+		default: VAST_ASSERTF(0, "Color write mask not supported on this platform."); return 0;
+		}
+	}
+
 	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const TextureDesc& v)
 	{
 		D3D12_RESOURCE_DESC desc = {};
