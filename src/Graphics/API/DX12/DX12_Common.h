@@ -265,19 +265,6 @@ namespace vast::gfx
 		return desc;
 	}
 
-	constexpr TextureDesc TranslateFromDX12_Tex(const D3D12_RESOURCE_DESC& v)
-	{
-		TextureDesc desc;
-		desc.type = TranslateFromDX12(v.Dimension);
-		desc.format = TranslateFromDX12(v.Format);
-		desc.width = static_cast<uint32>(v.Width);
-		desc.height = static_cast<uint32>(v.Height);
-		desc.depthOrArraySize = static_cast<uint32>(v.DepthOrArraySize);
-		desc.mipCount = static_cast<uint32>(v.MipLevels);
-		desc.viewFlags = TextureViewFlags::NONE; // TODO : TextureViewFlags
-		return desc;
-	}
-
 	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const BufferDesc& v)
 	{
 		D3D12_RESOURCE_DESC desc = {};
@@ -293,16 +280,6 @@ namespace vast::gfx
 		desc.SampleDesc.Quality = 0;
 		desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		return desc;
-	}
-
-	constexpr BufferDesc TranslateFromDX12_Buf(const D3D12_RESOURCE_DESC& v)
-	{
-		BufferDesc desc;
-		desc.size = static_cast<uint32>(v.Width);
-		desc.stride = 0; // TODO: Stride
-		desc.viewFlags = BufferViewFlags::NONE; // TODO: BufferViewFlags
-		desc.accessFlags = BufferAccessFlags::HOST_WRITABLE; // TODO: BufferAccessFlags
 		return desc;
 	}
 }
