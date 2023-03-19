@@ -248,23 +248,6 @@ namespace vast::gfx
 		}
 	}
 
-	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const TextureDesc& v)
-	{
-		D3D12_RESOURCE_DESC desc = {};
-		desc.Dimension = TranslateToDX12(v.type);
-		desc.Alignment = 0;
-		desc.Width = static_cast<UINT64>(v.width);
-		desc.Height = static_cast<UINT>(v.height);
-		desc.DepthOrArraySize = static_cast<UINT16>(v.depthOrArraySize);
-		desc.MipLevels = static_cast<UINT16>(v.mipCount);
-		desc.Format = TranslateToDX12(v.format);
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		return desc;
-	}
-
 	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const BufferDesc& v)
 	{
 		D3D12_RESOURCE_DESC desc = {};
@@ -282,4 +265,22 @@ namespace vast::gfx
 		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
 		return desc;
 	}
+
+	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const TextureDesc& v)
+	{
+		D3D12_RESOURCE_DESC desc = {};
+		desc.Dimension = TranslateToDX12(v.type);
+		desc.Alignment = 0;
+		desc.Width = static_cast<UINT64>(v.width);
+		desc.Height = static_cast<UINT>(v.height);
+		desc.DepthOrArraySize = static_cast<UINT16>(v.depthOrArraySize);
+		desc.MipLevels = static_cast<UINT16>(v.mipCount);
+		desc.Format = TranslateToDX12(v.format);
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		desc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		return desc;
+	}
+
 }

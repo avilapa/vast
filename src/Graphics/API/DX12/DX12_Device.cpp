@@ -243,13 +243,160 @@ namespace vast::gfx
 		}
 	}
 
+	static uint32 MipLevelCount(uint32 width, uint32 height, uint32 depth = 1)
+	{
+		uint32 mipCount = 0;
+		uint64 size = (std::max)((std::max)(width, height), depth);
+		while ((1ull << mipCount) <= size)
+		{
+			++mipCount;
+		}
+
+		if ((1ull << mipCount) < size)
+		{
+			++mipCount;
+		}
+
+		return mipCount;
+	}
+
 	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* outTex)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(outTex);
+		VAST_ASSERTF(desc.width > 0 && desc.height > 0 && desc.depthOrArraySize > 0, "Invalid texture size.");
+		VAST_ASSERTF(desc.mipCount <= MipLevelCount(desc.width, desc.height, desc.depthOrArraySize), "Invalid mip count.");
 
-		(void)desc;
-		(void)outTex;
+		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
+
+		bool hasRTV = (desc.viewFlags & TextureViewFlags::RTV) == TextureViewFlags::RTV;
+		bool hasDSV = (desc.viewFlags & TextureViewFlags::DSV) == TextureViewFlags::DSV;
+		bool hasSRV = (desc.viewFlags & TextureViewFlags::SRV) == TextureViewFlags::SRV;
+		bool hasUAV = (desc.viewFlags & TextureViewFlags::UAV) == TextureViewFlags::UAV;
+
+		D3D12_RESOURCE_STATES rscState = D3D12_RESOURCE_STATE_COPY_DEST;
+		DXGI_FORMAT srvFormat = rscDesc.Format;
+
+		D3D12_CLEAR_VALUE clearValue = {};
+		clearValue.Format = rscDesc.Format;
+
+		if (hasRTV)
+		{
+			rscDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+			rscState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		}
+
+		if (hasDSV)
+		{
+			rscDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+			rscState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+			switch (TranslateToDX12(desc.format))
+			{
+			case DXGI_FORMAT_D16_UNORM:
+				rscDesc.Format = DXGI_FORMAT_R16_TYPELESS;
+				srvFormat = DXGI_FORMAT_R16_UNORM;
+				break;
+			case DXGI_FORMAT_D24_UNORM_S8_UINT:
+				rscDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+				srvFormat = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+				break;
+			case DXGI_FORMAT_D32_FLOAT:
+				rscDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+				srvFormat = DXGI_FORMAT_R32_FLOAT;
+				break;
+			case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+				rscDesc.Format = DXGI_FORMAT_R32G8X24_TYPELESS;
+				srvFormat = DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+				break;
+			default:
+				VAST_ASSERTF(0, "Unknown depth stencil format.");
+				break;
+			}
+
+			clearValue.DepthStencil.Depth = 1.0f;
+		}
+
+		if (hasUAV)
+		{
+			rscDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+			rscState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		}
+
+		outTex->state = rscState;
+
+		D3D12MA::ALLOCATION_DESC allocationDesc = {};
+		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &clearValue, &outTex->allocation, IID_PPV_ARGS(&outTex->resource));
+
+		if (hasSRV)
+		{
+			outTex->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+
+			if (hasDSV)
+			{
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+				srvDesc.Format = srvFormat;
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.Texture2D.MipLevels = 1;
+				srvDesc.Texture2D.MostDetailedMip = 0;
+				srvDesc.Texture2D.PlaneSlice = 0;
+				srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+				m_Device->CreateShaderResourceView(outTex->resource, &srvDesc, outTex->srv.cpuHandle);
+			}
+			else
+			{
+				if ((desc.type == TextureType::TEXTURE_2D) && (desc.depthOrArraySize == 6))
+				{
+					// Cubemap
+					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+					srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+					srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+					srvDesc.TextureCube.MostDetailedMip = 0;
+					srvDesc.TextureCube.MipLevels = desc.mipCount;
+					srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+					m_Device->CreateShaderResourceView(outTex->resource, &srvDesc, outTex->srv.cpuHandle);
+				}
+				else
+				{
+					// Null descriptor inherits the resource format and dimension
+					m_Device->CreateShaderResourceView(outTex->resource, nullptr, outTex->srv.cpuHandle);
+				}
+			}
+
+			outTex->heapIdx = m_FreeReservedDescriptorIndices.back();
+			m_FreeReservedDescriptorIndices.pop_back();
+
+			CopySRVHandleToReservedTable(outTex->srv, outTex->heapIdx);
+		}
+
+		if (hasRTV)
+		{
+			outTex->rtv = m_RTVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateRenderTargetView(outTex->resource, nullptr, outTex->rtv.cpuHandle);
+		}
+
+		if (hasDSV)
+		{
+			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+			dsvDesc.Format = TranslateToDX12(desc.format);
+			dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+			dsvDesc.Texture2D.MipSlice = 0;
+
+			outTex->dsv = m_DSVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateDepthStencilView(outTex->resource, &dsvDesc, outTex->dsv.cpuHandle);
+		}
+
+		if (hasUAV)
+		{
+			outTex->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateUnorderedAccessView(outTex->resource, nullptr, nullptr, outTex->uav.cpuHandle);
+		}
+
+		outTex->isReady = (hasRTV || hasDSV);
 	}
 
 	static DXGI_FORMAT ConvertToDXGIFormat(D3D_REGISTER_COMPONENT_TYPE type, BYTE mask)

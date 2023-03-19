@@ -98,7 +98,7 @@ namespace vast
 #define ENUM_CLASS_ALLOW_FLAGS(t)											\
 	inline constexpr t operator&(t x, t y)									\
 	{																		\
-	typedef std::underlying_type<t>::type ut; 								\
+		typedef std::underlying_type<t>::type ut; 							\
 		return static_cast<t>(static_cast<int>(x) & static_cast<int>(y));	\
 	}																		\
 																			\
