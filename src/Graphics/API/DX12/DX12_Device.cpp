@@ -180,7 +180,7 @@ namespace vast::gfx
 		outBuf->stride = desc.stride;
 
 		uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
-		bool isHostVisible = ((desc.accessFlags & BufferAccessFlags::HOST_WRITABLE) == BufferAccessFlags::HOST_WRITABLE);
+		bool isHostVisible = desc.accessFlags == BufferAccessFlags::HOST_WRITABLE;
 
 		D3D12_RESOURCE_STATES rscState = isHostVisible ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST;
 		outBuf->state = rscState;

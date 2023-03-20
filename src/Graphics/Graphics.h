@@ -17,10 +17,9 @@ namespace vast::gfx
 
 	enum class BufferAccessFlags
 	{
-		HOST_WRITABLE = BIT(0),
-		GPU_ONLY = BIT(1),
+		HOST_WRITABLE,
+		GPU_ONLY,
 	};
-	ENUM_CLASS_ALLOW_FLAGS(BufferAccessFlags);
 
 	enum class Format
 	{
