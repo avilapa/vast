@@ -105,6 +105,35 @@ namespace vast::gfx
 		}
 	}
 
+	void DX12CommandList::CopyResource(const DX12Resource& dst, const DX12Resource& src)
+	{
+		m_CommandList->CopyResource(dst.resource, src.resource);
+	}
+
+	void DX12CommandList::CopyBufferRegion(DX12Resource& dst, uint64 dstOffset, DX12Resource& src, uint64 srcOffset, uint64 numBytes)
+	{
+		m_CommandList->CopyBufferRegion(dst.resource, dstOffset, src.resource, srcOffset, numBytes);
+	}
+
+	void DX12CommandList::CopyTextureRegion(DX12Resource& dst, DX12Resource& src, size_t srcOffset, Array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT, MAX_TEXTURE_SUBRESOURCE_COUNT>& subresourceLayouts, uint32 numSubresources)
+	{
+		for (uint32 i = 0; i < numSubresources; ++i)
+		{
+			D3D12_TEXTURE_COPY_LOCATION dstLocation = {};
+			dstLocation.pResource = dst.resource;
+			dstLocation.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			dstLocation.SubresourceIndex = i;
+
+			D3D12_TEXTURE_COPY_LOCATION srcLocation = {};
+			srcLocation.pResource = src.resource;
+			srcLocation.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			srcLocation.PlacedFootprint = subresourceLayouts[i];
+			srcLocation.PlacedFootprint.Offset += srcOffset;
+
+			m_CommandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr);
+		}
+	}
+
 	void DX12CommandList::BindDescriptorHeaps(uint32 frameId)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -112,7 +141,7 @@ namespace vast::gfx
 		m_CurrentSRVDescriptorHeap = &m_Device.GetSRVDescriptorHeap(frameId);
 		m_CurrentSRVDescriptorHeap->Reset();
 
-		const int count = 1;// 2;
+		const int count = 1;// 2; // TODO: Sampler heap
 		ID3D12DescriptorHeap* heapsToBind[count];
 		heapsToBind[0] = m_Device.GetSRVDescriptorHeap(frameId).GetHeap();
  		//heapsToBind[1] = m_Device.GetSamplerDescriptorHeap().GetHeap();
@@ -219,4 +248,117 @@ namespace vast::gfx
 		Draw(3);
 	}
 
+	//
+
+	DX12UploadCommandList::DX12UploadCommandList(DX12Device& device)
+		: DX12CommandList(device, D3D12_COMMAND_LIST_TYPE_COPY)
+	{
+		BufferDesc uploadBufferDesc;
+		uploadBufferDesc.size = 10 * 1024 * 1024;
+		uploadBufferDesc.accessFlags = BufferAccessFlags::HOST_WRITABLE;
+
+		BufferDesc uploadTextureDesc;
+		uploadTextureDesc.size = 40 * 1024 * 1024;
+		uploadTextureDesc.accessFlags = BufferAccessFlags::HOST_WRITABLE;
+
+		m_BufferUploadHeap = MakePtr<DX12Buffer>();
+		m_Device.CreateBuffer(uploadBufferDesc, m_BufferUploadHeap.get());
+
+		m_TextureUploadHeap = MakePtr<DX12Buffer>();
+		m_Device.CreateBuffer(uploadBufferDesc, m_TextureUploadHeap.get());
+	}
+
+	DX12UploadCommandList::~DX12UploadCommandList()
+	{
+		VAST_ASSERT(m_BufferUploadHeap);
+		m_Device.DestroyBuffer(m_BufferUploadHeap.get());
+		m_BufferUploadHeap = nullptr;
+
+		VAST_ASSERT(m_TextureUploadHeap);
+		m_Device.DestroyBuffer(m_TextureUploadHeap.get());
+		m_TextureUploadHeap = nullptr;
+	}
+
+	void DX12UploadCommandList::UploadBuffer(Ptr<BufferUpload> upload)
+	{
+		VAST_ASSERT(upload->size <= m_BufferUploadHeap->resource->GetDesc().Width);
+		m_BufferUploads.push_back(std::move(upload));
+	}
+	
+	void DX12UploadCommandList::UploadTexture(Ptr<TextureUpload> upload)
+	{
+		VAST_ASSERT(upload->size <= m_TextureUploadHeap->resource->GetDesc().Width);
+		m_TextureUploads.push_back(std::move(upload));
+	}
+
+	void DX12UploadCommandList::ProcessUploads()
+	{
+		const uint32 numBufferUploads = static_cast<uint32>(m_BufferUploads.size());
+		uint32 numBuffersProcessed = 0;
+		size_t bufferUploadHeapOffset = 0;
+
+		for (numBuffersProcessed; numBuffersProcessed < numBufferUploads; ++numBuffersProcessed)
+		{
+			BufferUpload& currentUpload = *m_BufferUploads[numBuffersProcessed];
+
+			if ((bufferUploadHeapOffset + currentUpload.size) > m_BufferUploadHeap->resource->GetDesc().Width)
+			{
+				break;
+			}
+
+			memcpy(m_BufferUploadHeap->data + bufferUploadHeapOffset, currentUpload.data.get(), currentUpload.size);
+			CopyBufferRegion(*currentUpload.buf, 0, *m_BufferUploadHeap, bufferUploadHeapOffset, currentUpload.size);
+
+			bufferUploadHeapOffset += currentUpload.size;
+			m_BufferUploadsInProgress.push_back(currentUpload.buf);
+		}
+
+		const uint32 numTextureUploads = static_cast<uint32>(m_TextureUploads.size());
+		uint32 numTexturesProcessed = 0;
+		size_t textureUploadHeapOffset = 0;
+
+		for (numTexturesProcessed; numTexturesProcessed < numTextureUploads; numTexturesProcessed++)
+		{
+			TextureUpload& currentUpload = *m_TextureUploads[numTexturesProcessed];
+
+			if ((textureUploadHeapOffset + currentUpload.size) > m_TextureUploadHeap->resource->GetDesc().Width)
+			{
+				break;
+			}
+
+			memcpy(m_TextureUploadHeap->data + textureUploadHeapOffset, currentUpload.data.get(), currentUpload.size);
+			CopyTextureRegion(*currentUpload.tex, *m_TextureUploadHeap, textureUploadHeapOffset, currentUpload.subresourceLayouts, currentUpload.numSubresources);
+
+			textureUploadHeapOffset += currentUpload.size;
+			textureUploadHeapOffset = AlignU64(textureUploadHeapOffset, 512);
+
+			m_TextureUploadsInProgress.push_back(currentUpload.tex);
+		}
+
+		if (numBuffersProcessed > 0)
+		{
+			m_BufferUploads.erase(m_BufferUploads.begin(), m_BufferUploads.begin() + numBuffersProcessed);
+		}
+
+		if (numTexturesProcessed > 0)
+		{
+			m_TextureUploads.erase(m_TextureUploads.begin(), m_TextureUploads.begin() + numTexturesProcessed);
+		}
+	}
+
+	void DX12UploadCommandList::ResolveProcessedUploads()
+	{
+		for (auto& buffer : m_BufferUploadsInProgress)
+		{
+			buffer->isReady = true;
+		}
+
+		for (auto& texture : m_TextureUploadsInProgress)
+		{
+			texture->isReady = true;
+		}
+
+		m_BufferUploadsInProgress.clear();
+		m_TextureUploadsInProgress.clear();
+	}
 }

@@ -11,7 +11,7 @@ namespace vast::gfx
 	{
 	public:
 		DX12CommandList(DX12Device& device, D3D12_COMMAND_LIST_TYPE commandListType);
-		~DX12CommandList();
+		virtual ~DX12CommandList();
 
 		D3D12_COMMAND_LIST_TYPE GetCommandType() const;
 		ID3D12GraphicsCommandList* GetCommandList() const;
@@ -19,6 +19,10 @@ namespace vast::gfx
 		void Reset(uint32 frameId);
 		void AddBarrier(DX12Resource& resource, D3D12_RESOURCE_STATES newState);
 		void FlushBarriers();
+
+		void CopyResource(const DX12Resource& dst, const DX12Resource& src);
+		void CopyBufferRegion(DX12Resource& dst, uint64 dstOffset, DX12Resource& src, uint64 srcOffset, uint64 numBytes);
+		void CopyTextureRegion(DX12Resource& dst, DX12Resource& src, size_t srcOffset, Array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT, MAX_TEXTURE_SUBRESOURCE_COUNT>& subresourceLayouts, uint32 numSubresources);
 
 	protected:
 		void BindDescriptorHeaps(uint32 frameId);
@@ -54,6 +58,42 @@ namespace vast::gfx
 
 	private:
 		DX12Pipeline* m_CurrentPipeline;
+	};
+
+	struct BufferUpload
+	{
+		DX12Buffer* buf = nullptr;
+		Ptr<uint8[]> data;
+		size_t size = 0;
+	};
+
+	struct TextureUpload
+	{
+		DX12Texture* tex = nullptr;
+		Ptr<uint8[]> data;
+		size_t size = 0;
+		uint32 numSubresources = 0;
+		Array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT, MAX_TEXTURE_SUBRESOURCE_COUNT> subresourceLayouts = { 0 };
+	};
+
+	class DX12UploadCommandList final : public DX12CommandList
+	{
+	public:
+		DX12UploadCommandList(DX12Device& device);
+		~DX12UploadCommandList();
+
+		void UploadBuffer(Ptr<BufferUpload> upload);
+		void UploadTexture(Ptr<TextureUpload> upload);
+		void ProcessUploads();
+		void ResolveProcessedUploads();
+
+	private:
+		Ptr<DX12Buffer> m_BufferUploadHeap;
+		Ptr<DX12Buffer> m_TextureUploadHeap;
+		Vector<Ptr<BufferUpload>> m_BufferUploads;
+		Vector<DX12Buffer*> m_BufferUploadsInProgress;
+		Vector<Ptr<TextureUpload>> m_TextureUploads;
+		Vector<DX12Texture*> m_TextureUploadsInProgress;
 	};
 
 }

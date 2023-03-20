@@ -26,6 +26,7 @@ namespace vast::gfx
 	constexpr uint32 NUM_RESERVED_SRV_DESCRIPTORS = 8192;
 	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
 	constexpr uint32 MAX_QUEUED_BARRIERS = 16;
+	constexpr uint32 MAX_TEXTURE_SUBRESOURCE_COUNT = 32;
 	// TODO: Set sensible defaults
 	constexpr uint32 NUM_TEXTURES = 512;
 	constexpr uint32 NUM_BUFFERS = 512;

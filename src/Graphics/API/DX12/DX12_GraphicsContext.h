@@ -9,13 +9,15 @@ namespace vast::gfx
 	class DX12SwapChain;
 	class DX12CommandList;
 	class DX12GraphicsCommandList;
+	class DX12UploadCommandList;
 	class DX12CommandQueue;
 
 	enum class QueueType
 	{
 		GRAPHICS = 0,
-		// TODO: Compute, Upload
-		COUNT = 1,
+		// TODO: Compute
+		UPLOAD,
+		COUNT,
 	};
 
 	class DX12GraphicsContext final : public GraphicsContext
@@ -59,6 +61,8 @@ namespace vast::gfx
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
+		Array<Ptr<DX12UploadCommandList>, NUM_FRAMES_IN_FLIGHT> m_UploadCommandLists;
+
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 

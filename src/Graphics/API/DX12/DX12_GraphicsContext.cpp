@@ -18,12 +18,15 @@ namespace vast::gfx
 		: m_Device(nullptr)
 		, m_SwapChain(nullptr)
 		, m_GraphicsCommandList(nullptr)
+		, m_UploadCommandLists({ nullptr })
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
 		, m_Buffers(nullptr)
 		, m_Textures(nullptr)
+		, m_Pipelines(nullptr)
 		, m_BuffersMarkedForDestruction({})
 		, m_TexturesMarkedForDestruction({})
+		, m_PipelinesMarkedForDestruction({})
 		, m_CurrentRT(nullptr)
 		, m_FrameId(0)
 	{
@@ -36,11 +39,18 @@ namespace vast::gfx
 		m_Device = MakePtr<DX12Device>();
 
 		m_CommandQueues[IDX(QueueType::GRAPHICS)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+		// TODO: Compute
+ 		m_CommandQueues[IDX(QueueType::UPLOAD)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_COPY);
 
 		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, 
 			*m_Device, *m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue());
 
 		m_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*m_Device);
+
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			m_UploadCommandLists[i] = MakePtr<DX12UploadCommandList>(*m_Device);
+		}
 
 		VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, DX12GraphicsContext::OnWindowResizeEvent);
 	}
@@ -50,24 +60,31 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 
 		WaitForIdle();
-
+		
 		m_GraphicsCommandList = nullptr;
-		m_SwapChain = nullptr;
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			ProcessDestructions(i);
+			m_UploadCommandLists[i] = nullptr;
 		}
+
+		m_SwapChain = nullptr;
 
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			m_CommandQueues[i] = nullptr;
 		}
 
-		m_Device = nullptr;
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			ProcessDestructions(i);
+		}
 
 		m_Buffers = nullptr;
 		m_Textures = nullptr;
+		m_Pipelines = nullptr;
+
+		m_Device = nullptr;
 	}
 
 	void DX12GraphicsContext::BeginFrame()
@@ -82,16 +99,22 @@ namespace vast::gfx
 
 		ProcessDestructions(m_FrameId);
 
+		m_UploadCommandLists[m_FrameId]->ResolveProcessedUploads();
+		m_UploadCommandLists[m_FrameId]->Reset(m_FrameId);
+
 		m_GraphicsCommandList->Reset(m_FrameId);
 	}
 
 	void DX12GraphicsContext::EndFrame()
 	{
 		VAST_PROFILE_FUNCTION();
+
+		m_UploadCommandLists[m_FrameId]->ProcessUploads();
+		SubmitCommandList(*m_UploadCommandLists[m_FrameId]);
+		SignalEndOfFrame(QueueType::UPLOAD);
+
 		SubmitCommandList(*m_GraphicsCommandList);
-
 		m_SwapChain->Present();
-
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
@@ -101,6 +124,10 @@ namespace vast::gfx
 		{
 		case D3D12_COMMAND_LIST_TYPE_DIRECT:
 			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(cmdList.GetCommandList());
+			break;
+		// TODO: Compute
+		case D3D12_COMMAND_LIST_TYPE_COPY:
+			m_CommandQueues[IDX(QueueType::UPLOAD)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
 		default:
 			VAST_ASSERTF(0, "Unsupported context submit type.");

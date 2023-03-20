@@ -21,9 +21,7 @@
 //	> GFX Multithreading.
 //		- req: GFX Display List
 //
-//	> DX12 Upload Command List: allow loading of resources into GPU.
-//	> DX12 Textures: create textures and upload data.
-//		- req: DX12 Upload Command List
+//	> DX12 Textures: upload data.
 //	> DX12 Dynamic Buffers: allow creation of non-static vertex/index buffers.
 //
 //	> Imgui Renderer.
