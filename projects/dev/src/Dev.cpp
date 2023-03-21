@@ -21,11 +21,10 @@
 //	> GFX Multithreading.
 //		- req: GFX Display List
 //
-//	> DX12 Textures: upload data.
 //	> DX12 Dynamic Buffers: allow creation of non-static vertex/index buffers.
 //
 //	> Imgui Renderer.
-//		- req: DX12 Textures, DX12 Dynamic Buffers
+//		- req: DX12 Dynamic Buffers
 //
 // --------------------------------------------------------------------------------------------- //
 

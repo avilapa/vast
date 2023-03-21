@@ -8,6 +8,8 @@
 
 #include "Core/EventTypes.h"
 
+#include "dx12/DirectXTex/DirectXTex/DirectXTex.h"
+
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
@@ -209,19 +211,6 @@ namespace vast::gfx
 		m_GraphicsCommandList->Draw(vtxCount, vtxStartLocation);
 	}
 
-	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(m_Device);
-		auto [h, tex] = m_Textures->AcquireResource();
-		m_Device->CreateTexture(desc, tex);
-		if (initialData != nullptr)
-		{
-			// TODO: Upload texture data.
-		}
-		return h;
-	}
-
 	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -230,7 +219,75 @@ namespace vast::gfx
 		m_Device->CreateBuffer(desc, buf);
 		if (initialData != nullptr)
 		{
-			buf->SetMappedData(initialData, dataSize);
+			if (desc.accessFlags == BufferAccessFlags::HOST_WRITABLE)
+			{
+				buf->SetMappedData(initialData, dataSize);
+			}
+			else
+			{
+				Ptr<BufferUpload> upload = MakePtr<BufferUpload>();
+				upload->buf = buf;
+				upload->data = MakePtr<uint8[]>(dataSize);
+				upload->size = dataSize;
+
+				memcpy_s(upload->data.get(), dataSize, initialData, dataSize);
+				m_UploadCommandLists[m_FrameId]->UploadBuffer(std::move(upload));
+			}
+		}
+		return h;
+	}
+
+	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(m_Device);
+		auto [h, tex] = m_Textures->AcquireResource();
+		m_Device->CreateTexture(desc, tex);
+		if (initialData != nullptr)
+		{
+			auto upload = std::make_unique<TextureUpload>();
+			upload->tex = tex;
+			upload->numSubresources = desc.depthOrArraySize * desc.mipCount;
+
+			UINT numRows[MAX_TEXTURE_SUBRESOURCE_COUNT];
+			uint64 rowSizesInBytes[MAX_TEXTURE_SUBRESOURCE_COUNT];
+			auto rscDesc = tex->resource->GetDesc();
+			m_Device->GetDevice()->GetCopyableFootprints(&rscDesc, 0, upload->numSubresources, 0, upload->subresourceLayouts.data(), numRows, rowSizesInBytes, &upload->size);
+
+			upload->data = std::make_unique<uint8[]>(upload->size);
+
+			const uint8* srcMemory = reinterpret_cast<const uint8*>(initialData);
+			const uint64 srcTexelSize = DirectX::BitsPerPixel(TranslateToDX12(desc.format)) / 8;
+
+			for (uint64 arrayIdx = 0; arrayIdx < desc.depthOrArraySize; ++arrayIdx)
+			{
+				uint64 mipWidth = desc.width;
+				for (uint64 mipIdx = 0; mipIdx < desc.mipCount; ++mipIdx)
+				{
+					const uint64 subresourceIdx = mipIdx + (arrayIdx * desc.mipCount);
+
+					const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& subresourceLayout = upload->subresourceLayouts[subresourceIdx];
+					const uint64 subresourceHeight = numRows[subresourceIdx];
+					const uint64 subresourcePitch = AlignU32(subresourceLayout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+					const uint64 subresourceDepth = subresourceLayout.Footprint.Depth;
+					const uint64 srcPitch = mipWidth * srcTexelSize;
+					uint8* dstSubresourceMemory = upload->data.get() + subresourceLayout.Offset;
+
+					for (uint64 sliceIdx = 0; sliceIdx < subresourceDepth; ++sliceIdx)
+					{
+						for (uint64 height = 0; height < subresourceHeight; ++height)
+						{
+							memcpy(dstSubresourceMemory, srcMemory, (std::min)(subresourcePitch, srcPitch));
+							dstSubresourceMemory += subresourcePitch;
+							srcMemory += srcPitch;
+						}
+					}
+
+					mipWidth = (std::max)(mipWidth / 2, 1ull);
+				}
+			}
+
+			m_UploadCommandLists[m_FrameId]->UploadTexture(std::move(upload));
 		}
 		return h;
 	}
