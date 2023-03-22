@@ -219,7 +219,7 @@ namespace vast::gfx
 		m_Device->CreateBuffer(desc, buf);
 		if (initialData != nullptr)
 		{
-			if (desc.accessFlags == BufferAccessFlags::HOST_WRITABLE)
+			if (desc.accessFlags == BufferCpuAccess::WRITE)
 			{
 				buf->SetMappedData(initialData, dataSize);
 			}

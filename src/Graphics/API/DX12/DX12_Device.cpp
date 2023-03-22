@@ -180,16 +180,22 @@ namespace vast::gfx
 		outBuf->stride = desc.stride;
 
 		uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
-		bool isHostVisible = desc.accessFlags == BufferAccessFlags::HOST_WRITABLE;
-
-		D3D12_RESOURCE_STATES rscState = isHostVisible ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COPY_DEST;
-		outBuf->state = rscState;
 
 		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
-		allocDesc.HeapType = isHostVisible ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
-		m_Allocator->CreateResource(&allocDesc, &rscDesc, rscState, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
+		if (desc.accessFlags == BufferCpuAccess::NONE)
+		{
+			outBuf->state = D3D12_RESOURCE_STATE_COPY_DEST;
+			allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+		}
+		else
+		{
+			outBuf->state = D3D12_RESOURCE_STATE_GENERIC_READ;
+			allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+		}
+		// TODO: BufferCpuAccess::READBACK
+		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
 		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
 
 		if ((desc.viewFlags & BufferViewFlags::CBV) == BufferViewFlags::CBV)
@@ -237,7 +243,7 @@ namespace vast::gfx
 			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
 		}
 
-		if (isHostVisible)
+		if (desc.accessFlags == BufferCpuAccess::WRITE)
 		{
 			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
 		}

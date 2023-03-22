@@ -15,10 +15,11 @@ namespace vast::gfx
 	};
 	ENUM_CLASS_ALLOW_FLAGS(BufferViewFlags);
 
-	enum class BufferAccessFlags
+	enum class BufferCpuAccess
 	{
-		HOST_WRITABLE,
-		GPU_ONLY,
+		NONE,
+		WRITE,
+		// TODO: READBACK
 	};
 
 	enum class Format
@@ -123,7 +124,7 @@ namespace vast::gfx
 		uint32 size = 0;
 		uint32 stride = 0;
 		BufferViewFlags viewFlags = BufferViewFlags::NONE;
-		BufferAccessFlags accessFlags = BufferAccessFlags::HOST_WRITABLE;
+		BufferCpuAccess accessFlags = BufferCpuAccess::WRITE;
 		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
 
 		struct Builder;
@@ -134,7 +135,7 @@ namespace vast::gfx
 		Builder& Size(uint32 size) { desc.size = size; return *this; }
 		Builder& Stride(uint32 stride) { desc.stride = stride; return *this; }
 		Builder& ViewFlags(BufferViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
-		Builder& AccessFlags(BufferAccessFlags accessFlags) { desc.accessFlags = accessFlags; return *this; }
+		Builder& AccessFlags(BufferCpuAccess accessFlags) { desc.accessFlags = accessFlags; return *this; }
 		Builder& IsRawAccess(bool isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
 
 		operator BufferDesc() { return desc; }
