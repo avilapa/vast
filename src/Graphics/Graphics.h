@@ -6,6 +6,12 @@ namespace vast::gfx
 {
 	// - Graphics Enums --------------------------------------------------------------------------- //
 
+	enum class ResourceUsage
+	{
+		STATIC,
+		DYNAMIC,
+	};
+
 	enum class BufferViewFlags
 	{
 		NONE = 0,
@@ -124,7 +130,7 @@ namespace vast::gfx
 		uint32 size = 0;
 		uint32 stride = 0;
 		BufferViewFlags viewFlags = BufferViewFlags::NONE;
-		BufferCpuAccess accessFlags = BufferCpuAccess::WRITE;
+		BufferCpuAccess cpuAccess = BufferCpuAccess::WRITE;
 		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
 
 		struct Builder;
@@ -135,7 +141,7 @@ namespace vast::gfx
 		Builder& Size(uint32 size) { desc.size = size; return *this; }
 		Builder& Stride(uint32 stride) { desc.stride = stride; return *this; }
 		Builder& ViewFlags(BufferViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
-		Builder& AccessFlags(BufferCpuAccess accessFlags) { desc.accessFlags = accessFlags; return *this; }
+		Builder& AccessFlags(BufferCpuAccess accessFlags) { desc.cpuAccess = accessFlags; return *this; }
 		Builder& IsRawAccess(bool isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
 
 		operator BufferDesc() { return desc; }
