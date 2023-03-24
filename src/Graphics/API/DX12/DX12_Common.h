@@ -57,6 +57,9 @@ namespace vast::gfx
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 		uint32 heapIdx = kInvalidHeapIdx;
 		bool isReady = false;
+
+		ResourceUsage usage;
+		// TODO: Needed dupes for dynamic: resource, gpuAddress, data, stride?
 	};
 
 	struct DX12Buffer : public Buffer, public DX12Resource

@@ -177,14 +177,8 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(outBuf);
 
-		outBuf->stride = desc.stride;
-
-		uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
-
-		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
-
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
-		if (desc.accessFlags == BufferCpuAccess::NONE)
+		if (desc.cpuAccess == BufferCpuAccess::NONE)
 		{
 			outBuf->state = D3D12_RESOURCE_STATE_COPY_DEST;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
@@ -195,6 +189,8 @@ namespace vast::gfx
 			allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
 		}
 		// TODO: BufferCpuAccess::READBACK
+
+		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
 		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
 		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
 
@@ -207,6 +203,9 @@ namespace vast::gfx
 			outBuf->cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateConstantBufferView(&cbvDesc, outBuf->cbv.cpuHandle);
 		}
+
+		outBuf->stride = desc.stride;
+		const uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
 
 		if ((desc.viewFlags & BufferViewFlags::SRV) == BufferViewFlags::SRV)
 		{
@@ -243,7 +242,8 @@ namespace vast::gfx
 			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
 		}
 
-		if (desc.accessFlags == BufferCpuAccess::WRITE)
+		outBuf->usage = desc.usage;
+		if (desc.cpuAccess == BufferCpuAccess::WRITE)
 		{
 			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
 		}

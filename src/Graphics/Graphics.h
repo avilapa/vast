@@ -131,6 +131,7 @@ namespace vast::gfx
 		uint32 stride = 0;
 		BufferViewFlags viewFlags = BufferViewFlags::NONE;
 		BufferCpuAccess cpuAccess = BufferCpuAccess::WRITE;
+		ResourceUsage usage = ResourceUsage::STATIC;
 		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
 
 		struct Builder;
@@ -141,7 +142,8 @@ namespace vast::gfx
 		Builder& Size(uint32 size) { desc.size = size; return *this; }
 		Builder& Stride(uint32 stride) { desc.stride = stride; return *this; }
 		Builder& ViewFlags(BufferViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
-		Builder& AccessFlags(BufferCpuAccess accessFlags) { desc.cpuAccess = accessFlags; return *this; }
+		Builder& CpuAccess(BufferCpuAccess cpuAccess) { desc.cpuAccess = cpuAccess; return *this; }
+		Builder& Usage(ResourceUsage usage) { desc.usage = usage; return *this; }
 		Builder& IsRawAccess(bool isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
 
 		operator BufferDesc() { return desc; }

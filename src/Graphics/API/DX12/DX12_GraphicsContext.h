@@ -56,6 +56,9 @@ namespace vast::gfx
 
 		void OnWindowResizeEvent(WindowResizeEvent& event);
 
+		void UploadBufferData(DX12Buffer* buf, void* initialData = nullptr, const size_t dataSize = 0);
+		void UploadTextureData(DX12Texture* tex, void* initialData = nullptr);
+
 		void ProcessDestructions(uint32 frameId);
 
 		Ptr<DX12Device> m_Device;

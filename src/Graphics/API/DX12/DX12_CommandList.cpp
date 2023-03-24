@@ -255,11 +255,11 @@ namespace vast::gfx
 	{
 		BufferDesc uploadBufferDesc;
 		uploadBufferDesc.size = 10 * 1024 * 1024;
-		uploadBufferDesc.accessFlags = BufferCpuAccess::WRITE;
+		uploadBufferDesc.cpuAccess = BufferCpuAccess::WRITE;
 
 		BufferDesc uploadTextureDesc;
 		uploadTextureDesc.size = 40 * 1024 * 1024;
-		uploadTextureDesc.accessFlags = BufferCpuAccess::WRITE;
+		uploadTextureDesc.cpuAccess = BufferCpuAccess::WRITE;
 
 		m_BufferUploadHeap = MakePtr<DX12Buffer>();
 		m_Device.CreateBuffer(uploadBufferDesc, m_BufferUploadHeap.get());
