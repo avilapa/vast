@@ -37,7 +37,10 @@ namespace vast::gfx
 
 		// TODO: Clear flags
 		virtual void SetRenderTarget(const TextureHandle h) = 0;
+		virtual void SetVertexBuffer(const BufferHandle h) = 0;
+		virtual void SetIndexBuffer(const BufferHandle h) = 0;
 		virtual void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
+		virtual void SetPushConstants(const void* data, const size_t size) = 0;
 		virtual void BeginRenderPass(const PipelineHandle h) = 0;
 		virtual void EndRenderPass() = 0;
 
@@ -47,6 +50,8 @@ namespace vast::gfx
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) = 0;
 		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
 
+		virtual void UpdateBuffer(const BufferHandle h, void* data, const size_t size) = 0;
+
 		virtual void DestroyBuffer(const BufferHandle h) = 0;
 		virtual void DestroyTexture(const TextureHandle h) = 0;
 		virtual void DestroyPipeline(const PipelineHandle h) = 0;
@@ -55,6 +60,7 @@ namespace vast::gfx
 
 		virtual Format GetBackBufferFormat() const = 0;
 		virtual uint32 GetBindlessHeapIndex(const BufferHandle h) = 0;
+		virtual bool GetIsReady(const TextureHandle h) = 0;
 	};
 
 }

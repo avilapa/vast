@@ -30,7 +30,10 @@ namespace vast::gfx
 		void EndFrame() override;
 
 		void SetRenderTarget(const TextureHandle h) override;
+		void SetVertexBuffer(const BufferHandle h) override;
+		void SetIndexBuffer(const BufferHandle h) override;
 		void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
+		void SetPushConstants(const void* data, const size_t size) override;
 		void BeginRenderPass(const PipelineHandle h) override;
 		void EndRenderPass() override;
 
@@ -40,6 +43,8 @@ namespace vast::gfx
 		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
+		void UpdateBuffer(const BufferHandle h, void* data, const size_t size) override;
+
 		void DestroyBuffer(const BufferHandle h) override;
 		void DestroyTexture(const TextureHandle h) override;
 		void DestroyPipeline(const PipelineHandle h) override;
@@ -48,6 +53,7 @@ namespace vast::gfx
 
 		Format GetBackBufferFormat() const override;
 		uint32 GetBindlessHeapIndex(const BufferHandle h) override;
+		bool GetIsReady(const TextureHandle h) override;
 
 	private:
 		void SubmitCommandList(DX12CommandList& ctx);
@@ -56,8 +62,10 @@ namespace vast::gfx
 
 		void OnWindowResizeEvent(WindowResizeEvent& event);
 
-		void UploadBufferData(DX12Buffer* buf, void* initialData = nullptr, const size_t dataSize = 0);
-		void UploadTextureData(DX12Texture* tex, void* initialData = nullptr);
+		void SetBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize);
+
+		void UploadBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize);
+		void UploadTextureData(DX12Texture* tex, void* srcMem);
 
 		void ProcessDestructions(uint32 frameId);
 

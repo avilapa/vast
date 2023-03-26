@@ -191,6 +191,12 @@ namespace vast::gfx
 		// TODO: BufferCpuAccess::READBACK
 
 		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
+		// TODO: Aligned width only needed for CBV?
+		rscDesc.Width = static_cast<UINT64>(AlignU32(static_cast<uint32>(rscDesc.Width), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+		if (desc.usage == ResourceUsage::DYNAMIC)
+		{
+			rscDesc.Width *= NUM_FRAMES_IN_FLIGHT;
+		}
 		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
 		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
 
@@ -204,7 +210,6 @@ namespace vast::gfx
 			m_Device->CreateConstantBufferView(&cbvDesc, outBuf->cbv.cpuHandle);
 		}
 
-		outBuf->stride = desc.stride;
 		const uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
 
 		if ((desc.viewFlags & BufferViewFlags::SRV) == BufferViewFlags::SRV)
@@ -242,11 +247,13 @@ namespace vast::gfx
 			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
 		}
 
-		outBuf->usage = desc.usage;
 		if (desc.cpuAccess == BufferCpuAccess::WRITE)
 		{
 			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
 		}
+
+		outBuf->usage = desc.usage;
+		outBuf->stride = desc.stride;
 	}
 
 	static uint32 MipLevelCount(uint32 width, uint32 height, uint32 depth = 1)

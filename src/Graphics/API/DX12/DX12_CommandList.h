@@ -45,7 +45,10 @@ namespace vast::gfx
 
 		void SetPipeline(DX12Pipeline* pipeline);
 		void SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds);
+		void SetVertexBuffer(const DX12Buffer& buf);
+		void SetIndexBuffer(const DX12Buffer& buf);
 		void SetShaderResource(const DX12Buffer& cbv, uint32 slotIndex);
+		void SetPushConstants(uint32 bindPoint, const void* data, const size_t size);
 
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 

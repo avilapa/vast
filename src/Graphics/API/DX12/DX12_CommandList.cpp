@@ -188,11 +188,48 @@ namespace vast::gfx
 		m_CommandList->OMSetRenderTargets(count, rtHandles, false, dsHandle.ptr != 0 ? &dsHandle : nullptr);
 	}
 
+	void DX12GraphicsCommandList::SetVertexBuffer(const DX12Buffer& buf)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind vertex shader before setting a render pipeline.");
+
+		auto rscDesc = buf.resource->GetDesc();
+
+		D3D12_VERTEX_BUFFER_VIEW vbv = {};
+		vbv.BufferLocation	= buf.gpuAddress;
+		vbv.SizeInBytes		= static_cast<UINT>(rscDesc.Width);
+		vbv.StrideInBytes	= buf.stride;
+
+		m_CommandList->IASetVertexBuffers(0, 1, &vbv);
+	}
+
+	void DX12GraphicsCommandList::SetIndexBuffer(const DX12Buffer& buf)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind index shader before setting a render pipeline.");
+
+		auto rscDesc = buf.resource->GetDesc();
+
+		D3D12_INDEX_BUFFER_VIEW ibv = {};
+		ibv.BufferLocation	= buf.gpuAddress;
+		ibv.SizeInBytes		= static_cast<UINT>(rscDesc.Width);
+		ibv.Format			= rscDesc.Format;
+
+		m_CommandList->IASetIndexBuffer(&ibv);
+	}
+
 	void DX12GraphicsCommandList::SetShaderResource(const DX12Buffer& cbv, uint32 slotIndex)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind shader resource before setting a render pipeline."); // TODO: What about global/per frame resources
 		m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, cbv.gpuAddress);
+	}
+
+	void DX12GraphicsCommandList::SetPushConstants(uint32 bindPoint, const void* data, const size_t size)
+	{
+		VAST_ASSERT(data && size);
+		// TODO: Support offset parameter.
+		m_CommandList->SetGraphicsRoot32BitConstants(bindPoint, size / sizeof(uint32), data, 0);
 	}
 
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)

@@ -32,6 +32,13 @@ namespace vast::gfx
 	constexpr uint32 NUM_BUFFERS = 512;
 	constexpr uint32 NUM_PIPELINES = 64;
 
+	// Note: Root 32 Bit constants are identified on shaders by using a reserved binding point b999.
+	// This is because DXC shader reflection has no way to tell apart a CBV from a Root 32 Bit Constant.
+	// TODO: We could also identify push constants by giving a descriptive name to the buffer itself, in case in the future more than one binding point is needed.
+	// TODO: Input this as a define in the compiler
+	constexpr uint32 PUSH_CONSTANT_REGISTER_INDEX = 999;
+
+
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
@@ -58,8 +65,8 @@ namespace vast::gfx
 		uint32 heapIdx = kInvalidHeapIdx;
 		bool isReady = false;
 
-		ResourceUsage usage;
-		// TODO: Needed dupes for dynamic: resource, gpuAddress, data, stride?
+		ResourceUsage usage = ResourceUsage::STATIC;
+		uint32 currBufferIdx = 0; // TODO: Do we need to store this per buffer? Can we use m_FrameId instead and swap pointers every frame for dynamic resources.
 	};
 
 	struct DX12Buffer : public Buffer, public DX12Resource
@@ -69,14 +76,6 @@ namespace vast::gfx
 		DX12Descriptor cbv = {};
 		DX12Descriptor srv = {};
 		DX12Descriptor uav = {};
-
-		void SetMappedData(void* p, size_t dataSize)
-		{
-			const auto size = resource->GetDesc().Width;
-			VAST_ASSERT(data != nullptr && p != nullptr && dataSize > 0 && dataSize <= size);
-			memcpy_s(data, size, p, dataSize);
-			isReady = true; // TODO
-		}
 	};
 
 	struct DX12Texture : public Texture, public DX12Resource
@@ -257,8 +256,7 @@ namespace vast::gfx
 		D3D12_RESOURCE_DESC desc = {};
 		desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
 		desc.Alignment = 0; 
-		// TODO: Aligned width only needed for CBV?
-		desc.Width = static_cast<UINT64>(AlignU32(static_cast<uint32>(v.size), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+		desc.Width = static_cast<UINT64>(v.size);
 		desc.Height = 1;
 		desc.DepthOrArraySize = 1;
 		desc.MipLevels = 1;

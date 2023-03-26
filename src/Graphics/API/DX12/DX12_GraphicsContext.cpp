@@ -158,6 +158,22 @@ namespace vast::gfx
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
+	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		m_GraphicsCommandList->SetVertexBuffer(*buf);
+	}
+
+	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		m_GraphicsCommandList->SetIndexBuffer(*buf);
+	}
+
 	void DX12GraphicsContext::SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -166,6 +182,12 @@ namespace vast::gfx
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
 		m_GraphicsCommandList->SetShaderResource(*buf, shaderResourceProxy.idx);
+	}
+
+	void DX12GraphicsContext::SetPushConstants(const void* data, const size_t size)
+	{
+		VAST_ASSERT(data && size);
+		m_GraphicsCommandList->SetPushConstants(PUSH_CONSTANT_REGISTER_INDEX, data, size);
 	}
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h)
@@ -222,7 +244,12 @@ namespace vast::gfx
 		{
 			if (desc.cpuAccess == BufferCpuAccess::WRITE)
 			{
-				buf->SetMappedData(initialData, dataSize);
+				for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+				{
+					buf->currBufferIdx = i;
+					SetBufferData(buf, initialData, dataSize);
+				}
+				buf->currBufferIdx = 0;
 			}
 			else
 			{
@@ -232,19 +259,43 @@ namespace vast::gfx
 		return h;
 	}
 
-	void DX12GraphicsContext::UploadBufferData(DX12Buffer* buf, void* initialData /* = nullptr */, const size_t dataSize /* = 0 */)
+	void DX12GraphicsContext::UpdateBuffer(const BufferHandle h, void* srcMem, const size_t srcSize)
+	{
+		VAST_ASSERT(h.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+
+		VAST_ASSERTF(buf->usage == ResourceUsage::DYNAMIC, "Attempted to update non dynamic resource.");
+		// TODO: Dynamic no CPU access buffers?
+
+		buf->currBufferIdx = (buf->currBufferIdx + 1) % NUM_FRAMES_IN_FLIGHT;
+		SetBufferData(buf, srcMem, srcSize);
+	}
+
+	void DX12GraphicsContext::SetBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize)
 	{
 		VAST_ASSERT(buf);
-		VAST_ASSERT(initialData && dataSize);
+		VAST_ASSERT(srcMem && srcSize);
+		const auto dstSize = buf->resource->GetDesc().Width;
+		VAST_ASSERT(srcSize > 0 && srcSize <= dstSize);
+
+		uint8* dstMem = buf->data + dstSize * buf->currBufferIdx;
+		memcpy(dstMem, srcMem, srcSize);
+	}
+
+	void DX12GraphicsContext::UploadBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize)
+	{
+		VAST_ASSERT(buf);
+		VAST_ASSERT(srcMem && srcSize);
 
 		Ptr<BufferUpload> upload = MakePtr<BufferUpload>();
 		upload->buf = buf;
-		upload->data = MakePtr<uint8[]>(dataSize);
-		upload->size = dataSize;
+		upload->data = MakePtr<uint8[]>(srcSize);
+		upload->size = srcSize;
 
-		memcpy_s(upload->data.get(), dataSize, initialData, dataSize);
+		memcpy(upload->data.get(), srcMem, srcSize);
 		m_UploadCommandLists[m_FrameId]->UploadBuffer(std::move(upload));
 	}
+
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
 	{
@@ -259,10 +310,10 @@ namespace vast::gfx
 		return h;
 	}
 
-	void DX12GraphicsContext::UploadTextureData(DX12Texture* tex, void* initialData /* = nullptr */)
+	void DX12GraphicsContext::UploadTextureData(DX12Texture* tex, void* srcMem)
 	{
 		VAST_ASSERT(tex);
-		VAST_ASSERT(initialData);
+		VAST_ASSERT(srcMem);
 
 		D3D12_RESOURCE_DESC desc = tex->resource->GetDesc();
 		auto upload = std::make_unique<TextureUpload>();
@@ -276,7 +327,7 @@ namespace vast::gfx
 
 		upload->data = std::make_unique<uint8[]>(upload->size);
 
-		const uint8* srcMemory = reinterpret_cast<const uint8*>(initialData);
+		const uint8* srcMemory = reinterpret_cast<const uint8*>(srcMem);
 		const uint64 srcTexelSize = DirectX::BitsPerPixel(desc.Format) / 8;
 
 		for (uint64 arrayIdx = 0; arrayIdx < desc.DepthOrArraySize; ++arrayIdx)
@@ -357,6 +408,12 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		return m_Buffers->LookupResource(h)->heapIdx;
+	}
+
+	bool DX12GraphicsContext::GetIsReady(const TextureHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return m_Textures->LookupResource(h)->isReady;
 	}
 
 	void DX12GraphicsContext::ProcessDestructions(uint32 frameId)
