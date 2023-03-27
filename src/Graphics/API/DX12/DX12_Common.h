@@ -38,7 +38,6 @@ namespace vast::gfx
 	// TODO: Input this as a define in the compiler
 	constexpr uint32 PUSH_CONSTANT_REGISTER_INDEX = 999;
 
-
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 

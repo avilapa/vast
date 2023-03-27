@@ -56,7 +56,7 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &vertexData, sizeof(vertexData));
 
 	// The constant buffer contains the index of the vertex buffer in the descriptor heap.
-	TriangleCBV cbvData = { ctx.GetBindlessHeapIndex(m_TriangleVtxBuf) };
+	TriangleCBV cbvData = { ctx.GetBindlessIndex(m_TriangleVtxBuf) };
 	m_TriangleCbv = ctx.CreateBuffer(gfx::BufferDesc::Builder()
 		.Size(sizeof(TriangleCBV))
 		.ViewFlags(gfx::BufferViewFlags::CBV)

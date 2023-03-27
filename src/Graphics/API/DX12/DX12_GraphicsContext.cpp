@@ -404,7 +404,7 @@ namespace vast::gfx
 		return m_SwapChain->GetBackBufferFormat();
 	}
 
-	uint32 DX12GraphicsContext::GetBindlessHeapIndex(const BufferHandle h)
+	uint32 DX12GraphicsContext::GetBindlessIndex(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return m_Buffers->LookupResource(h)->heapIdx;

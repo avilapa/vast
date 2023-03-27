@@ -219,7 +219,7 @@ namespace vast::gfx
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / 4) : nelem);
+			srvDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / sizeof(uint32)) : nelem);
 			srvDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			srvDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
 
@@ -229,6 +229,7 @@ namespace vast::gfx
 			outBuf->heapIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
+			// TODO: For dynamic bindless vertex/index buffers we need to be able to update the SRVs accordingly
 			CopySRVHandleToReservedTable(outBuf->srv, outBuf->heapIdx);
 		}
 
@@ -239,7 +240,7 @@ namespace vast::gfx
 			uavDesc.Format = desc.isRawAccess ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
 			uavDesc.Buffer.CounterOffsetInBytes = 0;
 			uavDesc.Buffer.FirstElement = 0;
-			uavDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / 4) : nelem);
+			uavDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / sizeof(uint32)) : nelem);
 			uavDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			uavDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
