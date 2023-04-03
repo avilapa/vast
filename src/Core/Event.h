@@ -7,15 +7,15 @@
 
 // ==================================== EVENT SYSTEM USAGE ========================================
 //
-// This is a blocking event system. New event types can be added to event_types.h. Event callbacks
-// are bound by subscribing to an event type using VAST_SUBSCRIBE_TO_EVENT or if the callback needs
-// data to resolve itself, using VAST_SUBSCRIBE_TO_EVENT_DATA instead:
+// This is a blocking event system. New event types can be added to EventTypes.h. Event callbacks
+// are bound by subscribing to an event type using VAST_SUBSCRIBE_TO_EVENT and passing the event
+// class type and a callback (passed using VAST_EVENT_CALLBACK) as parameters:
 //
-//		VAST_SUBSCRIBE_TO_EVENT(MyCoolEvent, MyClass::OnCoolEvent);
-//		VAST_SUBSCRIBE_TO_EVENT_DATA(MyCoolEvent, MyClass::OnCoolEvent);
+//		VAST_SUBSCRIBE_TO_EVENT(MyCoolEvent, VAST_EVENT_CALLBACK(MyClass::OnCoolEvent));
+//		VAST_SUBSCRIBE_TO_EVENT(MyCoolEvent, VAST_EVENT_CALLBACK(MyClass::OnCoolEvent, MyCoolEvent));
 //
 // The callback function must return void and be declared with either no parameters or only one 
-// parameter, that being a reference to the event type the function is subscribed to:
+// parameter, that being a const reference to the event type the function is subscribed to:
 //
 //		void MyClass::OnCoolEvent();
 //		void MyClass::OnCoolEvent(MyCoolEvent& event);
@@ -25,52 +25,67 @@
 // being the event type, which contains the data necessary for the callback functions to resolve
 // the event:
 //
-//		MyCoolEvent event(...);
+//		MyCoolEvent event; // Initialize event with data
 //		VAST_FIRE_EVENT(MyCoolEvent, event);
 //
 // ================================================================================================
 
-#define __VAST_EVENT_CALLBACK_DATA(eventType, callback)		[this](vast::IEvent& data) { callback(dynamic_cast<eventType&>(data)); }
-#define __VAST_EVENT_CALLBACK(eventType, callback)			[this](vast::IEvent& data) { (void)data; callback(); }
-// TODO: I'd like to have only one VAST_SUBSCRIBE_TO_EVENT macro that can identify on compile time if the callback's signature has any parameters.
-// If you are crashing here, it is likely that you are passing an invalid type to this macro (needs to inherit from IEvent).
-#define VAST_SUBSCRIBE_TO_EVENT_DATA(eventType, callback)	::vast::EventSystem::SubscribeToEvent<eventType>(__VAST_EVENT_CALLBACK_DATA(eventType, callback))
-#define VAST_SUBSCRIBE_TO_EVENT(eventType, callback)		::vast::EventSystem::SubscribeToEvent<eventType>(__VAST_EVENT_CALLBACK(eventType, callback))
+// TODO: Callback lifetimes are not managed. If an event is fired after a subscriber has been 
+// destroyed we will crash. We should be asserting and provide a way for subscribers to unsubscribe.
 
-#define __VAST_FIRE_EVENT_DATA(eventType, eventData)		::vast::EventSystem::FireEvent<eventType>(eventData)
-#define __VAST_FIRE_EVENT(eventType)						::vast::EventSystem::FireEvent<eventType>()
-
-#define VAST_FIRE_EVENT(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_FIRE_EVENT_DATA, __VAST_FIRE_EVENT)(__VA_ARGS__))
+// TODO: Currently this event system is not thread safe.
 
 namespace vast
 {
+
+#define __VAST_EVENT_CALLBACK_DATA(fn, eventType) [this](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
+#define __VAST_EVENT_CALLBACK(fn) [this](const IEvent& data) { (void)data; fn(); }
+
+#define __VAST_EVENT_CALLBACK_STATIC_DATA(fn, eventType) [](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
+#define __VAST_EVENT_CALLBACK_STATIC(fn) [](const IEvent& data) { (void)data; fn(); }
+
+#define __VAST_FIRE_EVENT_DATA(eventType, data)	EventSystem::FireEvent<eventType>(data)
+#define __VAST_FIRE_EVENT(eventType) EventSystem::FireEvent<eventType>()
+
+
+#define VAST_EVENT_CALLBACK(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_CALLBACK_DATA, __VAST_EVENT_CALLBACK)(__VA_ARGS__))
+#define VAST_EVENT_CALLBACK_STATIC(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_CALLBACK_STATIC_DATA, __VAST_EVENT_CALLBACK_STATIC)(__VA_ARGS__))
+
+#define VAST_SUBSCRIBE_TO_EVENT(eventType, fn) EventSystem::SubscribeToEvent<eventType>(fn)
+
+#define VAST_FIRE_EVENT(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_FIRE_EVENT_DATA, __VAST_FIRE_EVENT)(__VA_ARGS__))
+
 	enum class EventType;
 
 	class IEvent
 	{
 	public:
-		IEvent() = default;
 		virtual ~IEvent() = default;
-		virtual EventType GetType() const { return static_cast<EventType>(0); };
 	};
 
-#define EVENT_CLASS_DECL_TYPE(type)											\
-	static EventType GetStaticType() { return EventType::type; }			\
-	virtual EventType GetType() const override { return GetStaticType(); }	\
+#define EVENT_CLASS_DECL_STATIC_TYPE(type)								\
+	static constexpr EventType GetType() { return EventType::type; }	\
 	static constexpr char* GetName() { return STR(type##Event); }
 
 	class EventSystem
 	{
 	public:
-		using EventCallback = std::function<void(IEvent&)>;
+		using EventCallback = std::function<void(const IEvent&)>;
 
 		template<typename T>
 		static void SubscribeToEvent(EventCallback&& func)
 		{
-			VAST_PROFILE_FUNCTION();
-			uint32 eventIdx = static_cast<uint32>(T::GetStaticType());
+			uint32 eventIdx = static_cast<uint32>(T::GetType());
 			VAST_TRACE("[events] {} registered new subscriber ({}).", T::GetName(), (GetSubscriberCount(eventIdx) + 1));
 			SubscribeToEvent(eventIdx, std::move(func));
+		}
+
+		template<typename T>
+		static void FireEvent(IEvent& data)
+		{
+			uint32 eventIdx = static_cast<uint32>(T::GetType());
+			VAST_TRACE("[events] {} fired. Executing {} subscriber callbacks...", T::GetName(), GetSubscriberCount(eventIdx));
+			FireEvent(eventIdx, data);
 		}
 
 		template<typename T>
@@ -78,15 +93,6 @@ namespace vast
 		{
 			T data = T();
 			FireEvent<T>(data);
-		}
-
-		template<typename T>
-		static void FireEvent(IEvent& data)
-		{
-			VAST_PROFILE_FUNCTION();
-			uint32 eventIdx = static_cast<uint32>(T::GetStaticType());
-			VAST_TRACE("[events] {} fired. Executing {} subscriber callbacks...", T::GetName(), GetSubscriberCount(eventIdx));
-			FireEvent(eventIdx, data);
 		}
 
 		static uint32 GetSubscriberCount(uint32 eventIdx);

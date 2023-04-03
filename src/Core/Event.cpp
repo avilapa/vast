@@ -14,6 +14,8 @@ namespace vast
 
 	void EventSystem::FireEvent(uint32 eventIdx, IEvent& data)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		for (const auto& sub : s_EventsSubscribers[eventIdx])
 		{
 			sub(data);

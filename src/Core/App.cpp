@@ -16,7 +16,7 @@ namespace vast
 		(void)argc; (void)argv; // TODO: Process input args.
 		m_Window = Window::Create();
 
-		VAST_SUBSCRIBE_TO_EVENT(WindowCloseEvent, WindowedApp::OnWindowCloseEvent);
+		VAST_SUBSCRIBE_TO_EVENT(WindowCloseEvent, VAST_EVENT_CALLBACK(WindowedApp::OnWindowCloseEvent));
 	}
 
 	WindowedApp::~WindowedApp()

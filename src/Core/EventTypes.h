@@ -23,13 +23,14 @@ namespace vast
 	class WindowCloseEvent final : public IEvent
 	{
 	public:
-		EVENT_CLASS_DECL_TYPE(WindowClose);
+		WindowCloseEvent() = default;
+		EVENT_CLASS_DECL_STATIC_TYPE(WindowClose);
 	};
 
 	class WindowResizeEvent final : public IEvent
 	{
 	public:
-		EVENT_CLASS_DECL_TYPE(WindowResize);
+		EVENT_CLASS_DECL_STATIC_TYPE(WindowResize);
 		WindowResizeEvent(uint2 windowSize) : m_WindowSize(windowSize) {}
 		uint2 m_WindowSize;
 	};

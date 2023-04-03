@@ -55,7 +55,7 @@ namespace vast::gfx
 			m_UploadCommandLists[i] = MakePtr<DX12UploadCommandList>(*m_Device);
 		}
 
-		VAST_SUBSCRIBE_TO_EVENT_DATA(WindowResizeEvent, DX12GraphicsContext::OnWindowResizeEvent);
+		VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
 	}
 
 	DX12GraphicsContext::~DX12GraphicsContext()
