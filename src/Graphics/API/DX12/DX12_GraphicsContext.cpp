@@ -159,20 +159,22 @@ namespace vast::gfx
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
-	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h)
+	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetVertexBuffer(*buf);
+		m_GraphicsCommandList->SetVertexBuffer(*buf, offset, stride);
 	}
 
-	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h)
+	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, Format format /* = Format::UNKNOWN */)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetIndexBuffer(*buf);
+		m_GraphicsCommandList->SetIndexBuffer(*buf, offset, TranslateToDX12(format));
 	}
 
 	void DX12GraphicsContext::SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
@@ -182,16 +184,32 @@ namespace vast::gfx
 		VAST_ASSERT(shaderResourceProxy.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetShaderResource(*buf, shaderResourceProxy.idx);
+		m_GraphicsCommandList->SetConstantBuffer(*buf, shaderResourceProxy.idx);
 	}
 
-	void DX12GraphicsContext::SetPushConstants(const void* data, const size_t size)
+	void DX12GraphicsContext::SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
-		VAST_ASSERT(data && size);
-		m_GraphicsCommandList->SetPushConstants(PUSH_CONSTANT_REGISTER_INDEX, data, size);
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(shaderResourceProxy.IsValid());
+		auto tex = m_Textures->LookupResource(h);
+		VAST_ASSERT(tex);
+		(void)shaderResourceProxy; // TODO: This is currently not being used!
+		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
+		DX12Descriptor blockStart = m_Device->GetSRVDescriptorHeap(m_FrameId).GetUserDescriptorBlockStart(1);
+		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, tex->srv.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
 	}
 
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h)
+	void DX12GraphicsContext::SetPushConstants(const void* data, const uint32 size)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(data && size);
+		m_GraphicsCommandList->SetPushConstants(data, size);
+	}
+
+	void DX12GraphicsContext::SetScissorRect(int4 rect)
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, ClearParams clear /* = ClearParams() */)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
@@ -451,7 +469,7 @@ namespace vast::gfx
 		m_PipelinesMarkedForDestruction[frameId].clear();
 	}
 
-	void DX12GraphicsContext::OnWindowResizeEvent(WindowResizeEvent& event)
+	void DX12GraphicsContext::OnWindowResizeEvent(const WindowResizeEvent& event)
 	{
 		VAST_PROFILE_FUNCTION();
 

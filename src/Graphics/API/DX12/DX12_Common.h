@@ -98,6 +98,8 @@ namespace vast::gfx
 		ID3D12PipelineState* pipelineState = nullptr;
 		ID3D12RootSignature* rootSignature = nullptr;
 		Ptr<ShaderResourceProxyTable> resourceProxyTable;
+		uint8 pushConstantIndex = UINT8_MAX;
+		uint8 descriptorTableIndex = UINT8_MAX;
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //

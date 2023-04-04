@@ -30,11 +30,11 @@ namespace vast::gfx
 		void EndFrame() override;
 
 		void SetRenderTarget(const TextureHandle h) override;
-		void SetVertexBuffer(const BufferHandle h) override;
-		void SetIndexBuffer(const BufferHandle h) override;
+		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
+		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, Format format = Format::UNKNOWN) override;
 		void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
-		void SetPushConstants(const void* data, const size_t size) override;
-		void BeginRenderPass(const PipelineHandle h) override;
+		void SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) override;
+		void SetPushConstants(const void* data, const uint32 size) override;
 		void BeginRenderPass(const PipelineHandle h, ClearParams clear = ClearParams()) override;
 		void EndRenderPass() override;
 

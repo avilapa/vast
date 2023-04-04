@@ -13,7 +13,7 @@ using namespace vast;
 #define int32		int
 #endif
 
-#define PushConstant b999
+#define PushConstantRegister b999
 #define PerObjectSpace space0
 
 struct TriangleVtx

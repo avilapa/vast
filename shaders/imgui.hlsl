@@ -1,6 +1,6 @@
 #include "shaders_shared.h"
 
-cbuffer ConstantBuffer : register(PushConstant, PerObjectSpace)
+cbuffer PushConstants : register(PushConstantRegister, PerObjectSpace)
 {
 	float4x4 ProjectionMatrix;
 };

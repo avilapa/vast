@@ -45,10 +45,11 @@ namespace vast::gfx
 
 		void SetPipeline(DX12Pipeline* pipeline);
 		void SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds);
-		void SetVertexBuffer(const DX12Buffer& buf);
-		void SetIndexBuffer(const DX12Buffer& buf);
-		void SetShaderResource(const DX12Buffer& cbv, uint32 slotIndex);
-		void SetPushConstants(uint32 bindPoint, const void* data, const size_t size);
+		void SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride);
+		void SetIndexBuffer(const DX12Buffer& buf, uint32 offset, DXGI_FORMAT format);
+		void SetConstantBuffer(const DX12Buffer& buf, uint32 slotIndex);
+		void SetDescriptorTable(const D3D12_GPU_DESCRIPTOR_HANDLE& gpuHandle);
+		void SetPushConstants(const void* data, const uint32 size);
 
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 

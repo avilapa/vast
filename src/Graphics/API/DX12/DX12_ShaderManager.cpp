@@ -208,7 +208,6 @@ namespace vast::gfx
 			D3D12_SHADER_DESC shaderDesc{};
 			shader->reflection->GetDesc(&shaderDesc);
 
-			// TODO: Use reflection to deduce InputLayout on non-bindless shaders (e.g. Imgui)
 			for (uint32 rscIdx = 0; rscIdx < shaderDesc.BoundResources; ++rscIdx)
 			{
 				D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
@@ -234,6 +233,9 @@ namespace vast::gfx
 						rootParameter.Constants.ShaderRegister = sibDesc.BindPoint;
 						rootParameter.Constants.RegisterSpace = sibDesc.Space;
 						rootParameter.Constants.Num32BitValues = cbDesc.Size / 4;
+
+						VAST_ASSERTF(pipeline->pushConstantIndex == UINT8_MAX, "Multiple push constants for a single pipeline not currently supported.");
+						pipeline->pushConstantIndex = static_cast<uint8>(rootParameters.size());
 					}
 					else
 					{
@@ -260,6 +262,10 @@ namespace vast::gfx
 
 					descriptorRanges.push_back(descriptorRange);
 				}
+				else if (sibDesc.Type == D3D_SIT_SAMPLER)
+				{
+					continue;
+				}
 			}
 
 			if (!descriptorRanges.empty())
@@ -270,6 +276,8 @@ namespace vast::gfx
 				descriptorTable.DescriptorTable.NumDescriptorRanges = static_cast<uint32>(descriptorRanges.size());
 				descriptorTable.DescriptorTable.pDescriptorRanges = descriptorRanges.data();
 
+				VAST_ASSERTF(pipeline->descriptorTableIndex == UINT8_MAX, "Multiple descriptor tables for a single pipeline not currently supported.");
+				pipeline->descriptorTableIndex = static_cast<uint8>(rootParameters.size());
 				rootParameters.push_back(descriptorTable);
 			}
 		}
