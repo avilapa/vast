@@ -4,9 +4,25 @@
 
 namespace vast::gfx
 {
-	// - Graphics Enums --------------------------------------------------------------------------- //
+	// - Graphics Types --------------------------------------------------------------------------- //
 
-	enum class ResourceUsage
+	enum class ClearFlags
+	{
+		NONE = 0,
+		CLEAR_COLOR		= BIT(0),
+		CLEAR_DEPTH		= BIT(1),
+		CLEAR_STENCIL	= BIT(2),
+	};
+	ENUM_CLASS_ALLOW_FLAGS(ClearFlags);
+
+	struct ClearParams
+	{
+		ClearFlags flags = ClearFlags::NONE;
+		float4 color = float4(1.0f);
+		float depth = 1.0f;
+	};
+
+	enum class ResourceUsage // TODO: Update Frequency?
 	{
 		STATIC,
 		DYNAMIC,
@@ -21,6 +37,7 @@ namespace vast::gfx
 	};
 	ENUM_CLASS_ALLOW_FLAGS(BufferViewFlags);
 
+	// TODO: Should CPU writable and Dynamic be exclusive? (cpu write is always dynamic, in which case dynamic would only be used for upload buffers)
 	enum class BufferCpuAccess
 	{
 		NONE,
@@ -35,6 +52,7 @@ namespace vast::gfx
 		RGBA8_UNORM,
 		RGBA8_UNORM_SRGB,
 		D32_FLOAT,
+		R16_UINT,
 		COUNT,
 	};
 
