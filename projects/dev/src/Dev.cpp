@@ -72,6 +72,9 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	m_TrianglePipeline = ctx.CreatePipeline(pipelineDesc);
 
 	m_TriangleCbvProxy = ctx.LookupShaderResource(m_TrianglePipeline, "ObjectConstantBuffer");
+
+	m_ClearView.flags = gfx::ClearFlags::CLEAR_COLOR;
+	m_ClearView.color = float4(0.6f, 0.2f, 0.9f, 1.0f);
 }
 
 Dev::~Dev()
@@ -89,6 +92,7 @@ void Dev::OnUpdate()
 
 	ctx.BeginFrame();
 	ctx.BeginRenderPass(m_TrianglePipeline);
+	ctx.BeginRenderPass(m_TrianglePipeline, m_ClearView);
 	{
 		ctx.SetShaderResource(m_TriangleCbv, m_TriangleCbvProxy);
 		ctx.Draw(3);

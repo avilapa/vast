@@ -35,6 +35,7 @@ namespace vast::gfx
 		void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
 		void SetPushConstants(const void* data, const size_t size) override;
 		void BeginRenderPass(const PipelineHandle h) override;
+		void BeginRenderPass(const PipelineHandle h, ClearParams clear = ClearParams()) override;
 		void EndRenderPass() override;
 
 		void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) override;

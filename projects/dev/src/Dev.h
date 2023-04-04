@@ -20,4 +20,5 @@ private:
 	gfx::BufferHandle m_TriangleCbv;
 	gfx::PipelineHandle m_TrianglePipeline;
 	gfx::ShaderResourceProxy m_TriangleCbvProxy;
+	gfx::ClearParams m_ClearView;
 };

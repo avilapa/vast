@@ -154,6 +154,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetRenderTarget(const TextureHandle h)
 	{
+		// TODO: Support MRT
 		VAST_ASSERT(h.IsValid());
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
@@ -203,11 +204,12 @@ namespace vast::gfx
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_GraphicsCommandList->FlushBarriers();
 
-		if (true) // TODO: Clear flags
+		if ((clear.flags & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR)
 		{
-			float4 color = float4(0.6, 0.2, 0.9, 1.0);
-			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT, color);
+			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT, clear.color);
 		}
+		// TODO: Look into optimized clears with "clearValue".
+		// TODO: Clear depth/stencil.
 
 		auto pipeline = m_Pipelines->LookupResource(h);
 		VAST_ASSERT(pipeline);
