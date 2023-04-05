@@ -515,6 +515,12 @@ namespace vast::gfx
 		VAST_ASSERT(h.IsValid());
 		return m_Textures->LookupResource(h)->heapIdx;
 	}
+	
+	Format DX12GraphicsContext::GetTextureFormat(const TextureHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return TranslateFromDX12(m_Textures->LookupResource(h)->resource->GetDesc().Format);
+	}
 
 	bool DX12GraphicsContext::GetIsReady(const TextureHandle h)
 	{

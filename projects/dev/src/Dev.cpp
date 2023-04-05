@@ -63,7 +63,7 @@ void Dev::CreateTriangleResources()
 			.VS("triangle.hlsl", "VS_Main")
 			.PS("triangle.hlsl", "PS_Main")
 			.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-			.SetRenderTarget(gfx::Format::RGBA8_UNORM); // TODO: m_ColorRT->GetFormat()
+			.SetRenderTarget(ctx.GetTextureFormat(m_ColorRT));
 		m_TrianglePso = ctx.CreatePipeline(pipelineDesc);
 
 		m_ClearColorRT.flags = gfx::ClearFlags::CLEAR_COLOR;
