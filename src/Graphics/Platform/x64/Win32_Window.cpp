@@ -5,18 +5,18 @@
 
 #ifdef VAST_PLATFORM_WINDOWS
 
-// TODO: Imgui
-//extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+#include "imgui/backends/imgui_impl_win32.h" // TODO: USE_IMGUI_STOCK_IMPL_WIN32
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace vast
 {
 	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
 	{
-		// TODO: Imgui
-// 		if (ImGui_ImplWin32_WndProcHandler(hwnd, umessage, wparam, lparam))
-// 		{
-// 			return true;
-// 		}
+		if (ImGui_ImplWin32_WndProcHandler(hwnd, umessage, wparam, lparam))
+		{
+			return true;
+		}
 
 		WindowImpl_Win32* window = reinterpret_cast<WindowImpl_Win32*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 

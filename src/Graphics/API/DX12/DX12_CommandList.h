@@ -47,19 +47,15 @@ namespace vast::gfx
 		void SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds);
 		void SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride);
 		void SetIndexBuffer(const DX12Buffer& buf, uint32 offset, DXGI_FORMAT format);
-		void SetConstantBuffer(const DX12Buffer& buf, uint32 slotIndex);
+		void SetConstantBuffer(const DX12Buffer& buf, uint32 offset, uint32 slotIndex);
 		void SetDescriptorTable(const D3D12_GPU_DESCRIPTOR_HANDLE& gpuHandle);
 		void SetPushConstants(const void* data, const uint32 size);
 
 		void SetDefaultViewportAndScissor(uint2 windowSize);
+		void SetScissorRect(const D3D12_RECT& rect);
 
 		void ClearRenderTarget(const DX12Texture& rt, float4 color);
 		void ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil);
-
-		void DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0);
-		void Draw(uint32 vtxCount, uint32 vtxStartLocation = 0);
-		void DrawFullscreenTriangle();
-
 	private:
 		DX12Pipeline* m_CurrentPipeline;
 	};

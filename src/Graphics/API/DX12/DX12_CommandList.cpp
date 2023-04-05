@@ -219,12 +219,11 @@ namespace vast::gfx
 		m_CommandList->IASetIndexBuffer(&ibv);
 	}
 
-	void DX12GraphicsCommandList::SetConstantBuffer(const DX12Buffer& buf, uint32 slotIndex)
+	void DX12GraphicsCommandList::SetConstantBuffer(const DX12Buffer& buf, uint32 offset, uint32 slotIndex)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind constant buffer before setting a render pipeline."); // TODO: What about global/per frame resources
-		const auto dstSize = buf.resource->GetDesc().Width; ///////////////////////////////////////////
-		m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, buf.gpuAddress + dstSize * buf.currBufferIdx);
+		m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, buf.gpuAddress + offset);
 	}
 
 	void DX12GraphicsCommandList::SetDescriptorTable(const D3D12_GPU_DESCRIPTOR_HANDLE& gpuHandle)
@@ -265,6 +264,13 @@ namespace vast::gfx
 		m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // TODO: This shouldn't be here!
 	}
 
+	void DX12GraphicsCommandList::SetScissorRect(const D3D12_RECT& rect)
+	{
+		VAST_PROFILE_FUNCTION();
+		// TODO: Support setting multiple rects
+		m_CommandList->RSSetScissorRects(1, &rect);
+	}
+	
 	void DX12GraphicsCommandList::ClearRenderTarget(const DX12Texture& rt, float4 color)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -275,25 +281,6 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 		m_CommandList->ClearDepthStencilView(dst.dsv.cpuHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
-	}
-
-	void DX12GraphicsCommandList::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation, uint32 instStartLocation)
-	{
-		VAST_PROFILE_FUNCTION();
-		m_CommandList->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
-	}
-
-	void DX12GraphicsCommandList::Draw(uint32 vtxCount, uint32 vtxStartLocation)
-	{
-		DrawInstanced(vtxCount, 1, vtxStartLocation, 0);
-	}
-
-	void DX12GraphicsCommandList::DrawFullscreenTriangle()
-	{
-		VAST_PROFILE_FUNCTION();
-		m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		m_CommandList->IASetIndexBuffer(nullptr);
-		Draw(3);
 	}
 
 	//

@@ -30,15 +30,24 @@ namespace vast::gfx
 		void EndFrame() override;
 
 		void SetRenderTarget(const TextureHandle h) override;
+
+		void BeginRenderPass(const PipelineHandle h, ClearParams clear = ClearParams()) override;
+		void EndRenderPass() override;
+
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
 		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, Format format = Format::UNKNOWN) override;
 		void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
 		void SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) override;
 		void SetPushConstants(const void* data, const uint32 size) override;
-		void BeginRenderPass(const PipelineHandle h, ClearParams clear = ClearParams()) override;
-		void EndRenderPass() override;
 
-		void Draw(const uint32 vtxCount, const uint32 vtxStartLocation = 0) override;
+		void SetScissorRect(int4 rect) override;
+		void SetBlendFactor(float4 blend) override;
+
+		void Draw(uint32 vtxCount, uint32 vtxStartLocation = 0) override;
+		void DrawIndexed(uint32 idxCount, uint32 startIdxLocation = 0, uint32 baseVtxLocation = 0) override;
+		void DrawInstanced(uint32 vtxCountPerInst, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0) override;
+		void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) override;
+		void DrawFullscreenTriangle() override;
 
 		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) override;
 		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
@@ -50,10 +59,13 @@ namespace vast::gfx
 		void DestroyTexture(const TextureHandle h) override;
 		void DestroyPipeline(const PipelineHandle h) override;
 
+		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) override;
+
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
 		Format GetBackBufferFormat() const override;
 		uint32 GetBindlessIndex(const BufferHandle h) override;
+		uint32 GetBindlessIndex(const TextureHandle h) override;
 		bool GetIsReady(const TextureHandle h) override;
 
 	private:
@@ -61,7 +73,7 @@ namespace vast::gfx
 		void SignalEndOfFrame(const QueueType type);
 		void WaitForIdle();
 
-		void OnWindowResizeEvent(WindowResizeEvent& event);
+		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
 		void SetBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize);
 
@@ -85,6 +97,17 @@ namespace vast::gfx
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
+
+		struct TempAllocator
+		{
+			BufferHandle buffer;
+			uint32 size = 0;
+			uint32 offset = 0;
+
+			void Reset() { offset = 0; }
+		};
+		// TODO: This could be replaced by a single, big dynamic buffer?
+		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators;
 
 		DX12Texture* m_CurrentRT;
 

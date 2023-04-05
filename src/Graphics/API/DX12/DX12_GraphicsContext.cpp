@@ -30,6 +30,7 @@ namespace vast::gfx
 		, m_BuffersMarkedForDestruction({})
 		, m_TexturesMarkedForDestruction({})
 		, m_PipelinesMarkedForDestruction({})
+		, m_TempFrameAllocators({})
 		, m_CurrentRT(nullptr)
 		, m_FrameId(0)
 	{
@@ -55,6 +56,22 @@ namespace vast::gfx
 			m_UploadCommandLists[i] = MakePtr<DX12UploadCommandList>(*m_Device);
 		}
 
+		uint32 tempFrameBufferSize = 1024 * 1024;
+
+		auto tempFrameBufferDesc = BufferDesc::Builder()
+			.Size(tempFrameBufferSize * 2) // TODO: Alignment?
+			.ViewFlags(gfx::BufferViewFlags::SRV)
+			.CpuAccess(gfx::BufferCpuAccess::WRITE)
+			// TODO: Should this be dynamic?
+			.IsRawAccess(true);
+
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			m_TempFrameAllocators[i].buffer = CreateBuffer(tempFrameBufferDesc);
+			m_TempFrameAllocators[i].size = tempFrameBufferSize;
+			m_TempFrameAllocators[i].offset = 0;
+		}
+
 		VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
 	}
 
@@ -63,6 +80,9 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 
 		WaitForIdle();
+
+		DestroyBuffer(m_TempFrameAllocators[0].buffer);
+		DestroyBuffer(m_TempFrameAllocators[1].buffer);
 		
 		m_GraphicsCommandList = nullptr;
 
@@ -101,6 +121,8 @@ namespace vast::gfx
 		}
 
 		ProcessDestructions(m_FrameId);
+
+		m_TempFrameAllocators[m_FrameId].Reset();
 
 		m_UploadCommandLists[m_FrameId]->ResolveProcessedUploads();
 		m_UploadCommandLists[m_FrameId]->Reset(m_FrameId);
@@ -159,56 +181,6 @@ namespace vast::gfx
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
-	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(h.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetVertexBuffer(*buf, offset, stride);
-	}
-
-	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, Format format /* = Format::UNKNOWN */)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(h.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetIndexBuffer(*buf, offset, TranslateToDX12(format));
-	}
-
-	void DX12GraphicsContext::SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(h.IsValid());
-		VAST_ASSERT(shaderResourceProxy.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetConstantBuffer(*buf, shaderResourceProxy.idx);
-	}
-
-	void DX12GraphicsContext::SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(h.IsValid());
-		VAST_ASSERT(shaderResourceProxy.IsValid());
-		auto tex = m_Textures->LookupResource(h);
-		VAST_ASSERT(tex);
-		(void)shaderResourceProxy; // TODO: This is currently not being used!
-		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
-		DX12Descriptor blockStart = m_Device->GetSRVDescriptorHeap(m_FrameId).GetUserDescriptorBlockStart(1);
-		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, tex->srv.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		m_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
-	}
-
-	void DX12GraphicsContext::SetPushConstants(const void* data, const uint32 size)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(data && size);
-		m_GraphicsCommandList->SetPushConstants(data, size);
-	}
-
-	void DX12GraphicsContext::SetScissorRect(int4 rect)
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, ClearParams clear /* = ClearParams() */)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -249,9 +221,96 @@ namespace vast::gfx
 		m_CurrentRT = nullptr;
 	}
 
-	void DX12GraphicsContext::Draw(const uint32 vtxCount, const uint32 vtxStartLocation /* = 0 */)
+	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
-		m_GraphicsCommandList->Draw(vtxCount, vtxStartLocation);
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(h.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		m_GraphicsCommandList->SetVertexBuffer(*buf, offset, stride);
+	}
+
+	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, Format format /* = Format::UNKNOWN */)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(h.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		m_GraphicsCommandList->SetIndexBuffer(*buf, offset, TranslateToDX12(format));
+	}
+
+	void DX12GraphicsContext::SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(shaderResourceProxy.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		m_GraphicsCommandList->SetConstantBuffer(*buf, 0, shaderResourceProxy.idx);
+	}
+
+	void DX12GraphicsContext::SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(shaderResourceProxy.IsValid());
+		auto tex = m_Textures->LookupResource(h);
+		VAST_ASSERT(tex);
+		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
+		DX12Descriptor blockStart = m_Device->GetSRVDescriptorHeap(m_FrameId).GetUserDescriptorBlockStart(1);
+		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, tex->srv.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
+	}
+
+	void DX12GraphicsContext::SetPushConstants(const void* data, const uint32 size)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(data && size);
+		m_GraphicsCommandList->SetPushConstants(data, size);
+	}
+
+	void DX12GraphicsContext::SetScissorRect(int4 rect)
+	{
+		VAST_PROFILE_FUNCTION();
+		const D3D12_RECT r = { (LONG)rect.x, (LONG)rect.y, (LONG)rect.z, (LONG)rect.w };
+		m_GraphicsCommandList->SetScissorRect(r);
+	}
+
+	void DX12GraphicsContext::SetBlendFactor(float4 blend)
+	{
+		VAST_PROFILE_FUNCTION();
+		m_GraphicsCommandList->GetCommandList()->OMSetBlendFactor((float*)&blend);;
+	}
+
+	void DX12GraphicsContext::Draw(uint32 vtxCount, uint32 vtxStartLocation /* = 0 */)
+	{
+		DrawInstanced(vtxCount, 1, vtxStartLocation, 0);
+	}
+
+	void DX12GraphicsContext::DrawIndexed(uint32 idxCount, uint32 startIdxLocation /* = 0 */, uint32 baseVtxLocation /* = 0 */)
+	{
+		DrawIndexedInstanced(idxCount, 1, startIdxLocation, baseVtxLocation, 0);
+	}
+
+	void DX12GraphicsContext::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation/* = 0 */, uint32 instStartLocation /* = 0 */)
+	{
+		VAST_PROFILE_FUNCTION();
+		m_GraphicsCommandList->GetCommandList()->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
+	}
+
+	void DX12GraphicsContext::DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
+	{
+		VAST_PROFILE_FUNCTION();
+		m_GraphicsCommandList->GetCommandList()->DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
+	}
+
+	void DX12GraphicsContext::DrawFullscreenTriangle()
+	{
+		VAST_PROFILE_FUNCTION();
+		m_GraphicsCommandList->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		m_GraphicsCommandList->GetCommandList()->IASetIndexBuffer(nullptr);
+		DrawInstanced(3, 1);
 	}
 
 	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
@@ -264,12 +323,7 @@ namespace vast::gfx
 		{
 			if (desc.cpuAccess == BufferCpuAccess::WRITE)
 			{
-				for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-				{
-					buf->currBufferIdx = i;
-					SetBufferData(buf, initialData, dataSize);
-				}
-				buf->currBufferIdx = 0;
+				SetBufferData(buf, initialData, dataSize);
 			}
 			else
 			{
@@ -283,11 +337,10 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
-
+		// TODO: Check buffer does not have UAV
 		VAST_ASSERTF(buf->usage == ResourceUsage::DYNAMIC, "Attempted to update non dynamic resource.");
-		// TODO: Dynamic no CPU access buffers?
-
-		buf->currBufferIdx = (buf->currBufferIdx + 1) % NUM_FRAMES_IN_FLIGHT;
+		// TODO: Dynamic no CPU access buffers
+		// TODO: Use buffered approach to improve performance (how do we handle updating descriptors?)
 		SetBufferData(buf, srcMem, srcSize);
 	}
 
@@ -298,7 +351,7 @@ namespace vast::gfx
 		const auto dstSize = buf->resource->GetDesc().Width;
 		VAST_ASSERT(srcSize > 0 && srcSize <= dstSize);
 
-		uint8* dstMem = buf->data + dstSize * buf->currBufferIdx;
+		uint8* dstMem = buf->data;
 		memcpy(dstMem, srcMem, srcSize);
 	}
 
@@ -408,6 +461,33 @@ namespace vast::gfx
 		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
+	BufferView DX12GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(size);
+		VAST_ASSERT(m_TempFrameAllocators[m_FrameId].size);
+
+		uint32 allocSize = size + alignment;
+		uint32 offset = m_TempFrameAllocators[m_FrameId].offset;
+		if (alignment > 0)
+		{
+			offset = AlignU32(offset, alignment);
+		}
+		VAST_ASSERT(offset + size <= m_TempFrameAllocators[m_FrameId].size);
+
+		m_TempFrameAllocators[m_FrameId].offset += allocSize;
+
+		auto buf = m_Buffers->LookupResource(m_TempFrameAllocators[m_FrameId].buffer);
+		VAST_ASSERT(buf);
+
+		return BufferView
+		{ 
+			m_TempFrameAllocators[m_FrameId].buffer, 
+			(uint8*)(buf->data + offset),
+			offset,
+		};
+	}
+
 	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName)
 	{
 		VAST_ASSERT(h.IsValid());
@@ -428,6 +508,12 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		return m_Buffers->LookupResource(h)->heapIdx;
+	}
+
+	uint32 DX12GraphicsContext::GetBindlessIndex(const TextureHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return m_Textures->LookupResource(h)->heapIdx;
 	}
 
 	bool DX12GraphicsContext::GetIsReady(const TextureHandle h)

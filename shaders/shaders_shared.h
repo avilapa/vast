@@ -27,4 +27,9 @@ struct TriangleCBV
 	uint32 vtxBufIdx;
 };
 
+struct FullscreenCBV
+{
+	uint32 texIdx;
+};
+
 #endif

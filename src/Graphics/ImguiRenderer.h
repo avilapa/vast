@@ -4,8 +4,6 @@
 
 namespace vast::gfx
 {
-	static const uint32 IMGUI_NUM_FRAMES_IN_FLIGHT = 2; // TODO
-
 	class ImguiRenderer
 	{
 	public:
@@ -13,17 +11,14 @@ namespace vast::gfx
 		ImguiRenderer(gfx::GraphicsContext& context, HWND windowHandle = ::GetActiveWindow());
 		~ImguiRenderer();
 
-		void BeginFrame(); // TODO: Is this to be called at the beginning of the frame or the render pass?
-		void ExecuteRenderPass();
+		void BeginFrame();
+		void EndFrame();
 
 	private:
 		gfx::GraphicsContext& ctx;
 
-		Array<uint32, IMGUI_NUM_FRAMES_IN_FLIGHT> m_VtxSize;
-		Array<uint32, IMGUI_NUM_FRAMES_IN_FLIGHT> m_IdxSize;
-		Array<gfx::BufferHandle, IMGUI_NUM_FRAMES_IN_FLIGHT> m_VtxBuf;
-		Array<gfx::BufferHandle, IMGUI_NUM_FRAMES_IN_FLIGHT> m_IdxBuf;
 		gfx::TextureHandle m_FontTex;
+		gfx::ShaderResourceProxy m_FontTexProxy;
 		gfx::PipelineHandle m_Pipeline;
 	};
 

@@ -65,7 +65,6 @@ namespace vast::gfx
 		bool isReady = false;
 
 		ResourceUsage usage = ResourceUsage::STATIC;
-		uint32 currBufferIdx = 0; // TODO: Do we need to store this per buffer? Can we use m_FrameId instead and swap pointers every frame for dynamic resources.
 	};
 
 	struct DX12Buffer : public Buffer, public DX12Resource
@@ -140,6 +139,7 @@ namespace vast::gfx
 		case Format::RGBA8_UNORM:		return DXGI_FORMAT_R8G8B8A8_UNORM;
 		case Format::RGBA8_UNORM_SRGB:	return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		case Format::D32_FLOAT:			return DXGI_FORMAT_D32_FLOAT;
+		case Format::R16_UINT:			return DXGI_FORMAT_R16_UINT;
 		default: VAST_ASSERTF(0, "Format not supported on this platform."); return DXGI_FORMAT_UNKNOWN;
 		}
 	}
@@ -153,6 +153,7 @@ namespace vast::gfx
 		case DXGI_FORMAT_R8G8B8A8_UNORM:		return Format::RGBA8_UNORM;
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return Format::RGBA8_UNORM_SRGB;
 		case DXGI_FORMAT_D32_FLOAT:				return Format::D32_FLOAT;
+		case DXGI_FORMAT_R16_UINT:				return Format::R16_UINT;
 		default: VAST_ASSERTF(0, "Unknown Format."); return Format::UNKNOWN;
 		}
 	}

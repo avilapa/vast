@@ -116,14 +116,14 @@ namespace vast::gfx
 
 			//D3D12_MESSAGE_CATEGORY Categories[] = {};
 			D3D12_MESSAGE_SEVERITY Severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
-			//D3D12_MESSAGE_ID DenyIds[] = {};
+			D3D12_MESSAGE_ID DenyIds[] = { D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE }; // TODO: Remove this when we are doing optimized clears
 			D3D12_INFO_QUEUE_FILTER filter = {};
 			//filter.DenyList.NumCategories = _countof(Categories);
 			//filter.DenyList.pCategoryList = Categories;
 			filter.DenyList.NumSeverities = _countof(Severities);
 			filter.DenyList.pSeverityList = Severities;
-			//filter.DenyList.NumIDs = _countof(DenyIds);
-			//filter.DenyList.pIDList = DenyIds;
+			filter.DenyList.NumIDs = _countof(DenyIds);
+			filter.DenyList.pIDList = DenyIds;
 
 			DX12Check(infoQueue->PushStorageFilter(&filter));
 
@@ -250,6 +250,7 @@ namespace vast::gfx
 
 		if (desc.cpuAccess == BufferCpuAccess::WRITE)
 		{
+			// TODO: Persistent mapping may require manual GPU sync. Mapping/Unmapping every time may yield better performance
 			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
 		}
 
@@ -428,10 +429,10 @@ namespace vast::gfx
 
 		switch (mask)
 		{
-		case 0x01: return componentTypeSwitch(type, DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32_SINT, DXGI_FORMAT_R32_UINT);
-		case 0x03: return componentTypeSwitch(type, DXGI_FORMAT_R32G32_FLOAT, DXGI_FORMAT_R32G32_SINT, DXGI_FORMAT_R32G32_UINT);
-		case 0x07: return componentTypeSwitch(type, DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32_SINT, DXGI_FORMAT_R32G32B32_UINT);
-		case 0x0F: return componentTypeSwitch(type, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_R32G32B32A32_SINT, DXGI_FORMAT_R32G32B32A32_UINT);
+		case 0x01: return componentTypeSwitch(type, DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R32_SINT);
+		case 0x03: return componentTypeSwitch(type, DXGI_FORMAT_R32G32_FLOAT, DXGI_FORMAT_R32G32_UINT, DXGI_FORMAT_R32G32_SINT);
+		case 0x07: return componentTypeSwitch(type, DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32_UINT, DXGI_FORMAT_R32G32B32_SINT);
+		case 0x0F: return componentTypeSwitch(type, DXGI_FORMAT_R32G32B32A32_FLOAT, DXGI_FORMAT_R32G32B32A32_UINT, DXGI_FORMAT_R32G32B32A32_SINT);
 		default: VAST_ASSERTF(0, "Unknown input parameter format."); return DXGI_FORMAT_UNKNOWN;
 		}
 	}
@@ -461,7 +462,7 @@ namespace vast::gfx
 				element.SemanticIndex = paramDesc.SemanticIndex;
 				element.Format = ConvertToDXGIFormat(paramDesc.ComponentType, paramDesc.Mask);
 				element.InputSlot = 0;
-				element.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT; // TODO: Imgui uses IM_OFFSETOF
+				element.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 				element.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 				element.InstanceDataStepRate = (element.InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA) ? 1 : 0;
 
