@@ -123,7 +123,7 @@ namespace vast::gfx
 		// Copy vertex and index buffer data to a single buffer
 		ImDrawVert* vtxCpuMem = reinterpret_cast<ImDrawVert*>(vtxView.data);
 		ImDrawIdx* idxCpuMem = reinterpret_cast<ImDrawIdx*>(idxView.data);
-		for (uint32 i = 0; i < drawData->CmdListsCount; ++i)
+		for (int32 i = 0; i < drawData->CmdListsCount; ++i)
 		{
 			const ImDrawList* drawList = drawData->CmdLists[i];
 			memcpy(vtxCpuMem, &drawList->VtxBuffer[0], drawList->VtxBuffer.Size * sizeof(ImDrawVert));
@@ -142,11 +142,11 @@ namespace vast::gfx
 			ctx.SetBlendFactor(float4(0));
 			uint32 vtxOffset = 0, idxOffset = 0;
 			ImVec2 clipOff = drawData->DisplayPos;
-			for (uint32 i = 0; i < drawData->CmdListsCount; ++i)
+			for (int32 i = 0; i < drawData->CmdListsCount; ++i)
 			{
 				const ImDrawList* drawList = drawData->CmdLists[i];
 
-				for (uint32 j = 0; j < drawList->CmdBuffer.Size; j++)
+				for (int32 j = 0; j < drawList->CmdBuffer.Size; j++)
 				{
 					const ImDrawCmd* drawCmd = &drawList->CmdBuffer[j];
 					if (drawCmd->UserCallback != NULL)

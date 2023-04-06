@@ -177,9 +177,6 @@ void Dev::OnUpdate()
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	static float tempTimeCounter = 0;
-	tempTimeCounter += 0.01f;
-
 	ctx.BeginFrame();
 	m_ImguiRenderer->BeginFrame();
 
