@@ -6,6 +6,22 @@ namespace vast::gfx
 {
 	// - Graphics Types --------------------------------------------------------------------------- //
 
+	enum class SamplerState
+	{
+		LINEAR_WRAP = 0,
+		LINEAR_CLAMP,
+		POINT_CLAMP,
+		COUNT
+	};
+
+	static constexpr char* g_SamplerNames[]
+	{
+		"LinearWrapSampler",
+		"LinearClampSampler",
+		"PointClampSampler",
+	};
+	static_assert(NELEM(g_SamplerNames) == IDX(SamplerState::COUNT));
+
 	enum class ClearFlags
 	{
 		NONE = 0,

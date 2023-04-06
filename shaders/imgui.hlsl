@@ -5,7 +5,6 @@ cbuffer PushConstants : register(PushConstantRegister, PerObjectSpace)
 	float4x4 ProjectionMatrix;
 };
 
-SamplerState BilinearSampler : register(s0);
 Texture2D FontTexture : register(t0);
 
 struct VertexInput
@@ -41,6 +40,7 @@ VertexOutput VS_Main(VertexInput input)
 
 float4 PS_Main(VertexOutput input) : SV_Target
 {
-	float4 out_col = input.col * FontTexture.Sample(BilinearSampler, input.uv);
+	SamplerState fontTexSampler = SamplerDescriptorHeap[LinearClampSampler];
+	float4 out_col = input.col * FontTexture.Sample(fontTexSampler, input.uv);
 	return out_col;
 }

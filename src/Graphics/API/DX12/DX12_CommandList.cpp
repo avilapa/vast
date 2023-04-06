@@ -60,7 +60,7 @@ namespace vast::gfx
 
 	void DX12CommandList::AddBarrier(DX12Resource& resource, D3D12_RESOURCE_STATES newState)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("DX12CommandList", "AddBarrier");
 
 		if (m_NumQueuedBarriers >= MAX_QUEUED_BARRIERS)
 		{
@@ -96,10 +96,9 @@ namespace vast::gfx
 
 	void DX12CommandList::FlushBarriers()
 	{
-		VAST_PROFILE_FUNCTION();
-
 		if (m_NumQueuedBarriers > 0)
 		{
+			VAST_PROFILE_SCOPE("DX12CommandList", "FlushBarriers");
 			m_CommandList->ResourceBarrier(m_NumQueuedBarriers, m_ResourceBarrierQueue.data());
 			m_NumQueuedBarriers = 0;
 		}
@@ -144,7 +143,7 @@ namespace vast::gfx
 		ID3D12DescriptorHeap* heapsToBind[]
 		{
 			m_Device.GetSRVDescriptorHeap(frameId).GetHeap(),
-			// m_Device.GetSamplerDescriptorHeap().GetHeap() // TODO: Sampler heap
+			m_Device.GetSamplerDescriptorHeap().GetHeap()
 		};
 
 		m_CommandList->SetDescriptorHeaps(NELEM(heapsToBind), heapsToBind);

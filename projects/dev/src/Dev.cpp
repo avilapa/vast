@@ -14,7 +14,6 @@
 //
 //	> GFX Rasterizer State.
 //	> GFX Stencil State.
-//	> GFX Samplers.
 //	> GFX Render Pass / Render Pass Layout.
 //	> GFX Compute Shaders.
 //	> GFX Display List: command recording for later execution.

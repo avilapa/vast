@@ -18,6 +18,8 @@ namespace vast::gfx
 		DX12ShaderManager();
 		~DX12ShaderManager();
 
+		void AddShaderDefine(const std::string& name, const std::string& value);
+
 		Ref<DX12Shader> LoadShader(const ShaderDesc& desc);
 
 		ID3DBlob* CreateRootSignatureFromReflection(DX12Pipeline* pipeline) const;
@@ -35,6 +37,8 @@ namespace vast::gfx
 
 		std::unordered_map<std::string, uint32> m_ShaderKeys;
 		Vector<Ref<DX12Shader>> m_Shaders;
+
+		Vector<std::wstring> m_SharedCompilerArgs;
 	};
 
 }

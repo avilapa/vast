@@ -13,8 +13,7 @@ using namespace vast;
 #define int32		int
 #endif
 
-#define PushConstantRegister b999
-#define PerObjectSpace space0
+#define PerObjectSpace space0 // TODO: Implement spaces!
 
 struct TriangleVtx
 {

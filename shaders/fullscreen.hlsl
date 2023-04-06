@@ -5,8 +5,6 @@ cbuffer PushConstants : register(PushConstantRegister, PerObjectSpace)
 	uint32 ColorTexIdx;
 };
 
-SamplerState BilinearSampler : register(s0); // TODO: Remove
-
 struct VertexOutput
 {
 	float4 pos : SV_POSITION;
@@ -43,9 +41,9 @@ float3 sRGBtoLinear(float3 col)
 float4 PS_Main(VertexOutput IN) : SV_TARGET
 {
     Texture2D<float4> colorTex = ResourceDescriptorHeap[ColorTexIdx];
-    //SamplerState fullscreenSampler = SamplerDescriptorHeap[pointClampSampler]; 
+    SamplerState colorTexSampler = SamplerDescriptorHeap[PointClampSampler]; 
 
-    float3 color = colorTex.Sample(BilinearSampler, IN.uv).rgb; // TODO: Should use a Point Clamp sampler instead
+    float3 color = colorTex.Sample(colorTexSampler, IN.uv).rgb;
 
     return float4(sRGBtoLinear(color), 1);
 }

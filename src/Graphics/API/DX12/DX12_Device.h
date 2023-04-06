@@ -31,6 +31,7 @@ namespace vast::gfx
 		ID3D12Device5* GetDevice() const;
 		IDXGIFactory7* GetDXGIFactory() const;
 		DX12RenderPassDescriptorHeap& GetSRVDescriptorHeap(uint32 frameId) const;
+		DX12RenderPassDescriptorHeap& GetSamplerDescriptorHeap() const;
 	
 		// For internal use of the DX12SwapChain
 		DX12Descriptor CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format);
@@ -40,6 +41,7 @@ namespace vast::gfx
 
 	private:
 		void CopySRVHandleToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex);
+		void CreateSamplers();
 
 		IDXGIFactory7* m_DXGIFactory;
 		ID3D12Device5* m_Device;
@@ -52,5 +54,6 @@ namespace vast::gfx
 
 		Vector<uint32> m_FreeReservedDescriptorIndices;
 		Array<Ptr<DX12RenderPassDescriptorHeap>, NUM_FRAMES_IN_FLIGHT> m_SRVRenderPassDescriptorHeaps;
+		Ptr<DX12RenderPassDescriptorHeap> m_SamplerRenderPassDescriptorHeap;
 	};
 }

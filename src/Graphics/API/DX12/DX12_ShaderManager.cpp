@@ -7,6 +7,11 @@ constexpr wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
 // TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
 constexpr wchar_t* SHADER_OUTPUT_PATH = L"../../shaders/compiled/";
 
+// Note: Root 32 Bit constants are identified on shaders by using a reserved binding point b999.
+// This is because DXC shader reflection has no way to tell apart a CBV from a Root 32 Bit Constant.
+// TODO: We could also identify push constants by giving a descriptive name to the buffer itself, in case in the future more than one binding point is needed.
+constexpr int PUSH_CONSTANT_REGISTER_INDEX = 999;
+
 namespace vast::gfx
 {
 
@@ -18,6 +23,20 @@ namespace vast::gfx
 		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils));
 		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler));
 		m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler);
+
+		m_SharedCompilerArgs =
+		{
+			L"-I", SHADER_SOURCE_PATH,
+#ifdef VAST_DEBUG
+			DXC_ARG_DEBUG,
+#else
+			DXC_ARG_OPTIMIZATION_LEVEL3,
+#endif
+			DXC_ARG_WARNINGS_ARE_ERRORS,
+			L"-Qstrip_reflect",
+		};
+
+		AddShaderDefine("PushConstantRegister", std::string("b") + std::to_string(PUSH_CONSTANT_REGISTER_INDEX));
 	}
 
 	DX12ShaderManager::~DX12ShaderManager()
@@ -32,6 +51,23 @@ namespace vast::gfx
 		DX12SafeRelease(m_DxcIncludeHandler);
 		DX12SafeRelease(m_DxcCompiler);
 		DX12SafeRelease(m_DxcUtils);
+	}
+
+	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
+	static std::wstring StringToWString(const std::string& s, bool bIsUTF8 = true)
+	{
+		int32 slength = (int32)s.length() + 1;
+		int32 len = MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, 0, 0);
+		std::wstring buf;
+		buf.resize(len);
+		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
+		return buf;
+	}
+
+	void DX12ShaderManager::AddShaderDefine(const std::string& name, const std::string& value)
+	{
+		m_SharedCompilerArgs.push_back(L"-D");
+		m_SharedCompilerArgs.push_back(StringToWString(name + "=" + value));
 	}
 
 	Ref<DX12Shader> DX12ShaderManager::LoadShader(const ShaderDesc& desc)
@@ -103,15 +139,12 @@ namespace vast::gfx
 			shaderName.c_str(),
 			L"-E", entryPoint.c_str(),
 			L"-T", ToShaderTarget(desc.type),
-			L"-I", SHADER_SOURCE_PATH,
-#ifdef VAST_DEBUG
-			DXC_ARG_DEBUG,
-#else
-			DXC_ARG_OPTIMIZATION_LEVEL3,
-#endif
-			DXC_ARG_WARNINGS_ARE_ERRORS,
-			L"-Qstrip_reflect",
 		};
+
+		for (auto& arg : m_SharedCompilerArgs)
+		{
+			arguments.push_back(arg.c_str());
+		}
 
 		IDxcResult* compiledShader = nullptr;
 		DX12Check(m_DxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), m_DxcIncludeHandler, IID_PPV_ARGS(&compiledShader)));
@@ -282,27 +315,11 @@ namespace vast::gfx
 			}
 		}
 
-		// TODO: This is required by ImGui, but not necessary for all pipelines.
-		D3D12_STATIC_SAMPLER_DESC staticSampler = {};
-		staticSampler.Filter			= D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-		staticSampler.AddressU			= D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		staticSampler.AddressV			= D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		staticSampler.AddressW			= D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		staticSampler.MipLODBias		= 0.0f;
-		staticSampler.MaxAnisotropy		= 0;
-		staticSampler.ComparisonFunc	= D3D12_COMPARISON_FUNC_ALWAYS;
-		staticSampler.BorderColor		= D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-		staticSampler.MinLOD			= 0.0f;
-		staticSampler.MaxLOD			= 0.0f;
-		staticSampler.ShaderRegister	= 0;
-		staticSampler.RegisterSpace		= 0;
-		staticSampler.ShaderVisibility	= D3D12_SHADER_VISIBILITY_PIXEL;
-
 		D3D12_ROOT_SIGNATURE_DESC1 rootSignatureDesc = {};
 		rootSignatureDesc.NumParameters		= static_cast<uint32>(rootParameters.size());
 		rootSignatureDesc.pParameters		= rootParameters.data();
-		rootSignatureDesc.NumStaticSamplers = 1;
-		rootSignatureDesc.pStaticSamplers	= &staticSampler;
+		rootSignatureDesc.NumStaticSamplers = 0;
+		rootSignatureDesc.pStaticSamplers	= nullptr;
 		rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT // TODO: Remove this flag from bindless pipelines (minor optimization)
 								| D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
 								| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS

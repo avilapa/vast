@@ -32,12 +32,6 @@ namespace vast::gfx
 	constexpr uint32 NUM_BUFFERS = 512;
 	constexpr uint32 NUM_PIPELINES = 64;
 
-	// Note: Root 32 Bit constants are identified on shaders by using a reserved binding point b999.
-	// This is because DXC shader reflection has no way to tell apart a CBV from a Root 32 Bit Constant.
-	// TODO: We could also identify push constants by giving a descriptive name to the buffer itself, in case in the future more than one binding point is needed.
-	// TODO: Input this as a define in the compiler
-	constexpr uint32 PUSH_CONSTANT_REGISTER_INDEX = 999;
-
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 

@@ -182,7 +182,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, ClearParams clear /* = ClearParams() */)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPass");
 		VAST_ASSERT(h.IsValid());
 
 		if (!m_CurrentRT)
@@ -211,7 +211,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndRenderPass()
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("DX12GraphicsContext", "EndRenderPass");
 		VAST_ASSERTF(m_CurrentRT, "EndRenderPass called without matching BeginRenderPass call.");
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();

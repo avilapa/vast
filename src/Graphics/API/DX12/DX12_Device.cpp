@@ -25,6 +25,7 @@ namespace vast::gfx
 		, m_SRVStagingDescriptorHeap(nullptr)
 		, m_FreeReservedDescriptorIndices({ 0 })
 		, m_SRVRenderPassDescriptorHeaps({ nullptr })
+		, m_SamplerRenderPassDescriptorHeap(nullptr)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_INFO("[gfx] [dx12] Starting graphics device creation.");
@@ -150,6 +151,9 @@ namespace vast::gfx
 			m_SRVRenderPassDescriptorHeaps[i] = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
 				NUM_RESERVED_SRV_DESCRIPTORS, NUM_SRV_RENDER_PASS_USER_DESCRIPTORS);
 		}
+
+		m_SamplerRenderPassDescriptorHeap = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 0, IDX(SamplerState::COUNT));
+		CreateSamplers();
 	}
 
 	DX12Device::~DX12Device()
@@ -165,11 +169,70 @@ namespace vast::gfx
 		{
 			m_SRVRenderPassDescriptorHeaps[i] = nullptr;
 		}
+		m_SamplerRenderPassDescriptorHeap = nullptr;
 
 		m_ShaderManager = nullptr;
 		DX12SafeRelease(m_Allocator);
 		DX12SafeRelease(m_Device);
 		DX12SafeRelease(m_DXGIFactory);
+	}
+
+	void DX12Device::CreateSamplers()
+	{
+		D3D12_SAMPLER_DESC samplerDescs[IDX(SamplerState::COUNT)]{};
+		{
+			D3D12_SAMPLER_DESC& desc = samplerDescs[IDX(SamplerState::LINEAR_WRAP)];
+
+			desc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+			desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			desc.MipLODBias = 0.0f;
+			desc.MaxAnisotropy = 1;
+			desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
+			desc.BorderColor[0] = desc.BorderColor[1] = desc.BorderColor[2] = desc.BorderColor[3] = 0;
+			desc.MinLOD = 0;
+			desc.MaxLOD = D3D12_FLOAT32_MAX;
+		}
+		{
+			D3D12_SAMPLER_DESC& desc = samplerDescs[IDX(SamplerState::LINEAR_CLAMP)];
+
+			desc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+			desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			desc.MipLODBias = 0.0f;
+			desc.MaxAnisotropy = 1;
+			desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
+			desc.BorderColor[0] = desc.BorderColor[1] = desc.BorderColor[2] = desc.BorderColor[3] = 0;
+			desc.MinLOD = 0;
+			desc.MaxLOD = D3D12_FLOAT32_MAX;
+		}
+		{
+			D3D12_SAMPLER_DESC& desc = samplerDescs[IDX(SamplerState::POINT_CLAMP)];
+
+			desc.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+			desc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			desc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			desc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			desc.MipLODBias = 0.0f;
+			desc.MaxAnisotropy = 1;
+			desc.ComparisonFunc = D3D12_COMPARISON_FUNC_NONE;
+			desc.BorderColor[0] = desc.BorderColor[1] = desc.BorderColor[2] = desc.BorderColor[3] = 0;
+			desc.MinLOD = 0;
+			desc.MaxLOD = D3D12_FLOAT32_MAX;
+		}
+
+		DX12Descriptor samplerDescriptorBlock = m_SamplerRenderPassDescriptorHeap->GetUserDescriptorBlockStart(static_cast<uint32>(IDX(SamplerState::COUNT)));
+		D3D12_CPU_DESCRIPTOR_HANDLE currentSamplerDescriptor = samplerDescriptorBlock.cpuHandle;
+
+		for (uint32 i = 0; i < IDX(SamplerState::COUNT); ++i)
+		{
+			m_Device->CreateSampler(&samplerDescs[i], currentSamplerDescriptor);
+			currentSamplerDescriptor.ptr += m_SamplerRenderPassDescriptorHeap->GetDescriptorSize();
+
+			m_ShaderManager->AddShaderDefine(std::string(g_SamplerNames[i]), std::to_string(i));
+		}
 	}
 
 	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* outBuf)
@@ -195,7 +258,7 @@ namespace vast::gfx
 		rscDesc.Width = static_cast<UINT64>(AlignU32(static_cast<uint32>(rscDesc.Width), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 		if (desc.usage == ResourceUsage::DYNAMIC)
 		{
-			rscDesc.Width *= NUM_FRAMES_IN_FLIGHT;
+			rscDesc.Width *= NUM_FRAMES_IN_FLIGHT; // TODO: This is not currently used!
 		}
 		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
 		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
@@ -632,6 +695,11 @@ namespace vast::gfx
 	DX12RenderPassDescriptorHeap& DX12Device::GetSRVDescriptorHeap(uint32 frameId) const
 	{
 		return *m_SRVRenderPassDescriptorHeaps[frameId];
+	}
+
+	DX12RenderPassDescriptorHeap& DX12Device::GetSamplerDescriptorHeap() const
+	{
+		return *m_SamplerRenderPassDescriptorHeap;
 	}
 
 	DX12Descriptor DX12Device::CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format)
