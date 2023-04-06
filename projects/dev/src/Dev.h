@@ -15,21 +15,16 @@ private:
 	void OnGUI();
 
 	void CreateTriangleResources();
-	void CreateFullscreenPassResources();
 
 	Ptr<gfx::GraphicsContext> m_GraphicsContext;
 	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
 
-	gfx::TextureHandle m_ColorRT;
 	gfx::ClearParams m_ClearColorRT;
-
+	gfx::TextureHandle m_ColorRT;
+	gfx::PipelineHandle m_FullscreenPso;
 	gfx::PipelineHandle m_TrianglePso;
 	gfx::BufferHandle m_TriangleVtxBuf;
-	gfx::BufferHandle m_TriangleCbv;
-	gfx::ShaderResourceProxy m_TriangleCbvProxy;
 
-	gfx::PipelineHandle m_FullscreenPso;
-	gfx::BufferHandle m_FullscreenCbv;
-	gfx::ShaderResourceProxy m_FullscreenCbvProxy;
-
+	uint32 m_TriangleVtxBufIdx;
+	uint32 m_ColorTextureIdx;
 };

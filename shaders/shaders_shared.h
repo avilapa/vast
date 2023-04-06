@@ -22,14 +22,4 @@ struct TriangleVtx
 	s_float3 col;
 };
 
-struct TriangleCBV
-{
-	uint32 vtxBufIdx;
-};
-
-struct FullscreenCBV
-{
-	uint32 texIdx;
-};
-
 #endif

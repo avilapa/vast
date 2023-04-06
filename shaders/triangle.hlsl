@@ -1,6 +1,9 @@
 #include "shaders_shared.h"
 
-ConstantBuffer<TriangleCBV> ObjectConstantBuffer : register(b0, PerObjectSpace);
+cbuffer PushConstants : register(PushConstantRegister, PerObjectSpace)
+{
+    uint32 TriangleVtxBufIdx;
+};
 
 struct VertexOutput
 {
@@ -8,19 +11,19 @@ struct VertexOutput
     float3 col : COLOR;
 };
 
-VertexOutput VS_Main(uint vertexId : SV_VertexID)
+VertexOutput VS_Main(uint vtxId : SV_VertexID)
 {
-    ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[ObjectConstantBuffer.vtxBufIdx];
-    TriangleVtx vertex = vertexBuffer.Load<TriangleVtx>(vertexId * sizeof(TriangleVtx));
+    ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[TriangleVtxBufIdx];
+    TriangleVtx vtx = vtxBuf.Load<TriangleVtx>(vtxId * sizeof(TriangleVtx));
     
-    VertexOutput output;
-    output.pos = float4(vertex.pos, 0, 1);
-    output.col = vertex.col;
+    VertexOutput OUT;
+    OUT.pos = float4(vtx.pos, 0, 1);
+    OUT.col = vtx.col;
     
-    return output;
+    return OUT;
 }
 
-float4 PS_Main(VertexOutput input) : SV_TARGET
+float4 PS_Main(VertexOutput IN) : SV_TARGET
 {
-    return float4(input.col, 1);
+    return float4(IN.col, 1);
 }

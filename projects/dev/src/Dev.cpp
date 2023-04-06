@@ -33,6 +33,7 @@ static Array<TriangleVtx, 3> s_TriangleVertexData =
 	{{  0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }},
 	{{  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }},
 } };
+static bool s_UpdateTriangle = false;
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
@@ -43,19 +44,27 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	params.swapChainFormat = gfx::Format::RGBA8_UNORM;
 	params.backBufferFormat = gfx::Format::RGBA8_UNORM;
 
- 	m_GraphicsContext = gfx::GraphicsContext::Create(params);
+	m_GraphicsContext = gfx::GraphicsContext::Create(params);
+	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	{
-		m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
-			.Type(gfx::TextureType::TEXTURE_2D)
-			.Format(gfx::Format::RGBA8_UNORM)
-			.Width(windowSize.x)
-			.Height(windowSize.y)
-			.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV));
-	}
+	m_ClearColorRT.flags = gfx::ClearFlags::CLEAR_COLOR;
+	m_ClearColorRT.color = float4(0.6f, 0.2f, 0.9f, 1.0f);
+
+	m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
+		.Type(gfx::TextureType::TEXTURE_2D)
+		.Format(gfx::Format::RGBA8_UNORM)
+		.Width(windowSize.x)
+		.Height(windowSize.y)
+		.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV));
+	m_ColorTextureIdx = ctx.GetBindlessIndex(m_ColorRT);
+
+	m_FullscreenPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
+		.VS("fullscreen.hlsl", "VS_Main")
+		.PS("fullscreen.hlsl", "PS_Main")
+		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
+		.SetRenderTarget(ctx.GetBackBufferFormat()));
 
 	CreateTriangleResources();
-	CreateFullscreenPassResources();
 
 	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
 }
@@ -64,89 +73,65 @@ void Dev::CreateTriangleResources()
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	{
-		auto pipelineDesc = gfx::PipelineDesc::Builder()
-			.VS("triangle.hlsl", "VS_Main")
-			.PS("triangle.hlsl", "PS_Main")
-			.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-			.SetRenderTarget(ctx.GetTextureFormat(m_ColorRT));
-		m_TrianglePso = ctx.CreatePipeline(pipelineDesc);
+	m_TrianglePso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
+		.VS("triangle.hlsl", "VS_Main")
+		.PS("triangle.hlsl", "PS_Main")
+		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
+		.SetRenderTarget(ctx.GetTextureFormat(m_ColorRT)));
 
-		m_ClearColorRT.flags = gfx::ClearFlags::CLEAR_COLOR;
-		m_ClearColorRT.color = float4(0.6f, 0.2f, 0.9f, 1.0f);
-	}
-	{
-		Array<TriangleVtx, 3> vertexData =
-		{ {
-			{{ -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }},
-			{{  0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }},
-			{{  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }},
-		} };
-
-		auto vtxBufDesc = gfx::BufferDesc::Builder()
-			.Size(sizeof(s_TriangleVertexData)).Stride(sizeof(s_TriangleVertexData[0]))
-			.ViewFlags(gfx::BufferViewFlags::SRV)
-			.CpuAccess(gfx::BufferCpuAccess::WRITE)
-			.Usage(gfx::ResourceUsage::DYNAMIC)
-			.IsRawAccess(true);
-
-		m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
-
-		TriangleCBV cbvData = { ctx.GetBindlessIndex(m_TriangleVtxBuf) };
-
-		auto cbvDesc = gfx::BufferDesc::Builder()
-			.Size(sizeof(TriangleCBV))
-			.ViewFlags(gfx::BufferViewFlags::CBV);
-
-		m_TriangleCbv = ctx.CreateBuffer(cbvDesc, &cbvData, sizeof(cbvData));
-
-		m_TriangleCbvProxy = ctx.LookupShaderResource(m_TrianglePso, "ObjectConstantBuffer");
-	}
-}
-
-void Dev::CreateFullscreenPassResources()
-{
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
-
-	{
-		auto pipelineDesc = gfx::PipelineDesc::Builder()
-			.VS("fullscreen.hlsl", "VS_Main")
-			.PS("fullscreen.hlsl", "PS_Main")
-			.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-			.SetRenderTarget(ctx.GetBackBufferFormat());
-		m_FullscreenPso = ctx.CreatePipeline(pipelineDesc);
-
-		m_ClearColorRT.flags = gfx::ClearFlags::CLEAR_COLOR;
-		m_ClearColorRT.color = float4(0.6f, 0.2f, 0.9f, 1.0f);
-	}
-	{
-		FullscreenCBV cbvData = { ctx.GetBindlessIndex(m_ColorRT) };
-
-		auto cbvDesc = gfx::BufferDesc::Builder()
-			.Size(sizeof(FullscreenCBV))
-			.ViewFlags(gfx::BufferViewFlags::CBV);
-
-		m_FullscreenCbv = ctx.CreateBuffer(cbvDesc, &cbvData, sizeof(cbvData));
-
-		m_FullscreenCbvProxy = ctx.LookupShaderResource(m_TrianglePso, "ObjectConstantBuffer");
-	}
+	auto vtxBufDesc = gfx::BufferDesc::Builder()
+		.Size(sizeof(s_TriangleVertexData)).Stride(sizeof(s_TriangleVertexData[0]))
+		.ViewFlags(gfx::BufferViewFlags::SRV)
+		.CpuAccess(gfx::BufferCpuAccess::WRITE)
+		.Usage(gfx::ResourceUsage::DYNAMIC)
+		.IsRawAccess(true);
+	m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
+	m_TriangleVtxBufIdx = ctx.GetBindlessIndex(m_TriangleVtxBuf);
 }
 
 Dev::~Dev()
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	ctx.DestroyTexture(m_ColorRT);
-
-	ctx.DestroyPipeline(m_TrianglePso);
-	ctx.DestroyBuffer(m_TriangleVtxBuf);
-	ctx.DestroyBuffer(m_TriangleCbv);
-
 	ctx.DestroyPipeline(m_FullscreenPso);
-	ctx.DestroyBuffer(m_FullscreenCbv);
+	ctx.DestroyPipeline(m_TrianglePso);
+	ctx.DestroyTexture(m_ColorRT);
+	ctx.DestroyBuffer(m_TriangleVtxBuf);
 }
 
-static bool s_UpdateTriangle = false;
+void Dev::OnUpdate()
+{
+	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+
+	ctx.BeginFrame();
+	m_ImguiRenderer->BeginFrame();
+
+	if (s_UpdateTriangle)
+	{
+		s_UpdateTriangle = false;
+		ctx.UpdateBuffer(m_TriangleVtxBuf, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
+	}
+
+	ctx.SetRenderTarget(m_ColorRT);
+	ctx.BeginRenderPass(m_TrianglePso, m_ClearColorRT);
+	{
+		ctx.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
+		ctx.Draw(3);
+	}
+	ctx.EndRenderPass();
+
+	ctx.BeginRenderPass(m_FullscreenPso);
+	{
+		ctx.SetPushConstants(&m_ColorTextureIdx, sizeof(uint32));
+		ctx.DrawFullscreenTriangle();
+	}
+	ctx.EndRenderPass();
+
+	OnGUI();
+
+	m_ImguiRenderer->EndFrame();
+	ctx.EndFrame();
+}
 
 void Dev::OnGUI()
 {
@@ -172,38 +157,3 @@ void Dev::OnGUI()
 	}
 	ImGui::End();
 }
-
-void Dev::OnUpdate()
-{
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
-
-	ctx.BeginFrame();
-	m_ImguiRenderer->BeginFrame();
-
-	if (s_UpdateTriangle)
-	{
-		s_UpdateTriangle = false;
-		ctx.UpdateBuffer(m_TriangleVtxBuf, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
-	}
-
-	ctx.SetRenderTarget(m_ColorRT);
-	ctx.BeginRenderPass(m_TrianglePso, m_ClearColorRT);
-	{
-		ctx.SetShaderResource(m_TriangleCbv, m_TriangleCbvProxy);
-		ctx.Draw(3);
-	}
-	ctx.EndRenderPass();
-
-	ctx.BeginRenderPass(m_FullscreenPso);
-	{
-		ctx.SetShaderResource(m_FullscreenCbv, m_FullscreenCbvProxy);
-		ctx.DrawFullscreenTriangle();
-	}
-	ctx.EndRenderPass();
-
-	OnGUI();
-
-	m_ImguiRenderer->EndFrame();
-	ctx.EndFrame();
-}
-
