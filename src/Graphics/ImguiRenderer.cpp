@@ -15,6 +15,8 @@ namespace vast::gfx
 	ImguiRenderer::ImguiRenderer(gfx::GraphicsContext& context, HWND windowHandle /*= ::GetActiveWindow()*/)
 		: ctx(context)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
@@ -22,7 +24,6 @@ namespace vast::gfx
 #if USE_IMGUI_STOCK_IMPL_WIN32
 		ImGui_ImplWin32_Init(windowHandle);
 #endif
-
 		{
 			BlendState bs = BlendState::Preset::kAdditive;
 			bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
@@ -59,6 +60,8 @@ namespace vast::gfx
 
 	ImguiRenderer::~ImguiRenderer()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		ctx.DestroyTexture(m_FontTex);
 		ctx.DestroyPipeline(m_Pipeline);
 
@@ -69,6 +72,8 @@ namespace vast::gfx
 
 	void ImguiRenderer::BeginFrame()
 	{
+		VAST_PROFILE_FUNCTION();
+
 #if USE_IMGUI_STOCK_IMPL_WIN32
 		ImGui_ImplWin32_NewFrame();
 #endif
@@ -77,6 +82,8 @@ namespace vast::gfx
 
 	static const float4x4 ComputeProjectionMatrix(ImDrawData* data)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		float L = data->DisplayPos.x;
 		float R = data->DisplayPos.x + data->DisplaySize.x;
 		float T = data->DisplayPos.y;
@@ -91,6 +98,8 @@ namespace vast::gfx
 
 	void ImguiRenderer::EndFrame()
 	{
+		VAST_PROFILE_FUNCTION();
+
 		ImGui::Render();
 
 		ImDrawData* drawData = ImGui::GetDrawData();
@@ -112,15 +121,15 @@ namespace vast::gfx
 		BufferView idxView = ctx.AllocTempBufferView(idxSize, 4);
 
 		// Copy vertex and index buffer data to a single buffer
-		ImDrawVert* vtxCPUMem = reinterpret_cast<ImDrawVert*>(vtxView.data);
-		ImDrawIdx* idxCPUMem = reinterpret_cast<ImDrawIdx*>(idxView.data);
-		for (int i = 0; i < drawData->CmdListsCount; ++i)
+		ImDrawVert* vtxCpuMem = reinterpret_cast<ImDrawVert*>(vtxView.data);
+		ImDrawIdx* idxCpuMem = reinterpret_cast<ImDrawIdx*>(idxView.data);
+		for (uint32 i = 0; i < drawData->CmdListsCount; ++i)
 		{
 			const ImDrawList* drawList = drawData->CmdLists[i];
-			memcpy(vtxCPUMem, &drawList->VtxBuffer[0], drawList->VtxBuffer.Size * sizeof(ImDrawVert));
-			memcpy(idxCPUMem, &drawList->IdxBuffer[0], drawList->IdxBuffer.Size * sizeof(ImDrawIdx));
-			vtxCPUMem += drawList->VtxBuffer.Size;
-			idxCPUMem += drawList->IdxBuffer.Size;
+			memcpy(vtxCpuMem, &drawList->VtxBuffer[0], drawList->VtxBuffer.Size * sizeof(ImDrawVert));
+			memcpy(idxCpuMem, &drawList->IdxBuffer[0], drawList->IdxBuffer.Size * sizeof(ImDrawIdx));
+			vtxCpuMem += drawList->VtxBuffer.Size;
+			idxCpuMem += drawList->IdxBuffer.Size;
 		}
 
 		ctx.BeginRenderPass(m_Pipeline);
@@ -133,40 +142,35 @@ namespace vast::gfx
 			ctx.SetBlendFactor(float4(0));
 			uint32 vtxOffset = 0, idxOffset = 0;
 			ImVec2 clipOff = drawData->DisplayPos;
-			for (int i = 0; i < drawData->CmdListsCount; ++i)
+			for (uint32 i = 0; i < drawData->CmdListsCount; ++i)
 			{
-				const ImDrawList* cmdList = drawData->CmdLists[i];
-				for (int j = 0; j < cmdList->CmdBuffer.Size; j++)
+				const ImDrawList* drawList = drawData->CmdLists[i];
+
+				for (uint32 j = 0; j < drawList->CmdBuffer.Size; j++)
 				{
-					const ImDrawCmd* pcmd = &cmdList->CmdBuffer[j];
-					if (pcmd->UserCallback != NULL)
+					const ImDrawCmd* drawCmd = &drawList->CmdBuffer[j];
+					if (drawCmd->UserCallback != NULL)
 					{
-						if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
-						{
-							// TODO
-						}
-						else
-						{
-							pcmd->UserCallback(cmdList, pcmd);
-						}
+						drawCmd->UserCallback(drawList, drawCmd);
 					}
 					else
 					{
-						ImVec2 clipMin(pcmd->ClipRect.x - clipOff.x, pcmd->ClipRect.y - clipOff.y);
-						ImVec2 clipMax(pcmd->ClipRect.z - clipOff.x, pcmd->ClipRect.w - clipOff.y);
+						ImVec2 clipMin(drawCmd->ClipRect.x - clipOff.x, drawCmd->ClipRect.y - clipOff.y);
+						ImVec2 clipMax(drawCmd->ClipRect.z - clipOff.x, drawCmd->ClipRect.w - clipOff.y);
 						if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
 						{
 							continue;
 						}
 
 						ctx.SetScissorRect(int4(clipMin.x, clipMin.y, clipMax.x, clipMax.y));
-						ctx.DrawIndexedInstanced(pcmd->ElemCount, 1, pcmd->IdxOffset + idxOffset, pcmd->VtxOffset + vtxOffset, 0);
+						ctx.DrawIndexedInstanced(drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxOffset, drawCmd->VtxOffset + vtxOffset, 0);
 					}
 				}
-				idxOffset += cmdList->IdxBuffer.Size;
-				vtxOffset += cmdList->VtxBuffer.Size;
+				idxOffset += drawList->IdxBuffer.Size;
+				vtxOffset += drawList->VtxBuffer.Size;
 			}
 		}
 		ctx.EndRenderPass();
 	}
+
 }

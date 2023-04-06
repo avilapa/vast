@@ -1,5 +1,23 @@
 
-This is a list of build issues encountered at some point within this project and how they were fixed. Just in case they come up again in the future!
+Setup Shader Syntax Highlighting in Visual Studio + Visual Assist (Windows)
+===========================================================================
+
+Steps:
+
+- Exit Visual Studio
+- In regedit, go to: HKEY_CURRENT_USER\Software\Whole Tomato\Visual Assist X\VANet16
+- Add new file extensions (e.g. .hlsli/.hlsl) to ExtHeader/ExtSource
+- In Visual Studio, go to Tools > Options > Text Editor > File Extension > Microsoft Visual C++ and Add new file extensions.
+- Restart Visual Studio, go to Visual Assist Options > Performance, click Rebuild and restart Visual Studio once more.
+
+Source: http://docs.wholetomato.com/?W328
+
+
+============================
+=	BUILD ISSUES	   =
+============================
+
+List of worthy build issues encountered on this project and how to fix them may they come back in the future.
 
 
 DirectXTex missing compiled shaders:

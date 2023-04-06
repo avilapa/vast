@@ -59,6 +59,7 @@ namespace vast::gfx
 		void DestroyTexture(const TextureHandle h) override;
 		void DestroyPipeline(const PipelineHandle h) override;
 
+		// TODO: We need to attach descriptors to the BufferViews if we want to use them as CBVs, SRVs...
 		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) override;
 
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;

@@ -12,6 +12,7 @@ public:
 
 private:
 	void OnUpdate() override;
+	void OnGUI();
 
 	void CreateTriangleResources();
 	void CreateFullscreenPassResources();

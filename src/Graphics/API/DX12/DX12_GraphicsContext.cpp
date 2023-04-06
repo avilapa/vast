@@ -60,7 +60,6 @@ namespace vast::gfx
 
 		auto tempFrameBufferDesc = BufferDesc::Builder()
 			.Size(tempFrameBufferSize * 2) // TODO: Alignment?
-			.ViewFlags(gfx::BufferViewFlags::SRV)
 			.CpuAccess(gfx::BufferCpuAccess::WRITE)
 			// TODO: Should this be dynamic?
 			.IsRawAccess(true);
@@ -482,6 +481,7 @@ namespace vast::gfx
 
 		return BufferView
 		{ 
+			// TODO: If we separate handle from data in ResourceHandles each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
 			m_TempFrameAllocators[m_FrameId].buffer, 
 			(uint8*)(buf->data + offset),
 			offset,

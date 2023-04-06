@@ -9,7 +9,6 @@
 //
 //	> Shader Hot Reload: allow shaders to be recompiled and reloaded live.
 //	> Shader Precompilation: precompile shaders to avoid compiling at every start-up.
-//	> Shader Visual Studio integration 1: syntax coloring for hlsl files.
 //	> Shader Visual Studio integration 2: shader compilation from solution.
 //		- req: Shader Precompilation
 //
@@ -27,6 +26,13 @@
 VAST_DEFINE_APP_MAIN(Dev)
 
 using namespace vast;
+
+static Array<TriangleVtx, 3> s_TriangleVertexData =
+{ {
+	{{ -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }},
+	{{  0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }},
+	{{  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }},
+} };
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
@@ -78,13 +84,13 @@ void Dev::CreateTriangleResources()
 		} };
 
 		auto vtxBufDesc = gfx::BufferDesc::Builder()
-			.Size(sizeof(vertexData)).Stride(sizeof(vertexData[0]))
+			.Size(sizeof(s_TriangleVertexData)).Stride(sizeof(s_TriangleVertexData[0]))
 			.ViewFlags(gfx::BufferViewFlags::SRV)
 			.CpuAccess(gfx::BufferCpuAccess::WRITE)
 			.Usage(gfx::ResourceUsage::DYNAMIC)
 			.IsRawAccess(true);
 
-		m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &vertexData, sizeof(vertexData));
+		m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
 
 		TriangleCBV cbvData = { ctx.GetBindlessIndex(m_TriangleVtxBuf) };
 
@@ -140,29 +146,47 @@ Dev::~Dev()
 	ctx.DestroyBuffer(m_FullscreenCbv);
 }
 
+static bool s_UpdateTriangle = false;
+
+void Dev::OnGUI()
+{
+	ImGui::ShowDemoWindow();
+
+	if (ImGui::Begin("vast UI", 0, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::PushItemWidth(300);
+		ImGui::Text("Triangle Vertex Positions");
+		if (ImGui::SliderFloat2("##1", (float*)&s_TriangleVertexData[0].pos, -1.0f, 1.0f)) s_UpdateTriangle = true;
+		if (ImGui::SliderFloat2("##2", (float*)&s_TriangleVertexData[1].pos, -1.0f, 1.0f)) s_UpdateTriangle = true;
+		if (ImGui::SliderFloat2("##3", (float*)&s_TriangleVertexData[2].pos, -1.0f, 1.0f)) s_UpdateTriangle = true;
+		ImGui::Text("Triangle Vertex Colors");
+		if (ImGui::ColorEdit3("##1", (float*)&s_TriangleVertexData[0].col)) s_UpdateTriangle = true;
+		if (ImGui::ColorEdit3("##2", (float*)&s_TriangleVertexData[1].col)) s_UpdateTriangle = true;
+		if (ImGui::ColorEdit3("##3", (float*)&s_TriangleVertexData[2].col)) s_UpdateTriangle = true;
+		ImGui::PopItemWidth();
+		ImGui::Separator();
+		ImGui::PushItemWidth(300);
+		ImGui::Text("Clear color");
+		ImGui::ColorEdit4("##bgcol", (float*)&m_ClearColorRT.color);
+		ImGui::PopItemWidth();
+	}
+	ImGui::End();
+}
+
 void Dev::OnUpdate()
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
 	static float tempTimeCounter = 0;
-	static int tempTimeThreshold = 1;
 	tempTimeCounter += 0.01f;
 
 	ctx.BeginFrame();
 	m_ImguiRenderer->BeginFrame();
 
-	if (tempTimeCounter >= float(tempTimeThreshold))
+	if (s_UpdateTriangle)
 	{
-		tempTimeThreshold++;
-
-		Array<TriangleVtx, 3> vertexData =
-		{ {
-			{{  sin(tempTimeCounter), -0.5f }, { 0.5f, 1.0f, 0.3f }},
-			{{  0.0f, sin(tempTimeCounter * 12 + 4) }, { 0.1f, 0.6f, 0.7f }},
-			{{  cos(tempTimeCounter), -0.5f }, { 0.4f, 0.2f, 0.0f }},
-		} };
-
-		ctx.UpdateBuffer(m_TriangleVtxBuf, &vertexData, sizeof(vertexData));
+		s_UpdateTriangle = false;
+		ctx.UpdateBuffer(m_TriangleVtxBuf, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
 	}
 
 	ctx.SetRenderTarget(m_ColorRT);
@@ -173,15 +197,16 @@ void Dev::OnUpdate()
 	}
 	ctx.EndRenderPass();
 
-	ctx.BeginRenderPass(m_FullscreenPso/*, m_ClearColorRT*/);
+	ctx.BeginRenderPass(m_FullscreenPso);
 	{
 		ctx.SetShaderResource(m_FullscreenCbv, m_FullscreenCbvProxy);
 		ctx.DrawFullscreenTriangle();
 	}
 	ctx.EndRenderPass();
 
-	ImGui::ShowDemoWindow();
+	OnGUI();
 
 	m_ImguiRenderer->EndFrame();
 	ctx.EndFrame();
 }
+

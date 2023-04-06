@@ -59,6 +59,8 @@ namespace vast::gfx
 		template<typename T, typename Timpl, const uint32 numResources> friend class ResourceHandlePool;
 	};
 
+	// TODO: Could separate knowledge from the object from the resource handle pool, and instead allocate a big buffer of plain memory.
+
 	template<typename T, typename Timpl, const uint32 numResources>
 	class ResourceHandlePool
 	{

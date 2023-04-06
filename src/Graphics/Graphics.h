@@ -256,6 +256,7 @@ namespace vast::gfx
 		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
  		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
 		Builder& DepthStencil(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
+		// TODO: Separate RenderPassLayout object?
 		Builder& SetRenderTarget(Format format, BlendState bs = BlendState::Preset::kDisabled) { desc.rtFormats[desc.rtCount] = format; desc.rtBlendStates[desc.rtCount] = bs; ++desc.rtCount; return *this; }
 
 		operator PipelineDesc() { return desc; }

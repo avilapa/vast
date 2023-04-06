@@ -51,6 +51,9 @@ namespace vast::gfx
 		virtual void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, Format format = Format::UNKNOWN) = 0;
 		virtual void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
 		virtual void SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
+		// Passes some data to be used in the GPU under a constant buffer declared in a shader using slot
+		// 'PushConstantRegister'. Push Constants are best suited for small amounts of data that change
+		// frequently (e.g. PerObjectSpace). Size parameter is expected in bytes.
 		virtual void SetPushConstants(const void* data, const uint32 size) = 0;
 
 		virtual void SetScissorRect(int4 rect) = 0;
