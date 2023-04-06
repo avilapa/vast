@@ -69,7 +69,7 @@ namespace vast::gfx
 
 	void DX12CommandQueue::WaitForIdle()
 	{
-		DX12CommandQueue::WaitForFenceValue(m_NextFenceValue - 1); // TODO: How is this different to Flush?
+		WaitForFenceValue(m_NextFenceValue - 1);
 	}
 
 	void DX12CommandQueue::Flush()
