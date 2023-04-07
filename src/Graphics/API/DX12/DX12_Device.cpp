@@ -231,7 +231,7 @@ namespace vast::gfx
 			m_Device->CreateSampler(&samplerDescs[i], currentSamplerDescriptor);
 			currentSamplerDescriptor.ptr += m_SamplerRenderPassDescriptorHeap->GetDescriptorSize();
 
-			m_ShaderManager->AddShaderDefine(std::string(g_SamplerNames[i]), std::to_string(i));
+			m_ShaderManager->AddGlobalShaderDefine(std::string(g_SamplerNames[i]), std::to_string(i));
 		}
 	}
 
@@ -507,7 +507,6 @@ namespace vast::gfx
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
-		Vector<D3D12_INPUT_ELEMENT_DESC> inputElements;
 		if (desc.vs.type != ShaderType::UNKNOWN)
 		{
 			outPipeline->vs = m_ShaderManager->LoadShader(desc.vs);
@@ -515,25 +514,23 @@ namespace vast::gfx
 			psDesc.VS.BytecodeLength  = outPipeline->vs->blob->GetBufferSize();
 
 			auto paramsDesc = m_ShaderManager->GetInputParametersFromReflection(outPipeline->vs->reflection);
-			inputElements.reserve(paramsDesc.size());
+			D3D12_INPUT_ELEMENT_DESC* inputElementDescs = new D3D12_INPUT_ELEMENT_DESC[paramsDesc.size()]{};
 
-			for (const auto& paramDesc : paramsDesc)
+			for (uint32 i = 0; i < paramsDesc.size(); ++i)
 			{
-				D3D12_INPUT_ELEMENT_DESC element = {};
+				D3D12_INPUT_ELEMENT_DESC& element = inputElementDescs[i];
 
-				element.SemanticName = paramDesc.SemanticName;
-				element.SemanticIndex = paramDesc.SemanticIndex;
-				element.Format = ConvertToDXGIFormat(paramDesc.ComponentType, paramDesc.Mask);
+				element.SemanticName = paramsDesc[i].SemanticName;
+				element.SemanticIndex = paramsDesc[i].SemanticIndex;
+				element.Format = ConvertToDXGIFormat(paramsDesc[i].ComponentType, paramsDesc[i].Mask);
 				element.InputSlot = 0;
 				element.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 				element.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 				element.InstanceDataStepRate = (element.InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA) ? 1 : 0;
-
-				inputElements.emplace_back(element);
 			}
 
-			psDesc.InputLayout.pInputElementDescs = inputElements.data();
-			psDesc.InputLayout.NumElements = static_cast<uint32>(inputElements.size());
+			psDesc.InputLayout.pInputElementDescs = inputElementDescs;
+			psDesc.InputLayout.NumElements = static_cast<uint32>(paramsDesc.size());
 		}
 
 		std::string shaderName = "Unknown";
@@ -550,7 +547,7 @@ namespace vast::gfx
 		ID3DBlob* rootSignatureBlob = m_ShaderManager->CreateRootSignatureFromReflection(outPipeline);
 		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
 		DX12SafeRelease(rootSignatureBlob);
-		
+
 		psDesc.BlendState.AlphaToCoverageEnable = false;
 		psDesc.BlendState.IndependentBlendEnable = false;
 		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
@@ -608,11 +605,63 @@ namespace vast::gfx
 
 		psDesc.NodeMask = 0;
 
-		ID3D12PipelineState* graphicsPipeline = nullptr;
-		DX12Check(m_Device->CreateGraphicsPipelineState(&psDesc, IID_PPV_ARGS(&graphicsPipeline)));
+		outPipeline->desc = psDesc;
+		DX12Check(m_Device->CreateGraphicsPipelineState(&outPipeline->desc, IID_PPV_ARGS(&outPipeline->pipelineState)));
+	}
 
-		outPipeline->pipelineState = graphicsPipeline;
-		outPipeline->rootSignature = psDesc.pRootSignature;
+	void DX12Device::UpdatePipeline(DX12Pipeline* pipeline)
+	{
+		if (pipeline->vs != nullptr)
+		{
+			if (!m_ShaderManager->ReloadShader(pipeline->vs))
+			{
+				return;
+			}
+			pipeline->desc.VS.pShaderBytecode = pipeline->vs->blob->GetBufferPointer();
+			pipeline->desc.VS.BytecodeLength = pipeline->vs->blob->GetBufferSize();
+		}
+
+		if (pipeline->ps != nullptr)
+		{
+			if (!m_ShaderManager->ReloadShader(pipeline->ps))
+			{
+				return;
+			}			
+			pipeline->desc.PS.pShaderBytecode = pipeline->ps->blob->GetBufferPointer();
+			pipeline->desc.PS.BytecodeLength = pipeline->ps->blob->GetBufferSize();
+		}
+
+		DX12SafeRelease(pipeline->pipelineState);
+		DX12Check(m_Device->CreateGraphicsPipelineState(&pipeline->desc, IID_PPV_ARGS(&pipeline->pipelineState)));
+	}
+
+	void DX12Device::DestroyBuffer(DX12Buffer* buf)
+	{
+		VAST_ASSERTF(buf, "Attempted to destroy an empty buffer.");
+
+		if (buf->cbv.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->cbv);
+		}
+
+		if (buf->srv.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->srv);
+			m_FreeReservedDescriptorIndices.push_back(buf->heapIdx);
+		}
+
+		if (buf->uav.IsValid())
+		{
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->uav);
+		}
+
+		if (buf->data != nullptr)
+		{
+			buf->resource->Unmap(0, nullptr);
+		}
+
+		DX12SafeRelease(buf->resource);
+		DX12SafeRelease(buf->allocation);
 	}
 
 	void DX12Device::DestroyTexture(DX12Texture* tex)
@@ -644,41 +693,17 @@ namespace vast::gfx
 		DX12SafeRelease(tex->allocation);
 	}
 	
-	void DX12Device::DestroyBuffer(DX12Buffer* buf)
-	{
-		VAST_ASSERTF(buf, "Attempted to destroy an empty buffer.");
-
-		if (buf->cbv.IsValid())
-		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->cbv);
-		}
-
-		if (buf->srv.IsValid())
-		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->srv);
-			m_FreeReservedDescriptorIndices.push_back(buf->heapIdx);
-		}
-
-		if (buf->uav.IsValid())
-		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->uav);
-		}
-
-		if (buf->data != nullptr)
-		{
-			buf->resource->Unmap(0, nullptr);
-		}
-
-		DX12SafeRelease(buf->resource);
-		DX12SafeRelease(buf->allocation);
-	}
-
 	void DX12Device::DestroyPipeline(DX12Pipeline* pipeline)
 	{
 		VAST_ASSERTF(pipeline, "Attempted to destroy an empty pipeline.");
 		pipeline->vs = nullptr;
 		pipeline->ps = nullptr;
-		DX12SafeRelease(pipeline->rootSignature);
+		if (pipeline->desc.InputLayout.pInputElementDescs)
+		{
+			delete[] pipeline->desc.InputLayout.pInputElementDescs;
+			pipeline->desc.InputLayout.pInputElementDescs = nullptr;
+		}
+		DX12SafeRelease(pipeline->desc.pRootSignature);
 		DX12SafeRelease(pipeline->pipelineState);
 	}
 

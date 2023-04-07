@@ -80,6 +80,7 @@ namespace vast::gfx
 
 	struct DX12Shader
 	{
+		std::string key; // TODO: This is redundant, and could just store a key instead of a full ref on the Pipeline.
 		IDxcBlob* blob = nullptr;
 		ID3D12ShaderReflection* reflection = nullptr;
 	};
@@ -89,7 +90,7 @@ namespace vast::gfx
 		Ref<DX12Shader> vs = nullptr;
 		Ref<DX12Shader> ps = nullptr;
 		ID3D12PipelineState* pipelineState = nullptr;
-		ID3D12RootSignature* rootSignature = nullptr;
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
 		Ptr<ShaderResourceProxyTable> resourceProxyTable;
 		uint8 pushConstantIndex = UINT8_MAX;
 		uint8 descriptorTableIndex = UINT8_MAX;

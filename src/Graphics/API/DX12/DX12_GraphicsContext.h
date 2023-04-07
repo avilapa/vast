@@ -54,6 +54,7 @@ namespace vast::gfx
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
 		void UpdateBuffer(const BufferHandle h, void* data, const size_t size) override;
+		void UpdatePipeline(const PipelineHandle h) override;
 
 		void DestroyBuffer(const BufferHandle h) override;
 		void DestroyTexture(const TextureHandle h) override;

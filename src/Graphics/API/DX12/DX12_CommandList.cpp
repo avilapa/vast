@@ -163,7 +163,7 @@ namespace vast::gfx
 		{
 			VAST_PROFILE_FUNCTION();
 			m_CommandList->SetPipelineState(pipeline->pipelineState);
-			m_CommandList->SetGraphicsRootSignature(pipeline->rootSignature);
+			m_CommandList->SetGraphicsRootSignature(pipeline->desc.pRootSignature);
 		}
 		m_CurrentPipeline = pipeline;
 	}

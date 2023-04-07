@@ -7,7 +7,6 @@
 // ---------------------------------------- TODO LIST ------------------------------------------ //
 // Features coming up:
 //
-//	> Shader Hot Reload: allow shaders to be recompiled and reloaded live.
 //	> Shader Precompilation: precompile shaders to avoid compiling at every start-up.
 //	> Shader Visual Studio integration 2: shader compilation from solution.
 //		- req: Shader Precompilation
@@ -33,6 +32,7 @@ static Array<TriangleVtx, 3> s_TriangleVertexData =
 	{{  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }},
 } };
 static bool s_UpdateTriangle = false;
+static bool s_ReloadTriangle = false;
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
@@ -105,6 +105,12 @@ void Dev::OnUpdate()
 	ctx.BeginFrame();
 	m_ImguiRenderer->BeginFrame();
 
+	if (s_ReloadTriangle)
+	{
+		s_ReloadTriangle = false;
+		ctx.UpdatePipeline(m_TrianglePso);
+	}
+
 	if (s_UpdateTriangle)
 	{
 		s_UpdateTriangle = false;
@@ -153,6 +159,10 @@ void Dev::OnGUI()
 		ImGui::Text("Clear color");
 		ImGui::ColorEdit4("##bgcol", (float*)&m_ClearColorRT.color);
 		ImGui::PopItemWidth();
+		if (ImGui::Button("Reload Triangle Shader"))
+		{
+			s_ReloadTriangle = true;
+		}
 	}
 	ImGui::End();
 }

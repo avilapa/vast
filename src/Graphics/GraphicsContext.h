@@ -70,6 +70,7 @@ namespace vast::gfx
 		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
 
 		virtual void UpdateBuffer(const BufferHandle h, void* data, const size_t size) = 0;
+		virtual void UpdatePipeline(const PipelineHandle h) = 0;
 
 		virtual void DestroyBuffer(const BufferHandle h) = 0;
 		virtual void DestroyTexture(const TextureHandle h) = 0;

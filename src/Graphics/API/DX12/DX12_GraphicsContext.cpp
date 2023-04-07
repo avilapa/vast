@@ -334,6 +334,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::UpdateBuffer(const BufferHandle h, void* srcMem, const size_t srcSize)
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		// TODO: Check buffer does not have UAV
@@ -341,6 +342,17 @@ namespace vast::gfx
 		// TODO: Dynamic no CPU access buffers
 		// TODO: Use buffered approach to improve performance (how do we handle updating descriptors?)
 		SetBufferData(buf, srcMem, srcSize);
+	}
+	
+	void DX12GraphicsContext::UpdatePipeline(const PipelineHandle h)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(h.IsValid());
+		auto pipeline = m_Pipelines->LookupResource(h);
+
+		WaitForIdle(); // TODO TEMP: We should cache pipelines that want to update on a given frame and reload them all at a safe place, but this does the job for now.
+
+		m_Device->UpdatePipeline(pipeline);
 	}
 
 	void DX12GraphicsContext::SetBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize)

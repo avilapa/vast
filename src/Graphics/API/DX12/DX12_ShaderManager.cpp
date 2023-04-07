@@ -36,17 +36,18 @@ namespace vast::gfx
 			L"-Qstrip_reflect",
 		};
 
-		AddShaderDefine("PushConstantRegister", std::string("b") + std::to_string(PUSH_CONSTANT_REGISTER_INDEX));
+		AddGlobalShaderDefine("PushConstantRegister", std::string("b") + std::to_string(PUSH_CONSTANT_REGISTER_INDEX));
 	}
 
 	DX12ShaderManager::~DX12ShaderManager()
 	{
 		for (auto shader : m_Shaders)
 		{
-			DX12SafeRelease(shader->blob);
-			DX12SafeRelease(shader->reflection);
-			shader = nullptr; // TODO: Make sure all shaders are deleted here (pass weak ptr instead of ref?)
+			DX12SafeRelease(shader.first->blob);
+			DX12SafeRelease(shader.first->reflection);
+			shader.first = nullptr; // TODO: Make sure all shaders are deleted here (pass weak ptr instead of ref?)
 		}
+		m_Shaders.clear();
 
 		DX12SafeRelease(m_DxcIncludeHandler);
 		DX12SafeRelease(m_DxcCompiler);
@@ -64,7 +65,7 @@ namespace vast::gfx
 		return buf;
 	}
 
-	void DX12ShaderManager::AddShaderDefine(const std::string& name, const std::string& value)
+	void DX12ShaderManager::AddGlobalShaderDefine(const std::string& name, const std::string& value)
 	{
 		m_SharedCompilerArgs.push_back(L"-D");
 		m_SharedCompilerArgs.push_back(StringToWString(name + "=" + value));
@@ -72,15 +73,22 @@ namespace vast::gfx
 
 	Ref<DX12Shader> DX12ShaderManager::LoadShader(const ShaderDesc& desc)
 	{
+		VAST_PROFILE_FUNCTION();
 		Ref<DX12Shader> shaderRef;
  		auto key = MakeShaderKey(desc.shaderName, desc.entryPoint);
 		if (IsShaderRegistered(key))
 		{
-			shaderRef = m_Shaders[m_ShaderKeys[key]];
+			shaderRef = m_Shaders[m_ShaderKeys[key]].first;
 		}
 		else
 		{
-			shaderRef = CompileShader(desc, key);
+			shaderRef = MakeRef<DX12Shader>();
+			shaderRef->key = key;
+			bool success = CompileShader(desc, shaderRef.get());
+			VAST_ASSERTF(success, "Shader Compilation Failed.");
+
+			m_ShaderKeys[key] = static_cast<uint32>(m_Shaders.size());
+			m_Shaders.push_back({ shaderRef, desc });
 		}
 
 		VAST_ASSERT(shaderRef);
@@ -89,10 +97,25 @@ namespace vast::gfx
 		return shaderRef;
 	}
 
+	bool DX12ShaderManager::ReloadShader(Ref<DX12Shader> shader)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERTF(IsShaderRegistered(shader->key), "Attempted to reload invalid shader.");
+		auto desc = m_Shaders[m_ShaderKeys[shader->key]].second;
+		VAST_ASSERT(shader->key.compare(MakeShaderKey(desc.shaderName, desc.entryPoint)) == 0);
+		if (CompileShader(desc, shader.get()))
+		{
+			VAST_WARNING("Successfully reloaded shader '{}' ({}).", desc.shaderName, desc.entryPoint);
+			return true;
+		}
+		VAST_WARNING("Failed to reload shader '{}' ({}) due to a compile error.", desc.shaderName, desc.entryPoint);
+		return false;
+	}
+
 	std::string DX12ShaderManager::MakeShaderKey(const std::string& shaderName, const std::string& entryPoint) const
 	{
 		// TODO: This could be a hash.
-		return shaderName + entryPoint;
+		return shaderName + ',' + entryPoint;
 	}
 
 	bool DX12ShaderManager::IsShaderRegistered(const std::string key) const
@@ -116,7 +139,7 @@ namespace vast::gfx
 		}
 	}
 
-	Ref<DX12Shader> DX12ShaderManager::CompileShader(const ShaderDesc& desc, const std::string& key)
+	bool DX12ShaderManager::CompileShader(const ShaderDesc& desc, DX12Shader* outShader)
 	{
 		VAST_PROFILE_FUNCTION();
 		std::wstring shaderName(desc.shaderName.begin(), desc.shaderName.end());
@@ -163,7 +186,8 @@ namespace vast::gfx
 		compiledShader->GetStatus(&statusResult);
 		if (FAILED(statusResult))
 		{
-			VAST_ASSERTF(0, "Shader compilation failed.");
+			DX12SafeRelease(compiledShader);
+			return false;
 		}
 
 		// Extract reflection
@@ -216,14 +240,11 @@ namespace vast::gfx
 #endif // VAST_DEBUG
 		DX12SafeRelease(compiledShader);
 
-		Ref<DX12Shader> shaderRef = MakeRef<DX12Shader>();
-		shaderRef->blob = shaderBlob;
-		shaderRef->reflection = shaderReflection;
-
-		m_ShaderKeys[key] = static_cast<uint32>(m_Shaders.size());
-		m_Shaders.push_back(shaderRef);
-
-		return shaderRef;
+		DX12SafeRelease(outShader->blob);
+		DX12SafeRelease(outShader->reflection);
+		outShader->blob = shaderBlob;
+		outShader->reflection = shaderReflection;
+		return true;
 	}
 
 	ID3DBlob* DX12ShaderManager::CreateRootSignatureFromReflection(DX12Pipeline* pipeline) const
@@ -340,6 +361,7 @@ namespace vast::gfx
 	
 	Vector<D3D12_SIGNATURE_PARAMETER_DESC> DX12ShaderManager::GetInputParametersFromReflection(ID3D12ShaderReflection* reflection) const
 	{
+		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(reflection);
 
 		D3D12_SHADER_DESC shaderDesc{};
@@ -357,6 +379,5 @@ namespace vast::gfx
 
 		return params;
 	}
-
 
 }
