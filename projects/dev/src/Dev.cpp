@@ -88,7 +88,7 @@ void Dev::CreateTriangleResources()
 	m_ColorTextureIdx = ctx.GetBindlessIndex(m_ColorRT);
 
 	gfx::RenderPassLayout colorPass;
-	colorPass.renderTargets = { ctx.GetTextureFormat(m_ColorRT) };
+	colorPass.renderTargets = { ctx.GetTextureFormat(m_ColorRT), gfx::LoadOp::CLEAR };
 
 	m_TrianglePso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("triangle.hlsl", "VS_Main")
@@ -136,7 +136,7 @@ void Dev::OnUpdate()
 	}
 
 	ctx.SetRenderTarget(m_ColorRT);
-	ctx.BeginRenderPass(m_TrianglePso, gfx::ClearFlags::CLEAR_COLOR);
+	ctx.BeginRenderPass(m_TrianglePso);
 	{
 		ctx.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
 		ctx.Draw(3);

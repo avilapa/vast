@@ -158,21 +158,19 @@ namespace vast::gfx
 	}
 
 #if VAST_GFX_DX12_USE_RENDER_PASSES
-	void DX12GraphicsCommandList::BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearFlags clear)
+	void DX12GraphicsCommandList::BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, const RenderPassLayout& renderPassLayout)
 	{
-		VAST_ASSERT(rtCount && rt && rt[0]);
-		auto clearColor = (clear & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR;
-
 		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dsDesc = {};
 
+		VAST_ASSERT(rtCount && rt);
 		for (uint32 i = 0; i < rtCount; ++i)
 		{
 			VAST_ASSERTF(rt[i], "Attempted to bind NULL render target");
 			rtDesc[i].cpuDescriptor = rt[i]->rtv.cpuHandle;
-			rtDesc[i].BeginningAccess.Type = clearColor ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			rtDesc[i].BeginningAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].loadOp);
 			rtDesc[i].BeginningAccess.Clear.ClearValue = rt[i]->clearValue;
-			rtDesc[i].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+			rtDesc[i].EndingAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].storeOp);
 			// TODO: EndingAccess.Resolve
 		}
 

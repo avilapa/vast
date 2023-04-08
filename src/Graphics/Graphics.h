@@ -149,6 +149,19 @@ namespace vast::gfx
 		ALL,
 	};
 
+	enum class LoadOp
+	{
+		LOAD,
+		CLEAR,
+		DISCARD
+	};
+
+	enum class StoreOp
+	{
+		STORE,
+		DISCARD
+	};
+
 	// - Resource Descriptors --------------------------------------------------------------------- //
 
 	// TODO: Provide functions to more easily build common configurations of Desc objects.
@@ -254,22 +267,22 @@ namespace vast::gfx
 	struct RenderTargetDesc
 	{
 		Format format = Format::UNKNOWN;
+		LoadOp loadOp = LoadOp::LOAD;
+		StoreOp storeOp = StoreOp::STORE;
 		BlendState bs = BlendState::Preset::kDisabled;
 	};
 
 	struct RenderPassLayout
 	{
 		Array<RenderTargetDesc, 8> renderTargets; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
-		Format dsFormat = Format::UNKNOWN;
-
-		// TODO: Load/Store Ops / ClearFlags
+		RenderTargetDesc dsFormat;
 	};
 
 	struct PipelineDesc
 	{
 		ShaderDesc vs;
 		ShaderDesc ps;
-		RenderPassLayout passLayout;
+		RenderPassLayout renderPassLayout;
 		DepthStencilState depthStencilState;
 
 		struct Builder;
@@ -280,7 +293,7 @@ namespace vast::gfx
 		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
  		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
 		Builder& DepthStencil(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
-		Builder& RenderPass(RenderPassLayout pass) { desc.passLayout = pass; return *this; }
+		Builder& RenderPass(RenderPassLayout pass) { desc.renderPassLayout = pass; return *this; }
 
 		operator PipelineDesc() { return desc; }
 		PipelineDesc desc;

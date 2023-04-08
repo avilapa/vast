@@ -31,7 +31,7 @@ namespace vast::gfx
 
 		void SetRenderTarget(const TextureHandle h) override;
 
-		void BeginRenderPass(const PipelineHandle h, ClearFlags clear = ClearFlags::NONE) override;
+		void BeginRenderPass(const PipelineHandle h) override;
 		void EndRenderPass() override;
 
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;

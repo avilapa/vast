@@ -44,7 +44,7 @@ namespace vast::gfx
 
 		virtual void SetRenderTarget(const TextureHandle h) = 0;
 
-		virtual void BeginRenderPass(const PipelineHandle h, ClearFlags clear = ClearFlags::NONE) = 0;
+		virtual void BeginRenderPass(const PipelineHandle h) = 0;
 		virtual void EndRenderPass() = 0;
 
 		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;

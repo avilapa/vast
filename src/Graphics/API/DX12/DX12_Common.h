@@ -95,6 +95,7 @@ namespace vast::gfx
 		Ref<DX12Shader> ps = nullptr;
 		ID3D12PipelineState* pipelineState = nullptr;
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
+		RenderPassLayout renderPassLayout;
 		Ptr<ShaderResourceProxyTable> resourceProxyTable;
 		uint8 pushConstantIndex = UINT8_MAX;
 		uint8 descriptorTableIndex = UINT8_MAX;
@@ -249,6 +250,27 @@ namespace vast::gfx
 		case ColorWrite::ALPHA:		return D3D12_COLOR_WRITE_ENABLE_ALPHA;
 		case ColorWrite::ALL:		return D3D12_COLOR_WRITE_ENABLE_ALL;
 		default: VAST_ASSERTF(0, "Color write mask not supported on this platform."); return 0;
+		}
+	}
+
+	constexpr D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE TranslateToDX12(const LoadOp& v)
+	{
+		switch (v)
+		{
+		case LoadOp::LOAD:		return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+		case LoadOp::CLEAR:		return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+		case LoadOp::DISCARD:	return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+		default: VAST_ASSERTF(0, "Load Operation not supported on this platform."); return D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+		}
+	}
+	
+	constexpr D3D12_RENDER_PASS_ENDING_ACCESS_TYPE TranslateToDX12(const StoreOp& v)
+	{
+		switch (v)
+		{
+		case StoreOp::STORE:	return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+		case StoreOp::DISCARD:	return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
+		default: VAST_ASSERTF(0, "Store Operation not supported on this platform."); return D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD;
 		}
 	}
 

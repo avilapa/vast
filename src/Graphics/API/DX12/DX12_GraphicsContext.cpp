@@ -180,7 +180,7 @@ namespace vast::gfx
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, ClearFlags clear /* = ClearFlags::NONE */)
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h)
 	{
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPass");
 		VAST_ASSERT(h.IsValid());
@@ -193,8 +193,12 @@ namespace vast::gfx
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_GraphicsCommandList->FlushBarriers();
 
+		auto pipeline = m_Pipelines->LookupResource(h);
+		VAST_ASSERT(pipeline);
+		m_GraphicsCommandList->SetPipeline(pipeline);
+
 #if VAST_GFX_DX12_USE_RENDER_PASSES
-		m_GraphicsCommandList->BeginRenderPass(&m_CurrentRT, 1, nullptr, clear);
+		m_GraphicsCommandList->BeginRenderPass(&m_CurrentRT, 1, nullptr, pipeline->renderPassLayout);
 #else
 		if ((clear & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR)
 		{
@@ -203,11 +207,6 @@ namespace vast::gfx
 		// TODO: Clear depth/stencil.
 		m_GraphicsCommandList->SetRenderTargets(&m_CurrentRT, 1, nullptr);
 #endif // VAST_GFX_DX12_USE_RENDER_PASSES
-
-		auto pipeline = m_Pipelines->LookupResource(h);
-		VAST_ASSERT(pipeline);
-
-		m_GraphicsCommandList->SetPipeline(pipeline);
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
 	}
 

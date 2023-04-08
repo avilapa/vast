@@ -29,7 +29,7 @@ namespace vast::gfx
 			bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
 
 			gfx::RenderPassLayout renderPass;
-			renderPass.renderTargets = { ctx.GetBackBufferFormat(), bs };
+			renderPass.renderTargets[0] = { ctx.GetBackBufferFormat(), LoadOp::LOAD, StoreOp::STORE, bs };
 
 			auto pipelineDesc = PipelineDesc::Builder()
 				.VS("imgui.hlsl", "VS_Main")

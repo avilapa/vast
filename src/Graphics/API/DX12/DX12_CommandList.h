@@ -44,7 +44,7 @@ namespace vast::gfx
 		DX12GraphicsCommandList(DX12Device& device);
 
 #if VAST_GFX_DX12_USE_RENDER_PASSES
-		void BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearFlags clear);
+		void BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, const RenderPassLayout& renderPassLayout);
 		void EndRenderPass();
 #else
 		void SetRenderTargets(DX12Texture** rt, uint32 rtCount, DX12Texture* ds);
