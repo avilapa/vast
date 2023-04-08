@@ -71,7 +71,8 @@ namespace vast::gfx
 		Format GetBackBufferFormat() const override;
 
 		uint32 GetBindlessIndex(const BufferHandle h) override;
-		
+		bool GetIsReady(const BufferHandle h) override;
+
 		uint32 GetBindlessIndex(const TextureHandle h) override;
 		Format GetTextureFormat(const TextureHandle h) override;
 		bool GetIsReady(const TextureHandle h) override;

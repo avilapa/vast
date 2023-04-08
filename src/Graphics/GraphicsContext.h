@@ -87,10 +87,10 @@ namespace vast::gfx
 		virtual Format GetBackBufferFormat() const = 0;
 
 		virtual uint32 GetBindlessIndex(const BufferHandle h) = 0;
+		virtual bool GetIsReady(const BufferHandle h) = 0;
 
 		virtual uint32 GetBindlessIndex(const TextureHandle h) = 0;
 		virtual Format GetTextureFormat(const TextureHandle h) = 0;
-
 		virtual bool GetIsReady(const TextureHandle h) = 0;
 	};
 }

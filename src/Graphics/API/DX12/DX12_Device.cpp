@@ -606,7 +606,7 @@ namespace vast::gfx
 			}
 			psDesc.RTVFormats[i] = TranslateToDX12(desc.renderPassLayout.renderTargets[i].format);
 		}
-		psDesc.DSVFormat = TranslateToDX12(desc.renderPassLayout.dsFormat.format);
+		psDesc.DSVFormat = TranslateToDX12(desc.renderPassLayout.depthStencilTarget.format);
 
 		// TODO: Multisample support
 		psDesc.SampleDesc.Count = 1;

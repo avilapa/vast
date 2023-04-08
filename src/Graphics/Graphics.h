@@ -154,6 +154,17 @@ namespace vast::gfx
 		DISCARD
 	};
 
+	// TODO: These should be flags, and could be more specific, but they should cover the basics for now
+	enum class ResourceState
+	{
+		NONE,
+		SHADER_RESOURCE,
+		RENDER_TARGET,
+		DEPTH_WRITE,
+		DEPTH_READ,
+		PRESENT,
+	};
+
 	// - Resource Descriptors --------------------------------------------------------------------- //
 
 	// TODO: Provide functions to more easily build common configurations of Desc objects.
@@ -261,6 +272,7 @@ namespace vast::gfx
 		Format format = Format::UNKNOWN;
 		LoadOp loadOp = LoadOp::LOAD;
 		StoreOp storeOp = StoreOp::STORE;
+		ResourceState nextUsage = ResourceState::SHADER_RESOURCE;
 		BlendState bs = BlendState::Preset::kDisabled;
 	};
 
@@ -268,7 +280,7 @@ namespace vast::gfx
 	{
 		static constexpr uint32 MAX_RENDERTARGETS = 8;
 		Array<RenderTargetDesc, MAX_RENDERTARGETS> renderTargets;
-		RenderTargetDesc dsFormat;
+		RenderTargetDesc depthStencilTarget;
 	};
 
 	struct PipelineDesc

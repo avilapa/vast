@@ -273,6 +273,20 @@ namespace vast::gfx
 		}
 	}
 
+	constexpr D3D12_RESOURCE_STATES TranslateToDX12(const ResourceState& v)
+	{
+		switch (v)
+		{
+		case ResourceState::NONE:				return D3D12_RESOURCE_STATE_COMMON;
+		case ResourceState::SHADER_RESOURCE:	return D3D12_RESOURCE_STATE_GENERIC_READ;
+		case ResourceState::RENDER_TARGET:		return D3D12_RESOURCE_STATE_RENDER_TARGET;
+		case ResourceState::DEPTH_WRITE:		return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		case ResourceState::DEPTH_READ:			return D3D12_RESOURCE_STATE_DEPTH_READ;
+		case ResourceState::PRESENT:			return D3D12_RESOURCE_STATE_PRESENT;
+		default: VAST_ASSERTF(0, "Resource State not supported on this platform."); return D3D12_RESOURCE_STATE_COMMON;
+		}
+	}
+
 	constexpr D3D12_RESOURCE_DESC TranslateToDX12(const BufferDesc& v)
 	{
 		D3D12_RESOURCE_DESC desc = {};

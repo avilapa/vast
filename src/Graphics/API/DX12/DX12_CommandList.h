@@ -40,31 +40,22 @@ namespace vast::gfx
 
 	struct DX12RenderPassResources
 	{
+		using RenderPassTarget = std::pair<DX12Texture*, ResourceState>;
+
 		uint32 rtCount = 0;
-		Array<DX12Texture*, RenderPassLayout::MAX_RENDERTARGETS> renderTargets;
-		DX12Texture* depthStencilTarget;
+		Array<RenderPassTarget, RenderPassLayout::MAX_RENDERTARGETS> renderTargets;
+		RenderPassTarget depthStencilTarget;
 
 		void Reset()
 		{
 			for (uint32 i = 0; i < rtCount; ++i)
 			{
-				renderTargets[i] = nullptr;
+				renderTargets[i].first = nullptr;
+				renderTargets[i].second = ResourceState::NONE;
 			}
-			depthStencilTarget = nullptr;
+			depthStencilTarget.first = nullptr;
+			depthStencilTarget.second = ResourceState::NONE;
 			rtCount = 0;
-		}
-
-		void AddBarriers(DX12CommandList* cmdList, const D3D12_RESOURCE_STATES newState)
-		{
-			for (uint32 i = 0; i < rtCount; ++i)
-			{
-				cmdList->AddBarrier(*renderTargets[i], newState);
-			}
-
-			if (depthStencilTarget)
-			{
-				cmdList->AddBarrier(*depthStencilTarget, newState);
-			}
 		}
 	};
 

@@ -167,18 +167,24 @@ namespace vast::gfx
 		VAST_ASSERT(renderPass.rtCount);
 		for (uint32 i = 0; i < renderPass.rtCount; ++i)
 		{
-			VAST_ASSERTF(renderPass.renderTargets[i], "Attempted to bind NULL render target");
-			rtDesc[i].cpuDescriptor = renderPass.renderTargets[i]->rtv.cpuHandle;
+			auto& rt = renderPass.renderTargets[i].first;
+			VAST_ASSERTF(rt, "Attempted to bind NULL render target");
+			rtDesc[i].cpuDescriptor = rt->rtv.cpuHandle;
 			rtDesc[i].BeginningAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].loadOp);
-			rtDesc[i].BeginningAccess.Clear.ClearValue = renderPass.renderTargets[i]->clearValue;
+			rtDesc[i].BeginningAccess.Clear.ClearValue = rt->clearValue;
 			rtDesc[i].EndingAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].storeOp);
 			// TODO: Multisample support (EndingAccess.Resolve)
 		}
 
-		if (renderPass.depthStencilTarget)
+		if (auto& ds = renderPass.depthStencilTarget.first)
 		{
-			dsDesc.cpuDescriptor = renderPass.depthStencilTarget->dsv.cpuHandle;
-			// TODO: Fill Depth/Stencil access/resolve
+			dsDesc.cpuDescriptor = ds->dsv.cpuHandle;
+			dsDesc.DepthBeginningAccess.Type = TranslateToDX12(renderPassLayout.depthStencilTarget.loadOp);
+			dsDesc.DepthBeginningAccess.Clear.ClearValue = ds->clearValue;
+			dsDesc.DepthEndingAccess.Type = TranslateToDX12(renderPassLayout.depthStencilTarget.storeOp);
+			dsDesc.DepthEndingAccess.Resolve.pSrcResource = ds->resource;
+			dsDesc.DepthEndingAccess.Resolve.PreserveResolveSource = dsDesc.DepthEndingAccess.Type == D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+			// TODO: Fill Stencil access
 		}
 
 		// TODO: This should be D3D12_RENDER_PASS_FLAG_NONE by default, test when we have some UAV example.

@@ -190,7 +190,7 @@ namespace vast::gfx
 		VAST_ASSERT(h.IsValid());
 		auto rt = m_Textures->LookupResource(h);
 		VAST_ASSERT(rt);
-		m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = rt;
+		m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = { rt, ResourceState::NONE };
 	}
 
 	void DX12GraphicsContext::SetDepthStencilTarget(const TextureHandle h)
@@ -199,7 +199,7 @@ namespace vast::gfx
 		VAST_ASSERT(h.IsValid());
 		auto dst = m_Textures->LookupResource(h);
 		VAST_ASSERT(dst);
-		m_CurrentRenderPass->depthStencilTarget = dst;
+		m_CurrentRenderPass->depthStencilTarget = { dst, ResourceState::NONE };
 	}
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h)
@@ -207,19 +207,30 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPass");
 		VAST_ASSERT(m_CurrentRenderPass);
 		VAST_ASSERT(h.IsValid());
+		auto pipeline = m_Pipelines->LookupResource(h);
+		VAST_ASSERT(pipeline);
+		m_GraphicsCommandList->SetPipeline(pipeline);
 
 		if (!m_CurrentRenderPass->rtCount)
 		{
 			// If no render targets have been set, we render to the back buffer.
-			m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = &m_SwapChain->GetCurrentBackBuffer();
+			m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = { &m_SwapChain->GetCurrentBackBuffer(), ResourceState::PRESENT };
 		}
 
-		m_CurrentRenderPass->AddBarriers(m_GraphicsCommandList.get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
+		for (uint32 i = 0; i < m_CurrentRenderPass->rtCount; ++i)
+		{
+			m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->renderTargets[i].first, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			m_CurrentRenderPass->renderTargets[i].second = pipeline->renderPassLayout.renderTargets[i].nextUsage;
+		}
+
+		if (m_CurrentRenderPass->depthStencilTarget.first)
+		{
+			m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->depthStencilTarget.first, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			m_CurrentRenderPass->depthStencilTarget.second = pipeline->renderPassLayout.depthStencilTarget.nextUsage;
+		}
+		
 		m_GraphicsCommandList->FlushBarriers();
 
-		auto pipeline = m_Pipelines->LookupResource(h);
-		VAST_ASSERT(pipeline);
-		m_GraphicsCommandList->SetPipeline(pipeline);
 		m_GraphicsCommandList->BeginRenderPass(*m_CurrentRenderPass, pipeline->renderPassLayout);
 
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
@@ -232,7 +243,24 @@ namespace vast::gfx
 
 		m_GraphicsCommandList->EndRenderPass();
 
-		m_CurrentRenderPass->AddBarriers(m_GraphicsCommandList.get(), D3D12_RESOURCE_STATE_PRESENT);
+		for (uint32 i = 0; i < m_CurrentRenderPass->rtCount; ++i)
+		{
+			auto& nextUsage = m_CurrentRenderPass->renderTargets[i].second;
+			if (nextUsage != ResourceState::NONE)
+			{
+				m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->renderTargets[i].first, TranslateToDX12(nextUsage));
+			}
+		}
+
+		if (m_CurrentRenderPass->depthStencilTarget.first)
+		{
+			auto& nextUsage = m_CurrentRenderPass->depthStencilTarget.second;
+			if (nextUsage != ResourceState::NONE)
+			{
+				m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->depthStencilTarget.first, TranslateToDX12(nextUsage));
+			}
+		}
+
 		m_GraphicsCommandList->FlushBarriers(); // TODO: Do we need to flush barriers here?
 		m_CurrentRenderPass->Reset();
 
@@ -551,6 +579,12 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		return TranslateFromDX12(m_Textures->LookupResource(h)->resource->GetDesc().Format);
+	}
+
+	bool DX12GraphicsContext::GetIsReady(const BufferHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return m_Buffers->LookupResource(h)->isReady;
 	}
 
 	bool DX12GraphicsContext::GetIsReady(const TextureHandle h)
