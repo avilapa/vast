@@ -18,6 +18,22 @@
 //	> GFX Display List: command recording for later execution.
 //	> GFX Multithreading.
 //		- req: GFX Display List
+//	> GFX Jump to 3D: Render 3D objects with transformation matrices.
+//	> GFX MRT Rendering.
+//		- req: Render Pass
+//	> GFX Simple Lighting.
+//	> GFX Simple Raytracing.
+//		- req: Camera Object
+//	> GFX Deferred Rendering.
+//		- req: MRT rendering
+//	> GFX Line Rendering.
+//		- req: Rasterizer State
+//
+//	> Object Loading from file (.obj).
+//	> Scene Loading (.gltf, .usd?).
+//	> Delta Time.
+//	> Camera Object / Movement.
+//		- req: Jump to 3D, Delta Time
 //
 // --------------------------------------------------------------------------------------------- //
 
@@ -159,6 +175,7 @@ void Dev::OnGUI()
 		ImGui::Text("Clear color");
 		ImGui::ColorEdit4("##bgcol", (float*)&m_ClearColorRT.color);
 		ImGui::PopItemWidth();
+		ImGui::Separator();
 		if (ImGui::Button("Reload Triangle Shader"))
 		{
 			s_ReloadTriangle = true;
