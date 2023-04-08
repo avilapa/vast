@@ -1,8 +1,14 @@
 #include "shaders_shared.h"
 
-cbuffer PushConstants : register(PushConstantRegister, PerObjectSpace)
+cbuffer PushConstants : register(PushConstantRegister)
 {
     uint32 TriangleVtxBufIdx;
+};
+
+struct VertexInput
+{
+	float2 pos;
+	float3 col;
 };
 
 struct VertexOutput
@@ -14,7 +20,7 @@ struct VertexOutput
 VertexOutput VS_Main(uint vtxId : SV_VertexID)
 {
     ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[TriangleVtxBufIdx];
-    TriangleVtx vtx = vtxBuf.Load<TriangleVtx>(vtxId * sizeof(TriangleVtx));
+    VertexInput vtx = vtxBuf.Load<VertexInput>(vtxId * sizeof(VertexInput));
     
     VertexOutput OUT;
     OUT.pos = float4(vtx.pos, 0, 1);

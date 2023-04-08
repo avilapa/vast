@@ -15,10 +15,22 @@ using namespace vast;
 
 #define PerObjectSpace space0 // TODO: Implement spaces!
 
-struct TriangleVtx
+struct MeshVtx
 {
-	s_float2 pos;
-	s_float3 col;
+	s_float3 pos;
+	s_float3 normal;
+	s_float2 uv;
+};
+
+struct MeshCB
+{
+	float4x4 model;
+	float4x4 view;
+	float4x4 proj;
+	s_float3 cameraPos;
+
+	uint32 vtxBufIdx;
+	uint32 colorTexIdx;
 };
 
 #endif

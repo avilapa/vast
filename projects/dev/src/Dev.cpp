@@ -39,6 +39,12 @@ VAST_DEFINE_APP_MAIN(Dev)
 
 using namespace vast;
 
+struct TriangleVtx
+{
+	s_float2 pos;
+	s_float3 col;
+};
+
 static Array<TriangleVtx, 3> s_TriangleVertexData =
 { {
 	{{ -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }},
