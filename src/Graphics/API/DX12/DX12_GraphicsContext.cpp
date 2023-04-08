@@ -14,8 +14,6 @@
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
-#define VAST_GFX_DX12_USE_RENDER_PASSES 1
-
 namespace vast::gfx
 {
 
@@ -182,7 +180,7 @@ namespace vast::gfx
 		m_CurrentRT = m_Textures->LookupResource(h);
 	}
 
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, ClearParams clear /* = ClearParams() */)
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, ClearFlags clear /* = ClearFlags::NONE */)
 	{
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPass");
 		VAST_ASSERT(h.IsValid());
@@ -198,11 +196,10 @@ namespace vast::gfx
 #if VAST_GFX_DX12_USE_RENDER_PASSES
 		m_GraphicsCommandList->BeginRenderPass(&m_CurrentRT, 1, nullptr, clear);
 #else
-		if ((clear.flags & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR)
+		if ((clear & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR)
 		{
-			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT, clear.color);
+			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT);
 		}
-		// TODO: Look into optimized clears with "clearValue".
 		// TODO: Clear depth/stencil.
 		m_GraphicsCommandList->SetRenderTargets(&m_CurrentRT, 1, nullptr);
 #endif // VAST_GFX_DX12_USE_RENDER_PASSES

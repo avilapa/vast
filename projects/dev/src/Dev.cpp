@@ -60,15 +60,13 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	m_GraphicsContext = gfx::GraphicsContext::Create(params);
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	m_ClearColorRT.flags = gfx::ClearFlags::CLEAR_COLOR;
-	m_ClearColorRT.color = float4(0.6f, 0.2f, 0.9f, 1.0f);
-
 	m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
 		.Type(gfx::TextureType::TEXTURE_2D)
 		.Format(gfx::Format::RGBA8_UNORM)
 		.Width(windowSize.x)
 		.Height(windowSize.y)
-		.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV));
+		.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
+		.ClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
 	m_ColorTextureIdx = ctx.GetBindlessIndex(m_ColorRT);
 
 	m_FullscreenPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
@@ -132,7 +130,7 @@ void Dev::OnUpdate()
 	}
 
 	ctx.SetRenderTarget(m_ColorRT);
-	ctx.BeginRenderPass(m_TrianglePso, m_ClearColorRT);
+	ctx.BeginRenderPass(m_TrianglePso, gfx::ClearFlags::CLEAR_COLOR);
 	{
 		ctx.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
 		ctx.Draw(3);
@@ -168,11 +166,7 @@ void Dev::OnGUI()
 		if (ImGui::ColorEdit3("##2", (float*)&s_TriangleVertexData[1].col)) s_UpdateTriangle = true;
 		if (ImGui::ColorEdit3("##3", (float*)&s_TriangleVertexData[2].col)) s_UpdateTriangle = true;
 		ImGui::PopItemWidth();
-		ImGui::Separator();
-		ImGui::PushItemWidth(300);
-		ImGui::Text("Clear color");
-		ImGui::ColorEdit4("##bgcol", (float*)&m_ClearColorRT.color);
-		ImGui::PopItemWidth();
+
 		ImGui::Separator();
 		if (ImGui::Button("Reload Triangle Shader"))
 		{

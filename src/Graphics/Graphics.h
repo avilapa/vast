@@ -31,13 +31,6 @@ namespace vast::gfx
 	};
 	ENUM_CLASS_ALLOW_FLAGS(ClearFlags);
 
-	struct ClearParams
-	{
-		ClearFlags flags = ClearFlags::NONE;
-		float4 color = float4(1.0f);
-		float depth = 1.0f;
-	};
-
 	enum class ResourceUsage // TODO: Update Frequency?
 	{
 		STATIC,
@@ -193,6 +186,7 @@ namespace vast::gfx
 		uint32 depthOrArraySize = 1;
 		uint32 mipCount = 1;
 		TextureViewFlags viewFlags = TextureViewFlags::NONE;
+		float4 clear = float4(1);
 
 		struct Builder;
 	};
@@ -206,6 +200,8 @@ namespace vast::gfx
 		Builder& DepthOrArraySize(uint32 depthOrArraySize) { desc.depthOrArraySize = depthOrArraySize; return *this; }
 		Builder& MipCount(uint32 mipCount) { desc.mipCount = mipCount; return *this; }
 		Builder& ViewFlags(TextureViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
+		Builder& ClearColor(float4 color) { desc.clear = color; return *this; } // RTV only
+		Builder& ClearDepth(float depth) { desc.clear = depth; return *this; }	// DSV only
 
 		operator TextureDesc() { return desc; }
 		TextureDesc desc;

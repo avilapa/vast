@@ -43,10 +43,14 @@ namespace vast::gfx
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
 
-		void BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearParams clear);
+#if VAST_GFX_DX12_USE_RENDER_PASSES
+		void BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearFlags clear);
 		void EndRenderPass();
-
+#else
 		void SetRenderTargets(DX12Texture** rt, uint32 rtCount, DX12Texture* ds);
+		void ClearRenderTarget(const DX12Texture& rt);
+		void ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil);
+#endif // VAST_GFX_DX12_USE_RENDER_PASSES
 
 		void SetPipeline(DX12Pipeline* pipeline);
 		void SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride);
@@ -57,9 +61,6 @@ namespace vast::gfx
 
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 		void SetScissorRect(const D3D12_RECT& rect);
-
-		void ClearRenderTarget(const DX12Texture& rt, float4 color);
-		void ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil);
 	private:
 		DX12Pipeline* m_CurrentPipeline;
 	};

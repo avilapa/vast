@@ -19,7 +19,6 @@ private:
 	Ptr<gfx::GraphicsContext> m_GraphicsContext;
 	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
 
-	gfx::ClearParams m_ClearColorRT;
 	gfx::TextureHandle m_ColorRT;
 	gfx::PipelineHandle m_FullscreenPso;
 	gfx::PipelineHandle m_TrianglePso;

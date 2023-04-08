@@ -157,36 +157,33 @@ namespace vast::gfx
 	{
 	}
 
-	void DX12GraphicsCommandList::BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearParams clear)
+#if VAST_GFX_DX12_USE_RENDER_PASSES
+	void DX12GraphicsCommandList::BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearFlags clear)
 	{
 		VAST_ASSERT(rtCount && rt && rt[0]);
-		// TODO: Move clear value into DX12Texture and allow setting it per-RT
-		D3D12_CLEAR_VALUE clearValue = {};
-		clearValue.Format = rt[0]->resource->GetDesc().Format;
-		clearValue.Color[0] = clear.color.x;
-		clearValue.Color[1] = clear.color.y;
-		clearValue.Color[2] = clear.color.z;
-		clearValue.Color[3] = clear.color.w;
-		auto doClear = (clear.flags & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR;
+		auto clearColor = (clear & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR;
 
-		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
+		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dsDesc = {};
 
 		for (uint32 i = 0; i < rtCount; ++i)
 		{
 			VAST_ASSERTF(rt[i], "Attempted to bind NULL render target");
 			rtDesc[i].cpuDescriptor = rt[i]->rtv.cpuHandle;
-			rtDesc[i].BeginningAccess = { doClear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE, clearValue };
+			rtDesc[i].BeginningAccess.Type = clearColor ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			rtDesc[i].BeginningAccess.Clear.ClearValue = rt[i]->clearValue;
 			rtDesc[i].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 			// TODO: EndingAccess.Resolve
 		}
 
 		if (ds)
 		{
-			// TODO: D3D12_RENDER_PASS_DEPTH_STENCIL_DESC 
+			dsDesc.cpuDescriptor = ds->dsv.cpuHandle;
+			// TODO: Fill Depth/Stencil access/resolve
 		}
 
 		// TODO: D3D12_RENDER_PASS_FLAG
-		m_CommandList->BeginRenderPass(rtCount, rtDesc, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+		m_CommandList->BeginRenderPass(rtCount, rtDesc, (dsDesc.cpuDescriptor.ptr != 0) ? &dsDesc : nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
 	}
 
 	void DX12GraphicsCommandList::EndRenderPass()
@@ -194,17 +191,7 @@ namespace vast::gfx
 		m_CommandList->EndRenderPass();
 	}
 
-	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline* pipeline)
-	{
-		if (pipeline)
-		{
-			VAST_PROFILE_FUNCTION();
-			m_CommandList->SetPipelineState(pipeline->pipelineState);
-			m_CommandList->SetGraphicsRootSignature(pipeline->desc.pRootSignature);
-		}
-		m_CurrentPipeline = pipeline;
-	}
-
+#else
 	void DX12GraphicsCommandList::SetRenderTargets(DX12Texture** rt, uint32 rtCount, DX12Texture* ds)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -222,7 +209,32 @@ namespace vast::gfx
 			dsHandle = ds->dsv.cpuHandle;
 		}
 
-		m_CommandList->OMSetRenderTargets(rtCount, rtHandles, false, dsHandle.ptr != 0 ? &dsHandle : nullptr);
+		m_CommandList->OMSetRenderTargets(rtCount, rtHandles, false, (dsHandle.ptr != 0) ? &dsHandle : nullptr);
+	}
+
+	void DX12GraphicsCommandList::ClearRenderTarget(const DX12Texture& rt)
+	{
+		VAST_PROFILE_FUNCTION();
+		m_CommandList->ClearRenderTargetView(rt.rtv.cpuHandle, rt.clearValue.Color, 0, nullptr);
+	}
+
+	void DX12GraphicsCommandList::ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil)
+	{
+		VAST_PROFILE_FUNCTION();
+		m_CommandList->ClearDepthStencilView(dst.dsv.cpuHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
+	}
+
+#endif // VAST_GFX_DX12_USE_RENDER_PASSES
+
+	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline* pipeline)
+	{
+		if (pipeline)
+		{
+			VAST_PROFILE_FUNCTION();
+			m_CommandList->SetPipelineState(pipeline->pipelineState);
+			m_CommandList->SetGraphicsRootSignature(pipeline->desc.pRootSignature);
+		}
+		m_CurrentPipeline = pipeline;
 	}
 
 	void DX12GraphicsCommandList::SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride)
@@ -305,18 +317,6 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 		// TODO: Support setting multiple rects
 		m_CommandList->RSSetScissorRects(1, &rect);
-	}
-	
-	void DX12GraphicsCommandList::ClearRenderTarget(const DX12Texture& rt, float4 color)
-	{
-		VAST_PROFILE_FUNCTION();
-		m_CommandList->ClearRenderTargetView(rt.rtv.cpuHandle, (float*)&color, 0, nullptr);
-	}
-
-	void DX12GraphicsCommandList::ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil)
-	{
-		VAST_PROFILE_FUNCTION();
-		m_CommandList->ClearDepthStencilView(dst.dsv.cpuHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
 	}
 
 	//

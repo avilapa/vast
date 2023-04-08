@@ -117,14 +117,14 @@ namespace vast::gfx
 
 			//D3D12_MESSAGE_CATEGORY Categories[] = {};
 			D3D12_MESSAGE_SEVERITY Severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
-			D3D12_MESSAGE_ID DenyIds[] = { D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE }; // TODO: Remove this when we are doing optimized clears
+			//D3D12_MESSAGE_ID DenyIds[] = {};
 			D3D12_INFO_QUEUE_FILTER filter = {};
 			//filter.DenyList.NumCategories = _countof(Categories);
 			//filter.DenyList.pCategoryList = Categories;
 			filter.DenyList.NumSeverities = _countof(Severities);
 			filter.DenyList.pSeverityList = Severities;
-			filter.DenyList.NumIDs = _countof(DenyIds);
-			filter.DenyList.pIDList = DenyIds;
+			//filter.DenyList.NumIDs = _countof(DenyIds);
+			//filter.DenyList.pIDList = DenyIds;
 
 			DX12Check(infoQueue->PushStorageFilter(&filter));
 
@@ -355,13 +355,17 @@ namespace vast::gfx
 		D3D12_RESOURCE_STATES rscState = D3D12_RESOURCE_STATE_COPY_DEST;
 		DXGI_FORMAT srvFormat = rscDesc.Format;
 
-		D3D12_CLEAR_VALUE clearValue = {};
-		clearValue.Format = rscDesc.Format;
+		outTex->clearValue.Format = rscDesc.Format;
 
 		if (hasRTV)
 		{
 			rscDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 			rscState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+			outTex->clearValue.Color[0] = desc.clear.x;
+			outTex->clearValue.Color[1] = desc.clear.y;
+			outTex->clearValue.Color[2] = desc.clear.z;
+			outTex->clearValue.Color[3] = desc.clear.w;
 		}
 
 		if (hasDSV)
@@ -392,7 +396,8 @@ namespace vast::gfx
 				break;
 			}
 
-			clearValue.DepthStencil.Depth = 1.0f;
+			outTex->clearValue.DepthStencil.Depth = 1.0f;
+			// TODO: Clear Stencil
 		}
 
 		if (hasUAV)
@@ -405,7 +410,7 @@ namespace vast::gfx
 
 		D3D12MA::ALLOCATION_DESC allocationDesc = {};
 		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &clearValue, &outTex->allocation, IID_PPV_ARGS(&outTex->resource));
+		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &outTex->clearValue, &outTex->allocation, IID_PPV_ARGS(&outTex->resource));
 
 		if (hasSRV)
 		{

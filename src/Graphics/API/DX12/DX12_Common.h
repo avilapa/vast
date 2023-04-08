@@ -14,6 +14,9 @@ namespace D3D12MA
 struct IDxcBlob;
 struct ID3D12ShaderReflection;
 
+// TODO: Query feature support to do this dynamically instead.
+#define VAST_GFX_DX12_USE_RENDER_PASSES 1
+
 namespace vast::gfx
 {
 	// - Graphics constants ----------------------------------------------------------------------- //
@@ -76,6 +79,7 @@ namespace vast::gfx
 		DX12Descriptor dsv = {};
 		DX12Descriptor srv = {};
 		DX12Descriptor uav = {};
+		D3D12_CLEAR_VALUE clearValue = {};
 	};
 
 	struct DX12Shader
