@@ -157,32 +157,32 @@ namespace vast::gfx
 	{
 	}
 
-	void DX12GraphicsCommandList::BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, const RenderPassLayout& renderPassLayout)
+	void DX12GraphicsCommandList::BeginRenderPass(const DX12RenderPassResources& renderPass, const RenderPassLayout& renderPassLayout)
 	{
 		VAST_PROFILE_FUNCTION();
 
 		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dsDesc = {};
 
-		VAST_ASSERT(rtCount && rt);
-		for (uint32 i = 0; i < rtCount; ++i)
+		VAST_ASSERT(renderPass.rtCount);
+		for (uint32 i = 0; i < renderPass.rtCount; ++i)
 		{
-			VAST_ASSERTF(rt[i], "Attempted to bind NULL render target");
-			rtDesc[i].cpuDescriptor = rt[i]->rtv.cpuHandle;
+			VAST_ASSERTF(renderPass.renderTargets[i], "Attempted to bind NULL render target");
+			rtDesc[i].cpuDescriptor = renderPass.renderTargets[i]->rtv.cpuHandle;
 			rtDesc[i].BeginningAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].loadOp);
-			rtDesc[i].BeginningAccess.Clear.ClearValue = rt[i]->clearValue;
+			rtDesc[i].BeginningAccess.Clear.ClearValue = renderPass.renderTargets[i]->clearValue;
 			rtDesc[i].EndingAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].storeOp);
-			// TODO: EndingAccess.Resolve
+			// TODO: Multisample support (EndingAccess.Resolve)
 		}
 
-		if (ds)
+		if (renderPass.depthStencilTarget)
 		{
-			dsDesc.cpuDescriptor = ds->dsv.cpuHandle;
+			dsDesc.cpuDescriptor = renderPass.depthStencilTarget->dsv.cpuHandle;
 			// TODO: Fill Depth/Stencil access/resolve
 		}
 
-		// TODO: D3D12_RENDER_PASS_FLAG
-		m_CommandList->BeginRenderPass(rtCount, rtDesc, (dsDesc.cpuDescriptor.ptr != 0) ? &dsDesc : nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+		// TODO: This should be D3D12_RENDER_PASS_FLAG_NONE by default, test when we have some UAV example.
+		m_CommandList->BeginRenderPass(renderPass.rtCount, rtDesc, (dsDesc.cpuDescriptor.ptr != 0) ? &dsDesc : nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
 	}
 
 	void DX12GraphicsCommandList::EndRenderPass()

@@ -24,6 +24,7 @@ namespace vast::gfx
 		, m_UploadCommandLists({ nullptr })
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
+		, m_CurrentRenderPass(nullptr)
 		, m_Buffers(nullptr)
 		, m_Textures(nullptr)
 		, m_Pipelines(nullptr)
@@ -31,7 +32,6 @@ namespace vast::gfx
 		, m_TexturesMarkedForDestruction({})
 		, m_PipelinesMarkedForDestruction({})
 		, m_TempFrameAllocators({})
-		, m_CurrentRT(nullptr)
 		, m_FrameId(0)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -55,6 +55,8 @@ namespace vast::gfx
 		{
 			m_UploadCommandLists[i] = MakePtr<DX12UploadCommandList>(*m_Device);
 		}
+
+		m_CurrentRenderPass = MakePtr<DX12RenderPassResources>();
 
 		uint32 tempFrameBufferSize = 1024 * 1024;
 
@@ -173,31 +175,52 @@ namespace vast::gfx
 		}
 	}
 
+	void DX12GraphicsContext::SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt)
+	{
+		VAST_ASSERTF(count && m_CurrentRenderPass && (m_CurrentRenderPass->rtCount + count) < RenderPassLayout::MAX_RENDERTARGETS, "Attempted to bind too many render targets for one Render Pass.");
+		for (uint32 i = m_CurrentRenderPass->rtCount; i < count; ++i)
+		{
+			SetRenderTarget(rt[i]);
+		}
+	}
+	
 	void DX12GraphicsContext::SetRenderTarget(const TextureHandle h)
 	{
-		// TODO: Support MRT
+		VAST_ASSERTF(m_CurrentRenderPass && m_CurrentRenderPass->rtCount < RenderPassLayout::MAX_RENDERTARGETS, "Attempted to bind too many render targets for one Render Pass.");
 		VAST_ASSERT(h.IsValid());
-		m_CurrentRT = m_Textures->LookupResource(h);
+		auto rt = m_Textures->LookupResource(h);
+		VAST_ASSERT(rt);
+		m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = rt;
+	}
+
+	void DX12GraphicsContext::SetDepthStencilTarget(const TextureHandle h)
+	{
+		VAST_ASSERT(m_CurrentRenderPass);
+		VAST_ASSERT(h.IsValid());
+		auto dst = m_Textures->LookupResource(h);
+		VAST_ASSERT(dst);
+		m_CurrentRenderPass->depthStencilTarget = dst;
 	}
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h)
 	{
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPass");
+		VAST_ASSERT(m_CurrentRenderPass);
 		VAST_ASSERT(h.IsValid());
 
-		if (!m_CurrentRT)
+		if (!m_CurrentRenderPass->rtCount)
 		{
-			// If no render targets have been set, we render to the backbuffer.
-			m_CurrentRT = &m_SwapChain->GetCurrentBackBuffer();
+			// If no render targets have been set, we render to the back buffer.
+			m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = &m_SwapChain->GetCurrentBackBuffer();
 		}
 
-		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		m_CurrentRenderPass->AddBarriers(m_GraphicsCommandList.get(), D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_GraphicsCommandList->FlushBarriers();
 
 		auto pipeline = m_Pipelines->LookupResource(h);
 		VAST_ASSERT(pipeline);
 		m_GraphicsCommandList->SetPipeline(pipeline);
-		m_GraphicsCommandList->BeginRenderPass(&m_CurrentRT, 1, nullptr, pipeline->renderPassLayout);
+		m_GraphicsCommandList->BeginRenderPass(*m_CurrentRenderPass, pipeline->renderPassLayout);
 
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
 	}
@@ -205,15 +228,15 @@ namespace vast::gfx
 	void DX12GraphicsContext::EndRenderPass()
 	{
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "EndRenderPass");
-		VAST_ASSERTF(m_CurrentRT, "EndRenderPass called without matching BeginRenderPass call.");
+		VAST_ASSERTF(m_CurrentRenderPass && m_CurrentRenderPass->rtCount, "EndRenderPass called without matching BeginRenderPass call.");
 
 		m_GraphicsCommandList->EndRenderPass();
 
-		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
-		m_GraphicsCommandList->FlushBarriers();
+		m_CurrentRenderPass->AddBarriers(m_GraphicsCommandList.get(), D3D12_RESOURCE_STATE_PRESENT);
+		m_GraphicsCommandList->FlushBarriers(); // TODO: Do we need to flush barriers here?
+		m_CurrentRenderPass->Reset();
 
 		m_GraphicsCommandList->SetPipeline(nullptr);
-		m_CurrentRT = nullptr;
 	}
 
 	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)

@@ -4,6 +4,7 @@
 
 namespace vast::gfx
 {
+
 	// - Graphics Types --------------------------------------------------------------------------- //
 
 	enum class SamplerState
@@ -265,7 +266,8 @@ namespace vast::gfx
 
 	struct RenderPassLayout
 	{
-		Array<RenderTargetDesc, 8> renderTargets; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
+		static constexpr uint32 MAX_RENDERTARGETS = 8;
+		Array<RenderTargetDesc, MAX_RENDERTARGETS> renderTargets;
 		RenderTargetDesc dsFormat;
 	};
 

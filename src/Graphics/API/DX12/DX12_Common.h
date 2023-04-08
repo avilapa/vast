@@ -35,6 +35,8 @@ namespace vast::gfx
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
+	static_assert(RenderPassLayout::MAX_RENDERTARGETS == D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
+
 	// - Resources -------------------------------------------------------------------------------- //
 
 	static const uint32 kInvalidHeapIdx = UINT32_MAX;

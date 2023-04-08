@@ -42,7 +42,9 @@ namespace vast::gfx
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
 
+		virtual void SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt) = 0;
 		virtual void SetRenderTarget(const TextureHandle h) = 0;
+		virtual void SetDepthStencilTarget(const TextureHandle h) = 0;
 
 		virtual void BeginRenderPass(const PipelineHandle h) = 0;
 		virtual void EndRenderPass() = 0;

@@ -11,6 +11,7 @@ namespace vast::gfx
 	class DX12GraphicsCommandList;
 	class DX12UploadCommandList;
 	class DX12CommandQueue;
+	struct DX12RenderPassResources;
 
 	enum class QueueType
 	{
@@ -29,7 +30,9 @@ namespace vast::gfx
 		void BeginFrame() override;
 		void EndFrame() override;
 
+		void SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt) override;
 		void SetRenderTarget(const TextureHandle h) override;
+		void SetDepthStencilTarget(const TextureHandle h) override;
 
 		void BeginRenderPass(const PipelineHandle h) override;
 		void EndRenderPass() override;
@@ -95,6 +98,8 @@ namespace vast::gfx
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
+		Ptr<DX12RenderPassResources> m_CurrentRenderPass;
+
 		Ptr<ResourceHandlePool<Buffer, DX12Buffer, NUM_BUFFERS>> m_Buffers;
 		Ptr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>> m_Textures;
 		Ptr<ResourceHandlePool<Pipeline, DX12Pipeline, NUM_PIPELINES>> m_Pipelines;
@@ -113,8 +118,6 @@ namespace vast::gfx
 		};
 		// TODO: This could be replaced by a single, big dynamic buffer?
 		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators;
-
-		DX12Texture* m_CurrentRT;
 
 		uint32 m_FrameId;
 	};

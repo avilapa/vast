@@ -38,12 +38,42 @@ namespace vast::gfx
 		DX12RenderPassDescriptorHeap* m_CurrentSRVDescriptorHeap;
 	};
 
+	struct DX12RenderPassResources
+	{
+		uint32 rtCount = 0;
+		Array<DX12Texture*, RenderPassLayout::MAX_RENDERTARGETS> renderTargets;
+		DX12Texture* depthStencilTarget;
+
+		void Reset()
+		{
+			for (uint32 i = 0; i < rtCount; ++i)
+			{
+				renderTargets[i] = nullptr;
+			}
+			depthStencilTarget = nullptr;
+			rtCount = 0;
+		}
+
+		void AddBarriers(DX12CommandList* cmdList, const D3D12_RESOURCE_STATES newState)
+		{
+			for (uint32 i = 0; i < rtCount; ++i)
+			{
+				cmdList->AddBarrier(*renderTargets[i], newState);
+			}
+
+			if (depthStencilTarget)
+			{
+				cmdList->AddBarrier(*depthStencilTarget, newState);
+			}
+		}
+	};
+
 	class DX12GraphicsCommandList final : public DX12CommandList
 	{
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
 
-		void BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, const RenderPassLayout& renderPassLayout);
+		void BeginRenderPass(const DX12RenderPassResources& renderPass, const RenderPassLayout& renderPassLayout);
 		void EndRenderPass();
 
 		void SetPipeline(DX12Pipeline* pipeline);
@@ -55,6 +85,7 @@ namespace vast::gfx
 
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 		void SetScissorRect(const D3D12_RECT& rect);
+
 	private:
 		DX12Pipeline* m_CurrentPipeline;
 	};
