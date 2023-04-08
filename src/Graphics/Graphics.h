@@ -214,20 +214,6 @@ namespace vast::gfx
 		std::string entryPoint;
 	};
 
-	struct BlendState
-	{
-		bool blendEnable = false;
-		Blend srcBlend = Blend::SRC_ALPHA;
-		Blend dstBlend = Blend::INV_SRC_ALPHA;
-		BlendOp blendOp = BlendOp::ADD;
-		Blend srcBlendAlpha = Blend::ONE;
-		Blend dstBlendAlpha = Blend::ONE;
-		BlendOp blendOpAlpha = BlendOp::ADD;
-		ColorWrite writeMask = ColorWrite::ALL;
-
-		struct Preset;
-	};
-
 	struct DepthStencilState
 	{
 		bool depthEnable = true;
@@ -245,20 +231,46 @@ namespace vast::gfx
 		static constexpr DepthStencilState kEnabledWrite{ true,  true,	CompareFunc::LESS_EQUAL };
 	};
 
+	struct BlendState
+	{
+		bool blendEnable = false;
+		Blend srcBlend = Blend::SRC_ALPHA;
+		Blend dstBlend = Blend::INV_SRC_ALPHA;
+		BlendOp blendOp = BlendOp::ADD;
+		Blend srcBlendAlpha = Blend::ONE;
+		Blend dstBlendAlpha = Blend::ONE;
+		BlendOp blendOpAlpha = BlendOp::ADD;
+		ColorWrite writeMask = ColorWrite::ALL;
+
+		struct Preset;
+	};
+
 	struct BlendState::Preset
 	{
 		static constexpr BlendState kDisabled{ false };
 		static constexpr BlendState kAdditive{ true };
 	};
 
-	struct PipelineDesc // TODO: Decide on a name for our pipeline/render pass
+	struct RenderTargetDesc
+	{
+		Format format = Format::UNKNOWN;
+		BlendState bs = BlendState::Preset::kDisabled;
+	};
+
+	struct RenderPassLayout
+	{
+		Array<RenderTargetDesc, 8> renderTargets; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
+		Format dsFormat = Format::UNKNOWN;
+
+		// TODO: Load/Store Ops / ClearFlags
+	};
+
+	struct PipelineDesc
 	{
 		ShaderDesc vs;
 		ShaderDesc ps;
+		RenderPassLayout passLayout;
 		DepthStencilState depthStencilState;
-		Array<BlendState, 8> rtBlendStates; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
-		Array<Format, 8> rtFormats = { Format::UNKNOWN }; // TODO: Define 8 (D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT)
-		uint8 rtCount = 0;
 
 		struct Builder;
 	};
@@ -268,8 +280,7 @@ namespace vast::gfx
 		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
  		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
 		Builder& DepthStencil(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
-		// TODO: Separate RenderPassLayout object?
-		Builder& SetRenderTarget(Format format, BlendState bs = BlendState::Preset::kDisabled) { desc.rtFormats[desc.rtCount] = format; desc.rtBlendStates[desc.rtCount] = bs; ++desc.rtCount; return *this; }
+		Builder& RenderPass(RenderPassLayout pass) { desc.passLayout = pass; return *this; }
 
 		operator PipelineDesc() { return desc; }
 		PipelineDesc desc;

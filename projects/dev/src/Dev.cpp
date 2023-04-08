@@ -50,30 +50,22 @@ static bool s_ReloadTriangle = false;
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
-	auto windowSize = m_Window->GetWindowSize();
-
 	gfx::GraphicsParams params;
-	params.swapChainSize = windowSize;
+	params.swapChainSize = m_Window->GetWindowSize();
 	params.swapChainFormat = gfx::Format::RGBA8_UNORM;
 	params.backBufferFormat = gfx::Format::RGBA8_UNORM;
 
 	m_GraphicsContext = gfx::GraphicsContext::Create(params);
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
-		.Type(gfx::TextureType::TEXTURE_2D)
-		.Format(gfx::Format::RGBA8_UNORM)
-		.Width(windowSize.x)
-		.Height(windowSize.y)
-		.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
-		.ClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
-	m_ColorTextureIdx = ctx.GetBindlessIndex(m_ColorRT);
+	gfx::RenderPassLayout fullscreenPass;
+	fullscreenPass.renderTargets = { ctx.GetBackBufferFormat() };
 
 	m_FullscreenPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("fullscreen.hlsl", "VS_Main")
 		.PS("fullscreen.hlsl", "PS_Main")
 		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-		.SetRenderTarget(ctx.GetBackBufferFormat()));
+		.RenderPass(fullscreenPass));
 
 	CreateTriangleResources();
 
@@ -84,11 +76,25 @@ void Dev::CreateTriangleResources()
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
+	auto windowSize = m_Window->GetWindowSize();
+
+	m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
+		.Type(gfx::TextureType::TEXTURE_2D)
+		.Format(gfx::Format::RGBA8_UNORM)
+		.Width(windowSize.x)
+		.Height(windowSize.y)
+		.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
+		.ClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
+	m_ColorTextureIdx = ctx.GetBindlessIndex(m_ColorRT);
+
+	gfx::RenderPassLayout colorPass;
+	colorPass.renderTargets = { ctx.GetTextureFormat(m_ColorRT) };
+
 	m_TrianglePso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("triangle.hlsl", "VS_Main")
 		.PS("triangle.hlsl", "PS_Main")
 		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-		.SetRenderTarget(ctx.GetTextureFormat(m_ColorRT)));
+		.RenderPass(colorPass));
 
 	auto vtxBufDesc = gfx::BufferDesc::Builder()
 		.Size(sizeof(s_TriangleVertexData)).Stride(sizeof(s_TriangleVertexData[0]))

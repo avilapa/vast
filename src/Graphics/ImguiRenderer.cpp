@@ -28,11 +28,14 @@ namespace vast::gfx
 			BlendState bs = BlendState::Preset::kAdditive;
 			bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
 
+			gfx::RenderPassLayout renderPass;
+			renderPass.renderTargets = { ctx.GetBackBufferFormat(), bs };
+
 			auto pipelineDesc = PipelineDesc::Builder()
 				.VS("imgui.hlsl", "VS_Main")
 				.PS("imgui.hlsl", "PS_Main")
 				.DepthStencil(DepthStencilState::Preset::kDisabled)
-				.SetRenderTarget(ctx.GetBackBufferFormat(), bs);
+				.RenderPass(renderPass);
 
 			m_Pipeline = ctx.CreatePipeline(pipelineDesc);
 		}

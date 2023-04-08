@@ -558,16 +558,16 @@ namespace vast::gfx
 		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
 		{
 			D3D12_RENDER_TARGET_BLEND_DESC* rtBlendDesc = &psDesc.BlendState.RenderTarget[i];
-			rtBlendDesc->BlendEnable			= desc.rtBlendStates[i].blendEnable;
+			rtBlendDesc->BlendEnable			= desc.passLayout.renderTargets[i].bs.blendEnable;
 			rtBlendDesc->LogicOpEnable			= false;
-			rtBlendDesc->SrcBlend				= TranslateToDX12(desc.rtBlendStates[i].srcBlend);
-			rtBlendDesc->DestBlend				= TranslateToDX12(desc.rtBlendStates[i].dstBlend);
-			rtBlendDesc->BlendOp				= TranslateToDX12(desc.rtBlendStates[i].blendOp);
-			rtBlendDesc->SrcBlendAlpha			= TranslateToDX12(desc.rtBlendStates[i].srcBlendAlpha);
-			rtBlendDesc->DestBlendAlpha			= TranslateToDX12(desc.rtBlendStates[i].dstBlendAlpha);
-			rtBlendDesc->BlendOpAlpha			= TranslateToDX12(desc.rtBlendStates[i].blendOpAlpha);
+			rtBlendDesc->SrcBlend				= TranslateToDX12(desc.passLayout.renderTargets[i].bs.srcBlend);
+			rtBlendDesc->DestBlend				= TranslateToDX12(desc.passLayout.renderTargets[i].bs.dstBlend);
+			rtBlendDesc->BlendOp				= TranslateToDX12(desc.passLayout.renderTargets[i].bs.blendOp);
+			rtBlendDesc->SrcBlendAlpha			= TranslateToDX12(desc.passLayout.renderTargets[i].bs.srcBlendAlpha);
+			rtBlendDesc->DestBlendAlpha			= TranslateToDX12(desc.passLayout.renderTargets[i].bs.dstBlendAlpha);
+			rtBlendDesc->BlendOpAlpha			= TranslateToDX12(desc.passLayout.renderTargets[i].bs.blendOpAlpha);
 			rtBlendDesc->LogicOp				= D3D12_LOGIC_OP_NOOP;
-			rtBlendDesc->RenderTargetWriteMask	= TranslateToDX12(desc.rtBlendStates[i].writeMask);
+			rtBlendDesc->RenderTargetWriteMask	= TranslateToDX12(desc.passLayout.renderTargets[i].bs.writeMask);
 		}
 
 		psDesc.SampleMask = 0xFFFFFFFF;
@@ -597,12 +597,16 @@ namespace vast::gfx
 
 		psDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-		psDesc.NumRenderTargets = desc.rtCount;
-		for (uint32 i = 0; i < psDesc.NumRenderTargets; ++i)
+		for (psDesc.NumRenderTargets = 0; psDesc.NumRenderTargets < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++psDesc.NumRenderTargets)
 		{
-			psDesc.RTVFormats[i] = TranslateToDX12(desc.rtFormats[i]);
+			uint32 i = psDesc.NumRenderTargets;
+			if (desc.passLayout.renderTargets[i].format == Format::UNKNOWN)
+			{
+				break;
+			}
+			psDesc.RTVFormats[i] = TranslateToDX12(desc.passLayout.renderTargets[i].format);
 		}
-		psDesc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+		psDesc.DSVFormat = TranslateToDX12(desc.passLayout.dsFormat);
 
 		// TODO: Multisample support
 		psDesc.SampleDesc.Count = 1;
