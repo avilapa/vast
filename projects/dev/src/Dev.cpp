@@ -13,14 +13,12 @@
 //
 //	> GFX Rasterizer State.
 //	> GFX Stencil State.
-//	> GFX Render Pass / Render Pass Layout.
 //	> GFX Compute Shaders.
 //	> GFX Display List: command recording for later execution.
 //	> GFX Multithreading.
 //		- req: GFX Display List
 //	> GFX Jump to 3D: Render 3D objects with transformation matrices.
 //	> GFX MRT Rendering.
-//		- req: Render Pass
 //	> GFX Simple Lighting.
 //	> GFX Simple Raytracing.
 //		- req: Camera Object

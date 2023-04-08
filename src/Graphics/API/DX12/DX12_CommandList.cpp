@@ -157,6 +157,43 @@ namespace vast::gfx
 	{
 	}
 
+	void DX12GraphicsCommandList::BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearParams clear)
+	{
+		VAST_ASSERT(rtCount && rt && rt[0]);
+		// TODO: Move clear value into DX12Texture and allow setting it per-RT
+		D3D12_CLEAR_VALUE clearValue = {};
+		clearValue.Format = rt[0]->resource->GetDesc().Format;
+		clearValue.Color[0] = clear.color.x;
+		clearValue.Color[1] = clear.color.y;
+		clearValue.Color[2] = clear.color.z;
+		clearValue.Color[3] = clear.color.w;
+		auto doClear = (clear.flags & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR;
+
+		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
+
+		for (uint32 i = 0; i < rtCount; ++i)
+		{
+			VAST_ASSERTF(rt[i], "Attempted to bind NULL render target");
+			rtDesc[i].cpuDescriptor = rt[i]->rtv.cpuHandle;
+			rtDesc[i].BeginningAccess = { doClear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE, clearValue };
+			rtDesc[i].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+			// TODO: EndingAccess.Resolve
+		}
+
+		if (ds)
+		{
+			// TODO: D3D12_RENDER_PASS_DEPTH_STENCIL_DESC 
+		}
+
+		// TODO: D3D12_RENDER_PASS_FLAG
+		m_CommandList->BeginRenderPass(rtCount, rtDesc, nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+	}
+
+	void DX12GraphicsCommandList::EndRenderPass()
+	{
+		m_CommandList->EndRenderPass();
+	}
+
 	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline* pipeline)
 	{
 		if (pipeline)
@@ -168,13 +205,13 @@ namespace vast::gfx
 		m_CurrentPipeline = pipeline;
 	}
 
-	void DX12GraphicsCommandList::SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds)
+	void DX12GraphicsCommandList::SetRenderTargets(DX12Texture** rt, uint32 rtCount, DX12Texture* ds)
 	{
 		VAST_PROFILE_FUNCTION();
 		D3D12_CPU_DESCRIPTOR_HANDLE rtHandles[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
 		D3D12_CPU_DESCRIPTOR_HANDLE dsHandle{ 0 };
 
-		for (uint32 i = 0; i < count; ++i)
+		for (uint32 i = 0; i < rtCount; ++i)
 		{
 			VAST_ASSERTF(rt[i], "Attempted to bind NULL render target");
 			rtHandles[i] = rt[i]->rtv.cpuHandle;
@@ -185,7 +222,7 @@ namespace vast::gfx
 			dsHandle = ds->dsv.cpuHandle;
 		}
 
-		m_CommandList->OMSetRenderTargets(count, rtHandles, false, dsHandle.ptr != 0 ? &dsHandle : nullptr);
+		m_CommandList->OMSetRenderTargets(rtCount, rtHandles, false, dsHandle.ptr != 0 ? &dsHandle : nullptr);
 	}
 
 	void DX12GraphicsCommandList::SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride)

@@ -43,8 +43,12 @@ namespace vast::gfx
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
 
+		void BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, ClearParams clear);
+		void EndRenderPass();
+
+		void SetRenderTargets(DX12Texture** rt, uint32 rtCount, DX12Texture* ds);
+
 		void SetPipeline(DX12Pipeline* pipeline);
-		void SetRenderTargets(DX12Texture** rt, uint32 count, DX12Texture* ds);
 		void SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride);
 		void SetIndexBuffer(const DX12Buffer& buf, uint32 offset, DXGI_FORMAT format);
 		void SetConstantBuffer(const DX12Buffer& buf, uint32 offset, uint32 slotIndex);

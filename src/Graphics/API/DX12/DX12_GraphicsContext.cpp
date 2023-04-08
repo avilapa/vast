@@ -14,6 +14,8 @@
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
+#define VAST_GFX_DX12_USE_RENDER_PASSES 1
+
 namespace vast::gfx
 {
 
@@ -193,19 +195,22 @@ namespace vast::gfx
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_GraphicsCommandList->FlushBarriers();
 
+#if VAST_GFX_DX12_USE_RENDER_PASSES
+		m_GraphicsCommandList->BeginRenderPass(&m_CurrentRT, 1, nullptr, clear);
+#else
 		if ((clear.flags & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR)
 		{
 			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT, clear.color);
 		}
 		// TODO: Look into optimized clears with "clearValue".
 		// TODO: Clear depth/stencil.
+		m_GraphicsCommandList->SetRenderTargets(&m_CurrentRT, 1, nullptr);
+#endif // VAST_GFX_DX12_USE_RENDER_PASSES
 
 		auto pipeline = m_Pipelines->LookupResource(h);
 		VAST_ASSERT(pipeline);
 
 		m_GraphicsCommandList->SetPipeline(pipeline);
-		m_GraphicsCommandList->SetRenderTargets(&m_CurrentRT, 1, nullptr);
-
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
 	}
 
@@ -213,6 +218,11 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "EndRenderPass");
 		VAST_ASSERTF(m_CurrentRT, "EndRenderPass called without matching BeginRenderPass call.");
+
+#if VAST_GFX_DX12_USE_RENDER_PASSES
+		m_GraphicsCommandList->EndRenderPass();
+#endif
+
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
 
