@@ -22,15 +22,6 @@ namespace vast::gfx
 	};
 	static_assert(NELEM(g_SamplerNames) == IDX(SamplerState::COUNT));
 
-	enum class ClearFlags
-	{
-		NONE = 0,
-		CLEAR_COLOR		= BIT(0),
-		CLEAR_DEPTH		= BIT(1),
-		CLEAR_STENCIL	= BIT(2),
-	};
-	ENUM_CLASS_ALLOW_FLAGS(ClearFlags);
-
 	enum class ResourceUsage // TODO: Update Frequency?
 	{
 		STATIC,

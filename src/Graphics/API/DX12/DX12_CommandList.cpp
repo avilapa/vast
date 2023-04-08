@@ -157,9 +157,10 @@ namespace vast::gfx
 	{
 	}
 
-#if VAST_GFX_DX12_USE_RENDER_PASSES
 	void DX12GraphicsCommandList::BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, const RenderPassLayout& renderPassLayout)
 	{
+		VAST_PROFILE_FUNCTION();
+
 		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
 		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dsDesc = {};
 
@@ -186,43 +187,9 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::EndRenderPass()
 	{
+		VAST_PROFILE_FUNCTION();
 		m_CommandList->EndRenderPass();
 	}
-
-#else
-	void DX12GraphicsCommandList::SetRenderTargets(DX12Texture** rt, uint32 rtCount, DX12Texture* ds)
-	{
-		VAST_PROFILE_FUNCTION();
-		D3D12_CPU_DESCRIPTOR_HANDLE rtHandles[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
-		D3D12_CPU_DESCRIPTOR_HANDLE dsHandle{ 0 };
-
-		for (uint32 i = 0; i < rtCount; ++i)
-		{
-			VAST_ASSERTF(rt[i], "Attempted to bind NULL render target");
-			rtHandles[i] = rt[i]->rtv.cpuHandle;
-		}
-
-		if (ds)
-		{
-			dsHandle = ds->dsv.cpuHandle;
-		}
-
-		m_CommandList->OMSetRenderTargets(rtCount, rtHandles, false, (dsHandle.ptr != 0) ? &dsHandle : nullptr);
-	}
-
-	void DX12GraphicsCommandList::ClearRenderTarget(const DX12Texture& rt)
-	{
-		VAST_PROFILE_FUNCTION();
-		m_CommandList->ClearRenderTargetView(rt.rtv.cpuHandle, rt.clearValue.Color, 0, nullptr);
-	}
-
-	void DX12GraphicsCommandList::ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil)
-	{
-		VAST_PROFILE_FUNCTION();
-		m_CommandList->ClearDepthStencilView(dst.dsv.cpuHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
-	}
-
-#endif // VAST_GFX_DX12_USE_RENDER_PASSES
 
 	void DX12GraphicsCommandList::SetPipeline(DX12Pipeline* pipeline)
 	{

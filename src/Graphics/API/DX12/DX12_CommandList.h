@@ -43,14 +43,8 @@ namespace vast::gfx
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
 
-#if VAST_GFX_DX12_USE_RENDER_PASSES
 		void BeginRenderPass(DX12Texture** rt, uint32 rtCount, DX12Texture* ds, const RenderPassLayout& renderPassLayout);
 		void EndRenderPass();
-#else
-		void SetRenderTargets(DX12Texture** rt, uint32 rtCount, DX12Texture* ds);
-		void ClearRenderTarget(const DX12Texture& rt);
-		void ClearDepthStencilTarget(const DX12Texture& dst, float depth, uint8 stencil);
-#endif // VAST_GFX_DX12_USE_RENDER_PASSES
 
 		void SetPipeline(DX12Pipeline* pipeline);
 		void SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride);

@@ -187,6 +187,7 @@ namespace vast::gfx
 
 		if (!m_CurrentRT)
 		{
+			// If no render targets have been set, we render to the backbuffer.
 			m_CurrentRT = &m_SwapChain->GetCurrentBackBuffer();
 		}
 
@@ -196,17 +197,8 @@ namespace vast::gfx
 		auto pipeline = m_Pipelines->LookupResource(h);
 		VAST_ASSERT(pipeline);
 		m_GraphicsCommandList->SetPipeline(pipeline);
-
-#if VAST_GFX_DX12_USE_RENDER_PASSES
 		m_GraphicsCommandList->BeginRenderPass(&m_CurrentRT, 1, nullptr, pipeline->renderPassLayout);
-#else
-		if ((clear & ClearFlags::CLEAR_COLOR) == ClearFlags::CLEAR_COLOR)
-		{
-			m_GraphicsCommandList->ClearRenderTarget(*m_CurrentRT);
-		}
-		// TODO: Clear depth/stencil.
-		m_GraphicsCommandList->SetRenderTargets(&m_CurrentRT, 1, nullptr);
-#endif // VAST_GFX_DX12_USE_RENDER_PASSES
+
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
 	}
 
@@ -215,9 +207,7 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "EndRenderPass");
 		VAST_ASSERTF(m_CurrentRT, "EndRenderPass called without matching BeginRenderPass call.");
 
-#if VAST_GFX_DX12_USE_RENDER_PASSES
 		m_GraphicsCommandList->EndRenderPass();
-#endif
 
 		m_GraphicsCommandList->AddBarrier(*m_CurrentRT, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
