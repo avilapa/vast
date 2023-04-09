@@ -31,7 +31,7 @@ float4 PS_Main(VertexOutput IN) : SV_TARGET
     Texture2D<float4> colorTex = ResourceDescriptorHeap[CB.colorTexIdx];
     SamplerState colorSampler = SamplerDescriptorHeap[PointClampSampler];
 
-    float3 color = colorTex.Sample(anisoSampler, IN.uv).rgb;
+    float3 color = colorTex.Sample(colorSampler, IN.uv).rgb;
     //float3 color = IN.worldNormal * 0.5 + 0.5;
     float3 lightDirection = normalize(CB.cameraPos);
     float3 viewDirection = normalize(CB.cameraPos - IN.worldPos);
