@@ -33,5 +33,6 @@ private:
 	gfx::PipelineHandle m_MeshPso;
 	gfx::BufferHandle m_MeshVtxBuf;
 	gfx::BufferHandle m_MeshCbvBuf;
+	gfx::TextureHandle m_MeshColorTex;
 	gfx::ShaderResourceProxy m_MeshCbvBufProxy;
 };

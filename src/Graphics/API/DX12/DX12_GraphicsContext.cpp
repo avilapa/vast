@@ -441,6 +441,91 @@ namespace vast::gfx
 		return h;
 	}
 
+	static bool FileExists(const std::wstring& filePath)
+	{
+		if (filePath.c_str() == NULL)
+			return false;
+
+		DWORD fileAttr = GetFileAttributesW(filePath.c_str());
+		if (fileAttr == INVALID_FILE_ATTRIBUTES)
+			return false;
+
+		return true;
+	}
+
+	static std::wstring GetFileExtension(const std::wstring filePath)
+	{
+		size_t idx = filePath.rfind(L'.');
+		if (idx != std::wstring::npos)
+			return filePath.substr(idx + 1, filePath.length() - idx - 1);
+		else
+			return std::wstring(L"");
+	}
+
+	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
+	static std::wstring StringToWString(const std::string& s, bool bIsUTF8 = true)
+	{
+		int32 slength = (int32)s.length() + 1;
+		int32 len = MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, 0, 0);
+		std::wstring buf;
+		buf.resize(len);
+		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
+		return buf;
+	}
+
+	constexpr wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
+
+	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& file, bool sRGB /* = true */)
+	{
+		VAST_PROFILE_FUNCTION();
+		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(file);
+
+		if (!FileExists(wpath))
+		{
+			VAST_ASSERTF(0, "Texture file path does not exist.");
+			return TextureHandle();
+		}
+
+		const std::wstring wext = GetFileExtension(wpath);
+		DirectX::ScratchImage image;
+		if (wext.compare(L"DDS") == 0 || wext.compare(L"dds") == 0)
+		{
+			DX12Check(DirectX::LoadFromDDSFile(wpath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image));
+		}
+		else if (wext.compare(L"TGA") != 0 || wext.compare(L"tga") == 0) // TODO: This is broken!
+		{
+			DirectX::ScratchImage tempImage;
+			DX12Check(DirectX::LoadFromTGAFile(wpath.c_str(), nullptr, tempImage));
+			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
+		}
+		else // Windows Imaging Component (WIC) includes .BMP, .PNG, .GIF, .TIFF, .JPEG
+		{
+			DirectX::ScratchImage tempImage;
+			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, tempImage));
+			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
+		}
+
+		const DirectX::TexMetadata& metaData = image.GetMetadata();
+		DXGI_FORMAT format = metaData.format;
+		if (sRGB)
+		{
+			format = DirectX::MakeSRGB(format);
+		}
+
+		TextureType type = TranslateFromDX12(static_cast<D3D12_RESOURCE_DIMENSION>(metaData.dimension));
+
+		auto texDesc = gfx::TextureDesc::Builder()
+			.Type(type)
+			.Format(TranslateFromDX12(metaData.format))
+			.Width(static_cast<uint32>(metaData.width))
+			.Height(static_cast<uint32>(metaData.height))
+			.DepthOrArraySize(static_cast<uint32>((type == TextureType::TEXTURE_3D) ? metaData.depth : metaData.arraySize))
+			.MipCount(static_cast<uint32>(metaData.mipLevels))
+			.ViewFlags(gfx::TextureViewFlags::SRV); // TODO: Provide option to add more flags when needed
+
+		return CreateTexture(texDesc, image.GetPixels());
+	}
+
 	void DX12GraphicsContext::UploadTextureData(DX12Texture* tex, void* srcMem)
 	{
 		VAST_ASSERT(tex);

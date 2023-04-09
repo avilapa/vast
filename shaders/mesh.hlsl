@@ -28,11 +28,11 @@ VertexOutput VS_Main(uint vtxId : SV_VertexID)
 
 float4 PS_Main(VertexOutput IN) : SV_TARGET
 {
-  //  Texture2D<float4> colorTex = ResourceDescriptorHeap[CB.colorTexIdx];
-   // SamplerState anisoSampler = SamplerDescriptorHeap[PointClampSampler]; ////////////////////// TODO: aniso?
+    Texture2D<float4> colorTex = ResourceDescriptorHeap[CB.colorTexIdx];
+    SamplerState colorSampler = SamplerDescriptorHeap[PointClampSampler];
 
-    //float3 color = colorTex.Sample(anisoSampler, IN.uv).rgb;
-    float3 color = IN.worldNormal * 0.5 + 0.5;
+    float3 color = colorTex.Sample(anisoSampler, IN.uv).rgb;
+    //float3 color = IN.worldNormal * 0.5 + 0.5;
     float3 lightDirection = normalize(CB.cameraPos);
     float3 viewDirection = normalize(CB.cameraPos - IN.worldPos);
 
@@ -42,5 +42,5 @@ float4 PS_Main(VertexOutput IN) : SV_TARGET
 
     float3 lighting = color * (diffuse + specular);
 
-    return float4(color, 1);
+    return float4(lighting, 1);
 }

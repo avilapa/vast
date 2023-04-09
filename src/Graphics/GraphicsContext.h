@@ -69,6 +69,7 @@ namespace vast::gfx
 
 		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) = 0;
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) = 0;
+		virtual TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) = 0;
 		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
 
 		virtual void UpdateBuffer(const BufferHandle h, void* data, const size_t size) = 0;
@@ -85,12 +86,11 @@ namespace vast::gfx
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
 
 		virtual Format GetBackBufferFormat() const = 0;
+		virtual Format GetTextureFormat(const TextureHandle h) = 0;
 
 		virtual uint32 GetBindlessIndex(const BufferHandle h) = 0;
-		virtual bool GetIsReady(const BufferHandle h) = 0;
-
 		virtual uint32 GetBindlessIndex(const TextureHandle h) = 0;
-		virtual Format GetTextureFormat(const TextureHandle h) = 0;
+		virtual bool GetIsReady(const BufferHandle h) = 0;
 		virtual bool GetIsReady(const TextureHandle h) = 0;
 	};
 }

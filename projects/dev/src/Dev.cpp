@@ -17,7 +17,6 @@
 //	> GFX Display List: command recording for later execution.
 //	> GFX Multithreading.
 //		- req: GFX Display List
-//	> GFX Simple Lighting.
 //	> GFX Simple Raytracing.
 //		- req: Camera Object
 //	> GFX Deferred Rendering.
@@ -50,6 +49,7 @@ static Array<TriangleVtx, 3> s_TriangleVertexData =
 } };
 static bool s_UpdateTriangle = false;
 static bool s_ReloadTriangle = false;
+static bool s_ReloadMesh = false;
 
 static Array<MeshVtx, 36> s_CubeVertexData =
 { {
@@ -171,7 +171,6 @@ void Dev::CreateMeshResources()
 	m_MeshPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("mesh.hlsl", "VS_Main")
 		.PS("mesh.hlsl", "PS_Main")
-		//.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
 		// TODO: Rasterizer state
 		.RenderPass(colorDepthPass));
 
@@ -182,6 +181,8 @@ void Dev::CreateMeshResources()
 		.IsRawAccess(true);
 	m_MeshVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
 
+	m_MeshColorTex = ctx.CreateTexture("image.tga");
+
 	MeshCB cbvData =
 	{
 		float4x4(),
@@ -189,7 +190,7 @@ void Dev::CreateMeshResources()
 		float4x4(),
 		{ -3.0f, 3.0f, -8.0f },
 		ctx.GetBindlessIndex(m_MeshVtxBuf),
-		ctx.GetBindlessIndex(m_MeshVtxBuf), // TODO: Load color texture
+		ctx.GetBindlessIndex(m_MeshColorTex),
 	};
 
 	auto cbvBufDesc = gfx::BufferDesc::Builder()
@@ -212,6 +213,7 @@ Dev::~Dev()
 	ctx.DestroyPipeline(m_MeshPso);
 	ctx.DestroyTexture(m_ColorRT);
 	ctx.DestroyTexture(m_DepthRT);
+	ctx.DestroyTexture(m_MeshColorTex);
 	ctx.DestroyBuffer(m_TriangleVtxBuf);
 	ctx.DestroyBuffer(m_MeshVtxBuf);
 	ctx.DestroyBuffer(m_MeshCbvBuf);
@@ -228,6 +230,12 @@ void Dev::OnUpdate()
 	{
 		s_ReloadTriangle = false;
 		ctx.UpdatePipeline(m_TrianglePso);
+	}
+	
+	if (s_ReloadMesh)
+	{
+		s_ReloadMesh = false;
+		ctx.UpdatePipeline(m_MeshPso);
 	}
 
 	if (s_UpdateTriangle)
@@ -251,7 +259,7 @@ void Dev::OnUpdate()
 		float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
 		{ -3.0f, 3.0f, -8.0f },
 		ctx.GetBindlessIndex(m_MeshVtxBuf),
-		ctx.GetBindlessIndex(m_MeshVtxBuf), // TODO: Load color texture
+		ctx.GetBindlessIndex(m_MeshColorTex),
 	};
 
 	ctx.UpdateBuffer(m_MeshCbvBuf, &cbvData, sizeof(MeshCB));
@@ -264,7 +272,7 @@ void Dev::OnUpdate()
 	}
 	ctx.EndRenderPass();
 
-	if (ctx.GetIsReady(m_MeshVtxBuf)) // TODO: Texture is ready?
+	if (ctx.GetIsReady(m_MeshVtxBuf) && ctx.GetIsReady(m_MeshColorTex))
 	{
 		ctx.SetRenderTarget(m_ColorRT);
 		ctx.SetDepthStencilTarget(m_DepthRT);
@@ -310,6 +318,10 @@ void Dev::OnGUI()
 		if (ImGui::Button("Reload Triangle Shader"))
 		{
 			s_ReloadTriangle = true;
+		}
+		if (ImGui::Button("Reload Mesh Shader"))
+		{
+			s_ReloadMesh = true;
 		}
 	}
 	ImGui::End();

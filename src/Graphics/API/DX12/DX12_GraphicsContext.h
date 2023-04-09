@@ -54,6 +54,7 @@ namespace vast::gfx
 
 		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) override;
 		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
+		TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) override;
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
 		void UpdateBuffer(const BufferHandle h, void* data, const size_t size) override;
@@ -69,13 +70,13 @@ namespace vast::gfx
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
 		Format GetBackBufferFormat() const override;
+		Format GetTextureFormat(const TextureHandle h) override;
 
 		uint32 GetBindlessIndex(const BufferHandle h) override;
-		bool GetIsReady(const BufferHandle h) override;
-
 		uint32 GetBindlessIndex(const TextureHandle h) override;
-		Format GetTextureFormat(const TextureHandle h) override;
+		bool GetIsReady(const BufferHandle h) override;
 		bool GetIsReady(const TextureHandle h) override;
+
 
 	private:
 		void SubmitCommandList(DX12CommandList& ctx);
