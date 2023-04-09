@@ -84,9 +84,14 @@ namespace vast::gfx
 		{
 			shaderRef = MakeRef<DX12Shader>();
 			shaderRef->key = key;
-			bool success = CompileShader(desc, shaderRef.get());
-			VAST_ASSERTF(success, "Shader Compilation Failed.");
-			// TODO: Allow to recompile if F5 after assert on init
+
+			bool success = false;
+			while (!success)
+			{
+				// If we get a shader compile error on startup, allow the user to fix the issue and continue launching the application.
+				success = CompileShader(desc, shaderRef.get());
+				VAST_ASSERTF(success, "Shader Compilation Failed.");
+			}
 
 			m_ShaderKeys[key] = static_cast<uint32>(m_Shaders.size());
 			m_Shaders.push_back({ shaderRef, desc });
