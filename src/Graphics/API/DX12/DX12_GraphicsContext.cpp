@@ -10,9 +10,12 @@
 #include "Graphics/Resources.h"
 
 #include "dx12/DirectXTex/DirectXTex/DirectXTex.h"
+#include <iostream>
 
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
+
+static constexpr wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 
 namespace vast::gfx
 {
@@ -453,11 +456,11 @@ namespace vast::gfx
 		return true;
 	}
 
-	static std::wstring GetFileExtension(const std::wstring filePath)
+	static std::wstring GetFileExtension(const std::wstring& filePath)
 	{
 		size_t idx = filePath.rfind(L'.');
 		if (idx != std::wstring::npos)
-			return filePath.substr(idx + 1, filePath.length() - idx - 1);
+			return filePath.substr(idx + 1, filePath.length() - idx - 2);
 		else
 			return std::wstring(L"");
 	}
@@ -472,8 +475,6 @@ namespace vast::gfx
 		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
 		return buf;
 	}
-
-	constexpr wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& file, bool sRGB /* = true */)
 	{
@@ -492,7 +493,7 @@ namespace vast::gfx
 		{
 			DX12Check(DirectX::LoadFromDDSFile(wpath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image));
 		}
-		else if (wext.compare(L"TGA") != 0 || wext.compare(L"tga") == 0) // TODO: This is broken!
+		else if (wext.compare(L"TGA") == 0 || wext.compare(L"tga") == 0)
 		{
 			DirectX::ScratchImage tempImage;
 			DX12Check(DirectX::LoadFromTGAFile(wpath.c_str(), nullptr, tempImage));
