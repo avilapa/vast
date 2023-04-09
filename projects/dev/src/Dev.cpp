@@ -23,7 +23,6 @@
 //	> GFX Line Rendering.
 //		- req: Rasterizer State
 //
-//	> Texture Loading
 //	> Object Loading from file (.obj).
 //	> Scene Loading (.gltf, .usd?).
 //	> Delta Time.
