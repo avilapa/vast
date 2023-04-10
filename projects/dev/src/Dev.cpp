@@ -34,13 +34,13 @@ VAST_DEFINE_APP_MAIN(Dev)
 
 using namespace vast;
 
-struct TriangleVtx
+struct Vtx2fPos3fColor
 {
 	s_float2 pos;
 	s_float3 col;
 };
 
-static Array<TriangleVtx, 3> s_TriangleVertexData =
+static Array<Vtx2fPos3fColor, 3> s_TriangleVertexData =
 { {
 	{{ -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f }},
 	{{  0.0f,  0.5f }, { 0.0f, 1.0f, 0.0f }},
@@ -50,7 +50,7 @@ static bool s_UpdateTriangle = false;
 static bool s_ReloadTriangle = false;
 static bool s_ReloadMesh = false;
 
-static Array<MeshVtx, 36> s_CubeVertexData =
+static Array<Vtx3fPos3fNormal2fUv, 36> s_CubeVertexData =
 { {
 	{{ 1.0f,-1.0f, 1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 1.0f }},
 	{{ 1.0f,-1.0f,-1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 0.0f }},

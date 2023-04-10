@@ -217,7 +217,7 @@ namespace vast::gfx
 		if (!m_CurrentRenderPass->rtCount)
 		{
 			// If no render targets have been set, we render to the back buffer.
-			m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = { &m_SwapChain->GetCurrentBackBuffer(), ResourceState::PRESENT };
+			m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = { &m_SwapChain->GetCurrentBackBuffer(), ResourceState::NONE };
 		}
 
 		for (uint32 i = 0; i < m_CurrentRenderPass->rtCount; ++i)

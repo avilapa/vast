@@ -13,7 +13,7 @@ struct VertexOutput
 VertexOutput VS_Main(uint vtxId : SV_VertexID)
 {
     ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[CB.vtxBufIdx];
-    MeshVtx vtx = vtxBuf.Load<MeshVtx>(vtxId * sizeof(MeshVtx));
+    Vtx3fPos3fNormal2fUv vtx = vtxBuf.Load<Vtx3fPos3fNormal2fUv>(vtxId * sizeof(Vtx3fPos3fNormal2fUv));
 
     VertexOutput OUT;
     OUT.pos = mul(CB.model, float4(vtx.pos, 1));

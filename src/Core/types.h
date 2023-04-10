@@ -21,6 +21,7 @@ namespace vast
 	class ShaderSharedType
 	{
 	public:
+		ShaderSharedType() : v{ 0 } {}
 		template<class... Args>
 		ShaderSharedType(Args... args) : v{ args... }
 		{

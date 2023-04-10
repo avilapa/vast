@@ -15,7 +15,7 @@ using namespace vast;
 
 #define PerObjectSpace space0 // TODO: Implement spaces!
 
-struct MeshVtx
+struct Vtx3fPos3fNormal2fUv
 {
 	s_float3 pos;
 	s_float3 normal;
