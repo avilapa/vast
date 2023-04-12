@@ -1,7 +1,5 @@
 #include "Dev.h"
 
-#include "shaders_shared.h"
-
 #include "imgui/imgui.h"
 
 // ---------------------------------------- TODO LIST ------------------------------------------ //
@@ -32,6 +30,8 @@
 
 VAST_DEFINE_APP_MAIN(Dev)
 
+#define PI 3.14159265358979323846264338327950288
+
 using namespace vast;
 
 struct Vtx2fPos3fColor
@@ -48,7 +48,6 @@ static Array<Vtx2fPos3fColor, 3> s_TriangleVertexData =
 } };
 static bool s_UpdateTriangle = false;
 static bool s_ReloadTriangle = false;
-static bool s_ReloadMesh = false;
 
 static Array<Vtx3fPos3fNormal2fUv, 36> s_CubeVertexData =
 { {
@@ -89,55 +88,147 @@ static Array<Vtx3fPos3fNormal2fUv, 36> s_CubeVertexData =
 	{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 1.0f, 0.0f }},
 	{{-1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 0.0f }},
 } };
+static bool s_ReloadMesh = false;
+
+void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCount, Vector<Vtx3fPos3fNormal2fUv>& vtx, Vector<uint16>& idx)
+{
+	// Generate vertices
+	float invR = 1.0f / radius;
+	float vStep = float(PI) / vCount;
+	float hStep = 2.0f * float(PI) / hCount;
+
+	for (uint32 v = 0; v < vCount + 1; ++v)
+	{
+		float vAngle = float(PI) * 0.5f - float(v) * vStep;
+		float xz = radius * cos(vAngle);
+		float y = radius * sin(vAngle);
+		for (uint32 h = 0; h < hCount + 1; ++h)
+		{
+			float hAngle = h * hStep;
+			float x = xz * cos(hAngle);
+			float z = xz * sin(hAngle);
+
+			Vtx3fPos3fNormal2fUv i;
+			i.pos = s_float3(x, y, z);
+			i.normal = s_float3(x * invR, y * invR, z * invR);
+			i.uv = s_float2(float(h) / hCount, float(v) / vCount);
+			vtx.push_back(i);
+		}
+	}
+	Vtx3fPos3fNormal2fUv i;
+	i.pos = s_float3(0.0f, -1.0f, 0.0f);
+	vtx.push_back(i);
+
+	// Generate indices
+	uint32 k1, k2;
+	for (uint32 v = 0; v < vCount; ++v)
+	{
+		k1 = v * (hCount + 1);
+		k2 = k1 + hCount + 1;
+		for (uint32 h = 0; h < hCount + 1; ++h, ++k1, ++k2)
+		{
+			if (v != 0)
+			{
+				idx.push_back(static_cast<uint16>(k1));
+				idx.push_back(static_cast<uint16>(k2));
+				idx.push_back(static_cast<uint16>(k1 + 1));
+			}
+
+			if (v != (vCount - 1))
+			{
+				idx.push_back(static_cast<uint16>(k1 + 1));
+				idx.push_back(static_cast<uint16>(k2));
+				idx.push_back(static_cast<uint16>(k2 + 1));
+			}
+		}
+	}
+}
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
+	auto windowSize = m_Window->GetWindowSize();
+
 	gfx::GraphicsParams params;
-	params.swapChainSize = m_Window->GetWindowSize();
+	params.swapChainSize = windowSize;
 	params.swapChainFormat = gfx::Format::RGBA8_UNORM;
 	params.backBufferFormat = gfx::Format::RGBA8_UNORM;
 
 	m_GraphicsContext = gfx::GraphicsContext::Create(params);
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
 
-	gfx::RenderPassLayout fullscreenPass;
-	fullscreenPass.renderTargets = { ctx.GetBackBufferFormat(), gfx::LoadOp::LOAD, gfx::StoreOp::STORE, gfx::ResourceState::PRESENT };
+	// Create intermediate color and depth buffers
+	{
+		m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
+			.Type(gfx::TextureType::TEXTURE_2D)
+			.Format(gfx::Format::RGBA8_UNORM)
+			.Width(windowSize.x)
+			.Height(windowSize.y)
+			.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
+			.ClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
+
+		m_DepthRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
+			.Type(gfx::TextureType::TEXTURE_2D)
+			.Format(gfx::Format::D32_FLOAT)
+			.Width(windowSize.x)
+			.Height(windowSize.y)
+			.ViewFlags(gfx::TextureViewFlags::DSV)
+			.ClearDepth(1.0f));
+	}
+
+	gfx::Format colorTargetFormat = ctx.GetTextureFormat(m_ColorRT);
+	gfx::Format depthTargetFormat = gfx::Format::D32_FLOAT; // ctx.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
+	gfx::Format backBufferFormat = ctx.GetBackBufferFormat();
+
+	// Render triangle to intermediate color buffer. Clear color buffer, since it's the first usage of it in the frame.
+	gfx::RenderPassLayout triangleRenderPass = 
+	{ 
+		{ colorTargetFormat, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, gfx::ResourceState::NONE }
+	};
+	// Render cube to intermediate color + depth buffers. Clear depth buffer, since  it's the first usage of it in the frame.
+	gfx::RenderPassLayout colorDepthPass = 
+	{ 
+		{ colorTargetFormat, gfx::LoadOp::LOAD, gfx::StoreOp::STORE, gfx::ResourceState::SHADER_RESOURCE },
+		{ depthTargetFormat, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, gfx::ResourceState::NONE }
+	};
+	// Render color buffer to back buffer. Doesn't need to be cleared since we're rendering full screen.
+	gfx::RenderPassLayout fullscreenPass = 
+	{
+		{ backBufferFormat, gfx::LoadOp::LOAD, gfx::StoreOp::STORE, gfx::ResourceState::PRESENT }
+	};
+
+	// Create triangle PSO and vertex buffer (to be bound bindlessly via push constants).
+	CreateTriangleResources(triangleRenderPass);
+
+	// Create PSO to be used by the cube and sphere.
+	m_MeshPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
+		.VS("mesh.hlsl", "VS_Main")
+		.PS("mesh.hlsl", "PS_Main")
+		// TODO: Rasterizer state
+		.RenderPass(colorDepthPass));
+	m_MeshCbvBufProxy = ctx.LookupShaderResource(m_MeshPso, "CB");
+
+	CreateCubeResources();
+	CreateSphereResources();
 
 	m_FullscreenPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("fullscreen.hlsl", "VS_Main")
 		.PS("fullscreen.hlsl", "PS_Main")
 		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
 		.RenderPass(fullscreenPass));
-
-	CreateTriangleResources();
-	CreateMeshResources();
+	m_ColorTexIdx = ctx.GetBindlessIndex(m_ColorRT);
 
 	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
 }
 
-void Dev::CreateTriangleResources()
+void Dev::CreateTriangleResources(const gfx::RenderPassLayout& pass)
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
-
-	auto windowSize = m_Window->GetWindowSize();
-
-	m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
-		.Type(gfx::TextureType::TEXTURE_2D)
-		.Format(gfx::Format::RGBA8_UNORM)
-		.Width(windowSize.x)
-		.Height(windowSize.y)
-		.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
-		.ClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
-	m_ColorTexIdx = ctx.GetBindlessIndex(m_ColorRT);
-
-	gfx::RenderPassLayout colorPass;
-	colorPass.renderTargets = { ctx.GetTextureFormat(m_ColorRT), gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, gfx::ResourceState::RENDER_TARGET };
 
 	m_TrianglePso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("triangle.hlsl", "VS_Main")
 		.PS("triangle.hlsl", "PS_Main")
 		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-		.RenderPass(colorPass));
+		.RenderPass(pass));
 
 	auto vtxBufDesc = gfx::BufferDesc::Builder()
 		.Size(sizeof(s_TriangleVertexData)).Stride(sizeof(s_TriangleVertexData[0]))
@@ -149,47 +240,30 @@ void Dev::CreateTriangleResources()
 	m_TriangleVtxBufIdx = ctx.GetBindlessIndex(m_TriangleVtxBuf);
 }
 
-void Dev::CreateMeshResources()
+void Dev::CreateCubeResources()
 {
 	gfx::GraphicsContext& ctx = *m_GraphicsContext;
-
-	auto windowSize = m_Window->GetWindowSize();
-
-	m_DepthRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
-		.Type(gfx::TextureType::TEXTURE_2D)
-		.Format(gfx::Format::D32_FLOAT)
-		.Width(windowSize.x)
-		.Height(windowSize.y)
-		.ViewFlags(gfx::TextureViewFlags::DSV)
-		.ClearDepth(1.0f));
-
-	gfx::RenderPassLayout colorDepthPass;
-	colorDepthPass.renderTargets = { ctx.GetTextureFormat(m_ColorRT), gfx::LoadOp::LOAD };
-	colorDepthPass.depthStencilTarget = { gfx::Format::D32_FLOAT, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, gfx::ResourceState::NONE }; // TODO: ctx.GetTextureFormat(m_DepthRT) Query format returns typeless
-
-	m_MeshPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
-		.VS("mesh.hlsl", "VS_Main")
-		.PS("mesh.hlsl", "PS_Main")
-		// TODO: Rasterizer state
-		.RenderPass(colorDepthPass));
 
 	auto vtxBufDesc = gfx::BufferDesc::Builder()
 		.Size(sizeof(s_CubeVertexData)).Stride(sizeof(s_CubeVertexData[0]))
 		.ViewFlags(gfx::BufferViewFlags::SRV)
 		.CpuAccess(gfx::BufferCpuAccess::NONE)
 		.IsRawAccess(true);
-	m_MeshVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
+	m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
 
-	m_MeshColorTex = ctx.CreateTexture("image.tga");
+	m_CubeColorTex = ctx.CreateTexture("image.tga");
 
-	MeshCB cbvData =
+	auto windowSize = m_Window->GetWindowSize();
+	float fieldOfView = float(PI) / 4.0f;
+	float aspectRatio = (float)windowSize.x / (float)windowSize.y;
+	m_CubeCB =
 	{
 		float4x4(),
-		float4x4(),
-		float4x4(),
+		float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
+		float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
 		{ -3.0f, 3.0f, -8.0f },
-		ctx.GetBindlessIndex(m_MeshVtxBuf),
-		ctx.GetBindlessIndex(m_MeshColorTex),
+		ctx.GetBindlessIndex(m_CubeVtxBuf),
+		ctx.GetBindlessIndex(m_CubeColorTex),
 	};
 
 	auto cbvBufDesc = gfx::BufferDesc::Builder()
@@ -198,9 +272,52 @@ void Dev::CreateMeshResources()
 		.CpuAccess(gfx::BufferCpuAccess::WRITE)
 		.Usage(gfx::ResourceUsage::DYNAMIC)
 		.IsRawAccess(true);
-	m_MeshCbvBuf = ctx.CreateBuffer(cbvBufDesc, &cbvData, sizeof(cbvData));
+	m_CubeCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_CubeCB, sizeof(MeshCB));
+}
 
-	m_MeshCbvBufProxy = ctx.LookupShaderResource(m_MeshPso, "CB");
+static Vector<Vtx3fPos3fNormal2fUv> s_SphereVertexData;
+static Vector<uint16> s_SphereIndexData;
+
+void Dev::CreateSphereResources()
+{
+	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+
+	ConstructUVSphere(1.2f, 18, 36, s_SphereVertexData, s_SphereIndexData);
+
+	auto vtxBufDesc = gfx::BufferDesc::Builder()
+		.Size(static_cast<uint32>(s_SphereVertexData.size()) * sizeof(Vtx3fPos3fNormal2fUv)).Stride(sizeof(Vtx3fPos3fNormal2fUv))
+		.ViewFlags(gfx::BufferViewFlags::SRV)
+		.CpuAccess(gfx::BufferCpuAccess::NONE)
+		.IsRawAccess(true);
+	m_SphereVtxBuf = ctx.CreateBuffer(vtxBufDesc, s_SphereVertexData.data(), s_SphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
+
+	auto idxBufDesc = gfx::BufferDesc::Builder()
+		.Size(static_cast<uint32>(s_SphereIndexData.size()) * sizeof(uint16)).Stride(sizeof(uint16))
+		.CpuAccess(gfx::BufferCpuAccess::NONE);
+	m_SphereIdxBuf = ctx.CreateBuffer(idxBufDesc, s_SphereIndexData.data(), s_SphereIndexData.size() * sizeof(uint16));
+
+	m_SphereColorTex = ctx.CreateTexture("2k_earth_daymap.jpg");
+
+	auto windowSize = m_Window->GetWindowSize();
+	float fieldOfView = float(PI) / 4.0f;
+	float aspectRatio = (float)windowSize.x / (float)windowSize.y;
+	m_SphereCB =
+	{
+		float4x4(),
+		float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
+		float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
+		{ -3.0f, 3.0f, -8.0f },
+		ctx.GetBindlessIndex(m_SphereVtxBuf),
+		ctx.GetBindlessIndex(m_SphereColorTex),
+	};
+
+	auto cbvBufDesc = gfx::BufferDesc::Builder()
+		.Size(sizeof(MeshCB))
+		.ViewFlags(gfx::BufferViewFlags::CBV)
+		.CpuAccess(gfx::BufferCpuAccess::WRITE)
+		.Usage(gfx::ResourceUsage::DYNAMIC)
+		.IsRawAccess(true);
+	m_SphereCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_SphereCB, sizeof(MeshCB));
 }
 
 Dev::~Dev()
@@ -212,10 +329,14 @@ Dev::~Dev()
 	ctx.DestroyPipeline(m_MeshPso);
 	ctx.DestroyTexture(m_ColorRT);
 	ctx.DestroyTexture(m_DepthRT);
-	ctx.DestroyTexture(m_MeshColorTex);
+	ctx.DestroyTexture(m_CubeColorTex);
+	ctx.DestroyTexture(m_SphereColorTex);
 	ctx.DestroyBuffer(m_TriangleVtxBuf);
-	ctx.DestroyBuffer(m_MeshVtxBuf);
-	ctx.DestroyBuffer(m_MeshCbvBuf);
+	ctx.DestroyBuffer(m_CubeVtxBuf);
+	ctx.DestroyBuffer(m_CubeCbvBuf);
+	ctx.DestroyBuffer(m_SphereVtxBuf);
+	ctx.DestroyBuffer(m_SphereIdxBuf);
+	ctx.DestroyBuffer(m_SphereCbvBuf);
 }
 
 void Dev::OnUpdate()
@@ -246,22 +367,11 @@ void Dev::OnUpdate()
 	static float rotation = 0.0f;
 	rotation += 0.001f;
 
-	auto windowSize = m_Window->GetWindowSize();
-
-	float fieldOfView = 3.14159f / 4.0f;
-	float aspectRatio = (float)windowSize.x / (float)windowSize.y;
-
-	MeshCB cbvData =
-	{
-		float4x4::rotation_y(rotation),
-		float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
-		float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
-		{ -3.0f, 3.0f, -8.0f },
-		ctx.GetBindlessIndex(m_MeshVtxBuf),
-		ctx.GetBindlessIndex(m_MeshColorTex),
-	};
-
-	ctx.UpdateBuffer(m_MeshCbvBuf, &cbvData, sizeof(MeshCB));
+	float4x4 rotationMatrix = float4x4::rotation_y(rotation);
+	m_CubeCB.model = mul(rotationMatrix, float4x4::translation(2.0f, -0.5f, 0.0f));
+	m_SphereCB.model = mul(rotationMatrix, float4x4::translation(-2.0f, 0.0f, 0.0f));
+	ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(MeshCB));
+	ctx.UpdateBuffer(m_SphereCbvBuf, &m_SphereCB, sizeof(MeshCB));
 
 	ctx.SetRenderTarget(m_ColorRT);
 	ctx.BeginRenderPass(m_TrianglePso);
@@ -271,17 +381,24 @@ void Dev::OnUpdate()
 	}
 	ctx.EndRenderPass();
 
-	if (ctx.GetIsReady(m_MeshVtxBuf) && ctx.GetIsReady(m_MeshColorTex))
+	ctx.SetRenderTarget(m_ColorRT);
+	ctx.SetDepthStencilTarget(m_DepthRT);
+	ctx.BeginRenderPass(m_MeshPso);
 	{
-		ctx.SetRenderTarget(m_ColorRT);
-		ctx.SetDepthStencilTarget(m_DepthRT);
-		ctx.BeginRenderPass(m_MeshPso);
+		if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeColorTex))
 		{
-			ctx.SetShaderResource(m_MeshCbvBuf, m_MeshCbvBufProxy);
+			ctx.SetShaderResource(m_CubeCbvBuf, m_MeshCbvBufProxy);
 			ctx.Draw(36);
 		}
-		ctx.EndRenderPass();
+
+		if (ctx.GetIsReady(m_SphereVtxBuf) && ctx.GetIsReady(m_SphereIdxBuf) && ctx.GetIsReady(m_SphereColorTex))
+		{
+			ctx.SetShaderResource(m_SphereCbvBuf, m_MeshCbvBufProxy);
+ 			ctx.SetIndexBuffer(m_SphereIdxBuf, 0, gfx::Format::R16_UINT);
+			ctx.DrawIndexed(static_cast<uint32>(s_SphereIndexData.size()));
+		}
 	}
+	ctx.EndRenderPass();
 
 	ctx.BeginRenderPass(m_FullscreenPso);
 	{

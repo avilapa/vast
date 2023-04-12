@@ -15,13 +15,15 @@ VertexOutput VS_Main(uint vtxId : SV_VertexID)
     ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[CB.vtxBufIdx];
     Vtx3fPos3fNormal2fUv vtx = vtxBuf.Load<Vtx3fPos3fNormal2fUv>(vtxId * sizeof(Vtx3fPos3fNormal2fUv));
 
-    VertexOutput OUT;
-    OUT.pos = mul(CB.model, float4(vtx.pos, 1));
-    OUT.worldPos = OUT.pos.xyz;
-    OUT.pos = mul(CB.view, OUT.pos);
-    OUT.pos = mul(CB.proj, OUT.pos);
-    OUT.uv = vtx.uv;
-    OUT.worldNormal = mul(CB.model, float4(vtx.normal, 0)).xyz;
+    float4x4 viewProj = mul(CB.proj, CB.view);
+	float3 worldPos = mul(CB.model, float4(vtx.pos, 1)).xyz;
+    float3 worldNormal = mul(CB.model, float4(vtx.normal, 0)).xyz;
+
+	VertexOutput OUT;
+	OUT.pos = mul(viewProj, float4(worldPos, 1));
+    OUT.worldPos = worldPos;
+    OUT.worldNormal = worldNormal;
+	OUT.uv = vtx.uv;
 
     return OUT;
 }
@@ -32,7 +34,6 @@ float4 PS_Main(VertexOutput IN) : SV_TARGET
     SamplerState colorSampler = SamplerDescriptorHeap[PointClampSampler];
 
     float3 color = colorTex.Sample(colorSampler, IN.uv).rgb;
-    //float3 color = IN.worldNormal * 0.5 + 0.5;
     float3 lightDirection = normalize(CB.cameraPos);
     float3 viewDirection = normalize(CB.cameraPos - IN.worldPos);
 

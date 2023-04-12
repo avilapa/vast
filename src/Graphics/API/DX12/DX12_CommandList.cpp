@@ -307,7 +307,7 @@ namespace vast::gfx
 		m_Device.CreateBuffer(uploadBufferDesc, m_BufferUploadHeap.get());
 
 		m_TextureUploadHeap = MakePtr<DX12Buffer>();
-		m_Device.CreateBuffer(uploadBufferDesc, m_TextureUploadHeap.get());
+		m_Device.CreateBuffer(uploadTextureDesc, m_TextureUploadHeap.get());
 	}
 
 	DX12UploadCommandList::~DX12UploadCommandList()

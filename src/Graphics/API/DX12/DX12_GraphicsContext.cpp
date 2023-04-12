@@ -539,8 +539,7 @@ namespace vast::gfx
 
 		UINT numRows[MAX_TEXTURE_SUBRESOURCE_COUNT];
 		uint64 rowSizesInBytes[MAX_TEXTURE_SUBRESOURCE_COUNT];
-		auto rscDesc = tex->resource->GetDesc();
-		m_Device->GetDevice()->GetCopyableFootprints(&rscDesc, 0, upload->numSubresources, 0, upload->subresourceLayouts.data(), numRows, rowSizesInBytes, &upload->size);
+		m_Device->GetDevice()->GetCopyableFootprints(&desc, 0, upload->numSubresources, 0, upload->subresourceLayouts.data(), numRows, rowSizesInBytes, &upload->size);
 
 		upload->data = std::make_unique<uint8[]>(upload->size);
 
