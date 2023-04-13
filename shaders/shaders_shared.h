@@ -31,6 +31,7 @@ struct MeshCB
 
 	uint32 vtxBufIdx;
 	uint32 colorTexIdx;
+	uint32 colorSamplerIdx;
 };
 
 #endif

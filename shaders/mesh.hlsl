@@ -31,7 +31,7 @@ VertexOutput VS_Main(uint vtxId : SV_VertexID)
 float4 PS_Main(VertexOutput IN) : SV_TARGET
 {
     Texture2D<float4> colorTex = ResourceDescriptorHeap[CB.colorTexIdx];
-    SamplerState colorSampler = SamplerDescriptorHeap[PointClampSampler];
+    SamplerState colorSampler = SamplerDescriptorHeap[CB.colorSamplerIdx];
 
     float3 color = colorTex.Sample(colorSampler, IN.uv).rgb;
     float3 lightDirection = normalize(CB.cameraPos);

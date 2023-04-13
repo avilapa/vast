@@ -264,6 +264,7 @@ void Dev::CreateCubeResources()
 		{ -3.0f, 3.0f, -8.0f },
 		ctx.GetBindlessIndex(m_CubeVtxBuf),
 		ctx.GetBindlessIndex(m_CubeColorTex),
+		IDX(gfx::SamplerState::POINT_CLAMP),
 	};
 
 	auto cbvBufDesc = gfx::BufferDesc::Builder()
@@ -309,6 +310,7 @@ void Dev::CreateSphereResources()
 		{ -3.0f, 3.0f, -8.0f },
 		ctx.GetBindlessIndex(m_SphereVtxBuf),
 		ctx.GetBindlessIndex(m_SphereColorTex),
+		IDX(gfx::SamplerState::LINEAR_CLAMP),
 	};
 
 	auto cbvBufDesc = gfx::BufferDesc::Builder()
