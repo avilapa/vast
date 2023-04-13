@@ -279,6 +279,7 @@ namespace vast::gfx
 	struct RenderPassLayout
 	{
 		static constexpr uint32 MAX_RENDERTARGETS = 8;
+
 		Array<RenderTargetDesc, MAX_RENDERTARGETS> renderTargets;
 		RenderTargetDesc depthStencilTarget;
 	};

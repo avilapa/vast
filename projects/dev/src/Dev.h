@@ -1,6 +1,6 @@
+#pragma once
 
 #include "vast.h"
-#include "Graphics/ImguiRenderer.h"
 #include "shaders_shared.h"
 
 using namespace vast;
@@ -12,15 +12,13 @@ public:
 	~Dev();
 
 private:
-	void OnUpdate() override;
+	void Update() override;
+	void Render() override;
 	void OnGUI();
 
 	void CreateTriangleResources(const gfx::RenderPassLayout& pass);
 	void CreateCubeResources();
 	void CreateSphereResources();
-
-	Ptr<gfx::GraphicsContext> m_GraphicsContext;
-	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
 
 	gfx::TextureHandle m_ColorRT;
 	gfx::TextureHandle m_DepthRT;

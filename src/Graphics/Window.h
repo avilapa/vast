@@ -19,7 +19,7 @@ namespace vast
 		static Ptr<Window> Create(const WindowParams& params = WindowParams());
 		virtual ~Window() = default;
 
-		virtual void OnUpdate() = 0;
-		virtual uint2 GetWindowSize() const = 0;
+		virtual void Update() = 0;
+		virtual uint2 GetSize() const = 0;
 	};
 }

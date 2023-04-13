@@ -90,6 +90,9 @@ static Array<Vtx3fPos3fNormal2fUv, 36> s_CubeVertexData =
 } };
 static bool s_ReloadMesh = false;
 
+static Vector<Vtx3fPos3fNormal2fUv> s_SphereVertexData;
+static Vector<uint16> s_SphereIndexData;
+
 void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCount, Vector<Vtx3fPos3fNormal2fUv>& vtx, Vector<uint16>& idx)
 {
 	// Generate vertices
@@ -146,19 +149,13 @@ void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCo
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
-	auto windowSize = m_Window->GetWindowSize();
-
-	gfx::GraphicsParams params;
-	params.swapChainSize = windowSize;
-	params.swapChainFormat = gfx::Format::RGBA8_UNORM;
-	params.backBufferFormat = gfx::Format::RGBA8_UNORM;
-
-	m_GraphicsContext = gfx::GraphicsContext::Create(params);
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+	gfx::GraphicsContext& ctx = GetGraphicsContext();
 
 	// Create intermediate color and depth buffers
 	{
-		m_ColorRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
+		auto windowSize = GetWindow().GetSize();
+
+		m_ColorRT = ctx.CreateTexture(gfx::TextureDesc::Builder()
 			.Type(gfx::TextureType::TEXTURE_2D)
 			.Format(gfx::Format::RGBA8_UNORM)
 			.Width(windowSize.x)
@@ -166,7 +163,7 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 			.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
 			.ClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
 
-		m_DepthRT = m_GraphicsContext->CreateTexture(gfx::TextureDesc::Builder()
+		m_DepthRT = ctx.CreateTexture(gfx::TextureDesc::Builder()
 			.Type(gfx::TextureType::TEXTURE_2D)
 			.Format(gfx::Format::D32_FLOAT)
 			.Width(windowSize.x)
@@ -216,13 +213,11 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
 		.RenderPass(fullscreenPass));
 	m_ColorTexIdx = ctx.GetBindlessIndex(m_ColorRT);
-
-	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
 }
 
 void Dev::CreateTriangleResources(const gfx::RenderPassLayout& pass)
 {
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+	gfx::GraphicsContext& ctx = GetGraphicsContext();
 
 	m_TrianglePso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("triangle.hlsl", "VS_Main")
@@ -242,7 +237,7 @@ void Dev::CreateTriangleResources(const gfx::RenderPassLayout& pass)
 
 void Dev::CreateCubeResources()
 {
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+	gfx::GraphicsContext& ctx = GetGraphicsContext();
 
 	auto vtxBufDesc = gfx::BufferDesc::Builder()
 		.Size(sizeof(s_CubeVertexData)).Stride(sizeof(s_CubeVertexData[0]))
@@ -253,7 +248,7 @@ void Dev::CreateCubeResources()
 
 	m_CubeColorTex = ctx.CreateTexture("image.tga");
 
-	auto windowSize = m_Window->GetWindowSize();
+	auto windowSize = GetWindow().GetSize();
 	float fieldOfView = float(PI) / 4.0f;
 	float aspectRatio = (float)windowSize.x / (float)windowSize.y;
 	m_CubeCB =
@@ -276,12 +271,9 @@ void Dev::CreateCubeResources()
 	m_CubeCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_CubeCB, sizeof(MeshCB));
 }
 
-static Vector<Vtx3fPos3fNormal2fUv> s_SphereVertexData;
-static Vector<uint16> s_SphereIndexData;
-
 void Dev::CreateSphereResources()
 {
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+	gfx::GraphicsContext& ctx = GetGraphicsContext();
 
 	ConstructUVSphere(1.2f, 18, 36, s_SphereVertexData, s_SphereIndexData);
 
@@ -299,7 +291,7 @@ void Dev::CreateSphereResources()
 
 	m_SphereColorTex = ctx.CreateTexture("2k_earth_daymap.jpg");
 
-	auto windowSize = m_Window->GetWindowSize();
+	auto windowSize = GetWindow().GetSize();
 	float fieldOfView = float(PI) / 4.0f;
 	float aspectRatio = (float)windowSize.x / (float)windowSize.y;
 	m_SphereCB =
@@ -324,7 +316,7 @@ void Dev::CreateSphereResources()
 
 Dev::~Dev()
 {
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+	gfx::GraphicsContext& ctx = GetGraphicsContext();
 
 	ctx.DestroyPipeline(m_FullscreenPso);
 	ctx.DestroyPipeline(m_TrianglePso);
@@ -341,19 +333,28 @@ Dev::~Dev()
 	ctx.DestroyBuffer(m_SphereCbvBuf);
 }
 
-void Dev::OnUpdate()
+void Dev::Update()
 {
-	gfx::GraphicsContext& ctx = *m_GraphicsContext;
+	static float rotation = 0.0f;
+	rotation += 0.001f;
 
-	ctx.BeginFrame();
-	m_ImguiRenderer->BeginFrame();
+	float4x4 rotationMatrix = float4x4::rotation_y(rotation);
+	m_CubeCB.model = mul(rotationMatrix, float4x4::translation(2.0f, -0.5f, 0.0f));
+	m_SphereCB.model = mul(rotationMatrix, float4x4::translation(-2.0f, 0.0f, 0.0f));
+
+	OnGUI();
+}
+
+void Dev::Render()
+{
+	gfx::GraphicsContext& ctx = GetGraphicsContext();
 
 	if (s_ReloadTriangle)
 	{
 		s_ReloadTriangle = false;
 		ctx.UpdatePipeline(m_TrianglePso);
 	}
-	
+
 	if (s_ReloadMesh)
 	{
 		s_ReloadMesh = false;
@@ -366,12 +367,6 @@ void Dev::OnUpdate()
 		ctx.UpdateBuffer(m_TriangleVtxBuf, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
 	}
 
-	static float rotation = 0.0f;
-	rotation += 0.001f;
-
-	float4x4 rotationMatrix = float4x4::rotation_y(rotation);
-	m_CubeCB.model = mul(rotationMatrix, float4x4::translation(2.0f, -0.5f, 0.0f));
-	m_SphereCB.model = mul(rotationMatrix, float4x4::translation(-2.0f, 0.0f, 0.0f));
 	ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(MeshCB));
 	ctx.UpdateBuffer(m_SphereCbvBuf, &m_SphereCB, sizeof(MeshCB));
 
@@ -396,7 +391,7 @@ void Dev::OnUpdate()
 		if (ctx.GetIsReady(m_SphereVtxBuf) && ctx.GetIsReady(m_SphereIdxBuf) && ctx.GetIsReady(m_SphereColorTex))
 		{
 			ctx.SetShaderResource(m_SphereCbvBuf, m_MeshCbvBufProxy);
- 			ctx.SetIndexBuffer(m_SphereIdxBuf, 0, gfx::Format::R16_UINT);
+			ctx.SetIndexBuffer(m_SphereIdxBuf, 0, gfx::Format::R16_UINT);
 			ctx.DrawIndexed(static_cast<uint32>(s_SphereIndexData.size()));
 		}
 	}
@@ -408,11 +403,6 @@ void Dev::OnUpdate()
 		ctx.DrawFullscreenTriangle();
 	}
 	ctx.EndRenderPass();
-
-	OnGUI();
-
-	m_ImguiRenderer->EndFrame();
-	ctx.EndFrame();
 }
 
 void Dev::OnGUI()

@@ -83,7 +83,7 @@ namespace vast
 		m_Handle = nullptr;
 	}
 
-	void WindowImpl_Win32::OnUpdate()
+	void WindowImpl_Win32::Update()
 	{
 		VAST_PROFILE_FUNCTION();
 
@@ -114,7 +114,7 @@ namespace vast
 		}
 	}
 
-	uint2 WindowImpl_Win32::GetWindowSize() const
+	uint2 WindowImpl_Win32::GetSize() const
 	{
 		return m_WindowSize;
 	}

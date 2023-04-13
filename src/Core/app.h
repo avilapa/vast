@@ -13,6 +13,12 @@ namespace vast
 	class Window;
 	class WindowResizeEvent;
 
+	namespace gfx
+	{
+		class GraphicsContext;
+		class ImguiRenderer;
+	}
+
 	class WindowedApp : public IApp
 	{
 	public:
@@ -20,15 +26,20 @@ namespace vast
 		~WindowedApp();
 
 		void Run() override;
-		void Quit();
 
 	protected:
-		virtual void OnUpdate();
+		virtual void Update() = 0;
+		virtual void Render() = 0;
+		void Quit();
 
-		void OnWindowCloseEvent();
+		Window& GetWindow() const;
+		gfx::GraphicsContext& GetGraphicsContext() const;
 
+	private:
 		bool m_bRunning;
 		Ptr<Window> m_Window;
+		Ptr<gfx::GraphicsContext> m_GraphicsContext;
+		Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
 	};
 }
 

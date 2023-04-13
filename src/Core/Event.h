@@ -39,10 +39,10 @@ namespace vast
 {
 
 #define __VAST_EVENT_CALLBACK_DATA(fn, eventType) [this](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
-#define __VAST_EVENT_CALLBACK(fn) [this](const IEvent& data) { (void)data; fn(); }
+#define __VAST_EVENT_CALLBACK(fn) [this](const IEvent&) { fn(); }
 
 #define __VAST_EVENT_CALLBACK_STATIC_DATA(fn, eventType) [](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
-#define __VAST_EVENT_CALLBACK_STATIC(fn) [](const IEvent& data) { (void)data; fn(); }
+#define __VAST_EVENT_CALLBACK_STATIC(fn) [](const IEvent&) { fn(); }
 
 #define __VAST_FIRE_EVENT_DATA(eventType, data)	EventSystem::FireEvent<eventType>(data)
 #define __VAST_FIRE_EVENT(eventType) EventSystem::FireEvent<eventType>()

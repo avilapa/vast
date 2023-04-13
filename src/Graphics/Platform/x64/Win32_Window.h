@@ -17,9 +17,9 @@ namespace vast
 		WindowImpl_Win32(const WindowParams& params);
 		virtual ~WindowImpl_Win32();
 
-		void OnUpdate() override;
+		void Update() override;
 
-		uint2 GetWindowSize() const override;
+		uint2 GetSize() const override;
 
 	private:
 		static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam);
