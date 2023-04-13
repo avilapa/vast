@@ -43,6 +43,10 @@ function AddLibrary(lib)
 	end
 end
 
+group "vendor"
 dofile("genie_vendor.lua")
+group "engine"
 dofile("genie_vast.lua")
+group "projects"
 dofile("genie_dev.lua")
+dofile("genie_samples.lua")
