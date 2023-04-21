@@ -1,20 +1,22 @@
+#pragma once
 
 #include "vast.h"
-#include "Graphics/ImguiRenderer.h"
-#include "shaders_shared.h"
 
 using namespace vast;
 
-class Samples : public WindowedApp
+class SampleBase;
+
+class SamplesApp : public WindowedApp
 {
 public:
-	Samples(int argc, char** argv);
-	~Samples();
+	SamplesApp(int argc, char** argv);
+	~SamplesApp();
 
 private:
-	void OnUpdate() override;
+	void Update() override;
+	void Render() override;
 	void OnGUI();
 
-	Ptr<gfx::GraphicsContext> m_GraphicsContext;
-	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
+	Ptr<SampleBase> m_CurrentSample;
+	uint32 m_CurrentSampleIdx;
 };
