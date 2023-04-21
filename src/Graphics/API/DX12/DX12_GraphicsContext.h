@@ -69,6 +69,8 @@ namespace vast::gfx
 
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
+		uint2 GetSwapChainSize() const override;
+		
 		Format GetBackBufferFormat() const override;
 		Format GetTextureFormat(const TextureHandle h) override;
 

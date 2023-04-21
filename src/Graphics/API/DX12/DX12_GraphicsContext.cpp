@@ -643,6 +643,11 @@ namespace vast::gfx
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
 
+	uint2 DX12GraphicsContext::GetSwapChainSize() const
+	{
+		return m_SwapChain->GetSize();
+	}
+
 	Format DX12GraphicsContext::GetBackBufferFormat() const
 	{
 		return m_SwapChain->GetBackBufferFormat();
