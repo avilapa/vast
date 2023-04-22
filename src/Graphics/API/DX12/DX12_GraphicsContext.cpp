@@ -693,6 +693,7 @@ namespace vast::gfx
 			DX12Buffer* buf = m_Buffers->LookupResource(h);
 			VAST_ASSERT(buf);
 			m_Device->DestroyBuffer(buf);
+			buf->Reset();
 			m_Buffers->FreeResource(h);
 		}
 		m_BuffersMarkedForDestruction[frameId].clear();
@@ -702,6 +703,7 @@ namespace vast::gfx
 			DX12Texture* tex = m_Textures->LookupResource(h);
 			VAST_ASSERT(tex);
 			m_Device->DestroyTexture(tex);
+			tex->Reset();
 			m_Textures->FreeResource(h);
 		}
 		m_TexturesMarkedForDestruction[frameId].clear();
@@ -711,6 +713,7 @@ namespace vast::gfx
 			DX12Pipeline* pipeline = m_Pipelines->LookupResource(h);
 			VAST_ASSERT(pipeline);
 			m_Device->DestroyPipeline(pipeline);
+			pipeline->Reset();
 			m_Pipelines->FreeResource(h);
 		}
 		m_PipelinesMarkedForDestruction[frameId].clear();

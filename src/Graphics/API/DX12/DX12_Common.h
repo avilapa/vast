@@ -59,8 +59,18 @@ namespace vast::gfx
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 		uint32 heapIdx = kInvalidHeapIdx;
 		bool isReady = false;
-
 		ResourceUsage usage = ResourceUsage::STATIC;
+
+		virtual void Reset()
+		{
+			resource = nullptr;
+			allocation = nullptr;
+			gpuAddress = 0;
+			state = D3D12_RESOURCE_STATE_COMMON;
+			heapIdx = kInvalidHeapIdx;
+			isReady = false;
+			usage = ResourceUsage::STATIC;
+		}
 	};
 
 	struct DX12Buffer : public Buffer, public DX12Resource
@@ -70,6 +80,16 @@ namespace vast::gfx
 		DX12Descriptor cbv = {};
 		DX12Descriptor srv = {};
 		DX12Descriptor uav = {};
+
+		void Reset() override
+		{
+			data = nullptr;
+			stride = 0;
+			cbv = {};
+			srv = {};
+			uav = {};
+			DX12Resource::Reset();
+		}
 	};
 
 	struct DX12Texture : public Texture, public DX12Resource
@@ -79,6 +99,16 @@ namespace vast::gfx
 		DX12Descriptor srv = {};
 		DX12Descriptor uav = {};
 		D3D12_CLEAR_VALUE clearValue = {};
+
+		void Reset() override
+		{
+			rtv = {};
+			dsv = {};
+			srv = {};
+			uav = {};
+			clearValue = {};
+			DX12Resource::Reset();
+		}
 	};
 
 	struct DX12Shader
@@ -93,11 +123,22 @@ namespace vast::gfx
 		Ref<DX12Shader> vs = nullptr;
 		Ref<DX12Shader> ps = nullptr;
 		ID3D12PipelineState* pipelineState = nullptr;
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc;
-		RenderPassLayout renderPassLayout;
-		Ptr<ShaderResourceProxyTable> resourceProxyTable;
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
+		RenderPassLayout renderPassLayout = {};
+		Ptr<ShaderResourceProxyTable> resourceProxyTable = nullptr;
 		uint8 pushConstantIndex = UINT8_MAX;
 		uint8 descriptorTableIndex = UINT8_MAX;
+
+		void Reset()
+		{
+			vs = nullptr;
+			ps = nullptr;
+			pipelineState = nullptr;
+			desc = {};
+			renderPassLayout = {};
+			pushConstantIndex = UINT8_MAX;
+			descriptorTableIndex = UINT8_MAX;
+		}
 	};
 
 	// - Helpers ---------------------------------------------------------------------------------- //
