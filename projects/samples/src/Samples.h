@@ -19,4 +19,5 @@ private:
 
 	Ptr<SampleBase> m_CurrentSample;
 	uint32 m_CurrentSampleIdx;
+	bool m_SampleInitialized;
 };

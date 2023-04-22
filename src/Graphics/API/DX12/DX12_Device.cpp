@@ -672,6 +672,8 @@ namespace vast::gfx
 
 		DX12SafeRelease(buf->resource);
 		DX12SafeRelease(buf->allocation);
+
+		buf->stride = 0;
 	}
 
 	void DX12Device::DestroyTexture(DX12Texture* tex)
@@ -715,6 +717,11 @@ namespace vast::gfx
 		}
 		DX12SafeRelease(pipeline->desc.pRootSignature);
 		DX12SafeRelease(pipeline->pipelineState);
+		pipeline->desc = {};
+		pipeline->renderPassLayout = {};
+		pipeline->resourceProxyTable = nullptr;
+		pipeline->pushConstantIndex = UINT8_MAX;
+		pipeline->descriptorTableIndex = UINT8_MAX;
 	}
 
 	ID3D12Device5* DX12Device::GetDevice() const
