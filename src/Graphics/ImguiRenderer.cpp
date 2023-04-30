@@ -32,10 +32,10 @@ namespace vast::gfx
 			renderPass.renderTargets[0] = { ctx.GetBackBufferFormat(), LoadOp::LOAD, StoreOp::STORE, ResourceState::PRESENT, bs };
 
 			auto pipelineDesc = PipelineDesc::Builder()
-				.VS("imgui.hlsl", "VS_Main")
-				.PS("imgui.hlsl", "PS_Main")
-				.DepthStencil(DepthStencilState::Preset::kDisabled)
-				.RenderPass(renderPass);
+				.SetVertexShader("imgui.hlsl", "VS_Main")
+				.SetPixelShader("imgui.hlsl", "PS_Main")
+				.SetDepthStencilState(DepthStencilState::Preset::kDisabled)
+				.SetRenderPassLayout(renderPass);
 
 			m_Pipeline = ctx.CreatePipeline(pipelineDesc);
 		}
@@ -47,13 +47,13 @@ namespace vast::gfx
 			io.Fonts->GetTexDataAsRGBA32(&texData, &texWidth, &texHeight);
 
 			auto texDesc = TextureDesc::Builder()
-				.Type(TextureType::TEXTURE_2D)
-				.Format(Format::RGBA8_UNORM_SRGB)
-				.Width(texWidth)
-				.Height(texHeight)
-				.DepthOrArraySize(1)
-				.MipCount(1)
-				.ViewFlags(TextureViewFlags::SRV);
+				.SetType(TextureType::TEXTURE_2D)
+				.SetFormat(Format::RGBA8_UNORM_SRGB)
+				.SetWidth(texWidth)
+				.SetHeight(texHeight)
+				.SetDepthOrArraySize(1)
+				.SetMipCount(1)
+				.SetViewFlags(TextureViewFlags::SRV);
 
 			m_FontTex = ctx.CreateTexture(texDesc, texData);
 

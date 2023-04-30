@@ -195,12 +195,12 @@ namespace vast::gfx
 
 	struct BufferDesc::Builder
 	{
-		Builder& Size(uint32 size) { desc.size = size; return *this; }
-		Builder& Stride(uint32 stride) { desc.stride = stride; return *this; }
-		Builder& ViewFlags(BufferViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
-		Builder& CpuAccess(BufferCpuAccess cpuAccess) { desc.cpuAccess = cpuAccess; return *this; }
-		Builder& Usage(ResourceUsage usage) { desc.usage = usage; return *this; }
-		Builder& IsRawAccess(bool isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
+		Builder& SetSize(uint32 size) { desc.size = size; return *this; }
+		Builder& SetStride(uint32 stride) { desc.stride = stride; return *this; }
+		Builder& SetViewFlags(BufferViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
+		Builder& SetCpuAccess(BufferCpuAccess cpuAccess) { desc.cpuAccess = cpuAccess; return *this; }
+		Builder& SetUsage(ResourceUsage usage) { desc.usage = usage; return *this; }
+		Builder& SetIsRawAccess(bool isRawAccess) { desc.isRawAccess = isRawAccess; return *this; }
 
 		operator BufferDesc() { return desc; }
 		BufferDesc desc;
@@ -222,15 +222,15 @@ namespace vast::gfx
 
 	struct TextureDesc::Builder
 	{
-		Builder& Type(TextureType type) { desc.type = type; return *this; }
-		Builder& Format(Format format) { desc.format = format; return *this; }
-		Builder& Width(uint32 width) { desc.width = width; return *this; }
-		Builder& Height(uint32 height) { desc.height = height; return *this; }
-		Builder& DepthOrArraySize(uint32 depthOrArraySize) { desc.depthOrArraySize = depthOrArraySize; return *this; }
-		Builder& MipCount(uint32 mipCount) { desc.mipCount = mipCount; return *this; }
-		Builder& ViewFlags(TextureViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
-		Builder& ClearColor(float4 color) { desc.clear = color; return *this; } // RTV only
-		Builder& ClearDepth(float depth) { desc.clear = depth; return *this; }	// DSV only
+		Builder& SetType(TextureType type) { desc.type = type; return *this; }
+		Builder& SetFormat(Format format) { desc.format = format; return *this; }
+		Builder& SetWidth(uint32 width) { desc.width = width; return *this; }
+		Builder& SetHeight(uint32 height) { desc.height = height; return *this; }
+		Builder& SetDepthOrArraySize(uint32 depthOrArraySize) { desc.depthOrArraySize = depthOrArraySize; return *this; }
+		Builder& SetMipCount(uint32 mipCount) { desc.mipCount = mipCount; return *this; }
+		Builder& SetViewFlags(TextureViewFlags viewFlags) { desc.viewFlags = viewFlags; return *this; }
+		Builder& SetRenderTargetClearColor(float4 color) { desc.clear = color; return *this; } // RTV only
+		Builder& SetDepthClearValue(float depth) { desc.clear = depth; return *this; }	// DSV only
 
 		operator TextureDesc() { return desc; }
 		TextureDesc desc;
@@ -316,11 +316,11 @@ namespace vast::gfx
 
 	struct PipelineDesc::Builder
 	{
-		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
- 		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
-		Builder& DepthStencil(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
-		Builder& Rasterizer(RasterizerState rs) { desc.rasterizerState = rs; return *this; }
-		Builder& RenderPass(RenderPassLayout pass) { desc.renderPassLayout = pass; return *this; }
+		Builder& SetVertexShader(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
+ 		Builder& SetPixelShader(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
+		Builder& SetDepthStencilState(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
+		Builder& SetRasterizerState(RasterizerState rs) { desc.rasterizerState = rs; return *this; }
+		Builder& SetRenderPassLayout(RenderPassLayout pass) { desc.renderPassLayout = pass; return *this; }
 
 		operator PipelineDesc() { return desc; }
 		PipelineDesc desc;

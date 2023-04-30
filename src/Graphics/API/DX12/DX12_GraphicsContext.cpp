@@ -64,10 +64,10 @@ namespace vast::gfx
 		uint32 tempFrameBufferSize = 1024 * 1024;
 
 		auto tempFrameBufferDesc = BufferDesc::Builder()
-			.Size(tempFrameBufferSize * 2) // TODO: Alignment?
-			.CpuAccess(gfx::BufferCpuAccess::WRITE)
+			.SetSize(tempFrameBufferSize * 2) // TODO: Alignment?
+			.SetCpuAccess(gfx::BufferCpuAccess::WRITE)
 			// TODO: Should this be dynamic?
-			.IsRawAccess(true);
+			.SetIsRawAccess(true);
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -516,13 +516,13 @@ namespace vast::gfx
 		TextureType type = TranslateFromDX12(static_cast<D3D12_RESOURCE_DIMENSION>(metaData.dimension));
 
 		auto texDesc = gfx::TextureDesc::Builder()
-			.Type(type)
-			.Format(TranslateFromDX12(metaData.format))
-			.Width(static_cast<uint32>(metaData.width))
-			.Height(static_cast<uint32>(metaData.height))
-			.DepthOrArraySize(static_cast<uint32>((type == TextureType::TEXTURE_3D) ? metaData.depth : metaData.arraySize))
-			.MipCount(static_cast<uint32>(metaData.mipLevels))
-			.ViewFlags(gfx::TextureViewFlags::SRV); // TODO: Provide option to add more flags when needed
+			.SetType(type)
+			.SetFormat(TranslateFromDX12(metaData.format))
+			.SetWidth(static_cast<uint32>(metaData.width))
+			.SetHeight(static_cast<uint32>(metaData.height))
+			.SetDepthOrArraySize(static_cast<uint32>((type == TextureType::TEXTURE_3D) ? metaData.depth : metaData.arraySize))
+			.SetMipCount(static_cast<uint32>(metaData.mipLevels))
+			.SetViewFlags(gfx::TextureViewFlags::SRV); // TODO: Provide option to add more flags when needed
 
 		return CreateTexture(texDesc, image.GetPixels());
 	}

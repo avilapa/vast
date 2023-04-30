@@ -26,9 +26,9 @@ public:
 		};
 
 		m_MeshPso = m_GraphicsContext.CreatePipeline(gfx::PipelineDesc::Builder()
-			.VS("mesh.hlsl", "VS_Main")
-			.PS("mesh.hlsl", "PS_Main")
-			.RenderPass(colorDepthPass));
+			.SetVertexShader("mesh.hlsl", "VS_Main")
+			.SetPixelShader("mesh.hlsl", "PS_Main")
+			.SetRenderPassLayout(colorDepthPass));
 		m_MeshCbvBufProxy = m_GraphicsContext.LookupShaderResource(m_MeshPso, "CB");
 
 		Array<Vtx3fPos3fNormal2fUv, 36> cubeVertexData =
@@ -72,10 +72,10 @@ public:
 		} };
 
 		auto vtxBufDesc = gfx::BufferDesc::Builder()
-			.Size(sizeof(cubeVertexData)).Stride(sizeof(cubeVertexData[0]))
-			.ViewFlags(gfx::BufferViewFlags::SRV)
-			.CpuAccess(gfx::BufferCpuAccess::NONE)
-			.IsRawAccess(true);
+			.SetSize(sizeof(cubeVertexData)).SetStride(sizeof(cubeVertexData[0]))
+			.SetViewFlags(gfx::BufferViewFlags::SRV)
+			.SetCpuAccess(gfx::BufferCpuAccess::NONE)
+			.SetIsRawAccess(true);
 		m_MeshVtxBuf = m_GraphicsContext.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
 
 		m_MeshColorTex = m_GraphicsContext.CreateTexture("image.tga");
@@ -95,9 +95,9 @@ public:
 		};
 
 		auto cbvBufDesc = gfx::BufferDesc::Builder()
-			.Size(sizeof(MeshCB))
-			.ViewFlags(gfx::BufferViewFlags::CBV)
-			.Usage(gfx::ResourceUsage::DYNAMIC);
+			.SetSize(sizeof(MeshCB))
+			.SetViewFlags(gfx::BufferViewFlags::CBV)
+			.SetUsage(gfx::ResourceUsage::DYNAMIC);
 
 		m_MeshCbvBuf = m_GraphicsContext.CreateBuffer(cbvBufDesc, &m_MeshCB, sizeof(MeshCB));
 	}

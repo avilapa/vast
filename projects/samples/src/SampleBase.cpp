@@ -32,20 +32,20 @@ SampleBase3D::SampleBase3D(gfx::GraphicsContext& ctx)
 
 	// Create intermediate color and depth buffers
 	m_ColorRT = m_GraphicsContext.CreateTexture(gfx::TextureDesc::Builder()
-		.Type(gfx::TextureType::TEXTURE_2D)
-		.Format(gfx::Format::RGBA8_UNORM)
-		.Width(windowSize.x)
-		.Height(windowSize.y)
-		.ViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
-		.ClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
+		.SetType(gfx::TextureType::TEXTURE_2D)
+		.SetFormat(gfx::Format::RGBA8_UNORM)
+		.SetWidth(windowSize.x)
+		.SetHeight(windowSize.y)
+		.SetViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
+		.SetRenderTargetClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
 
 	m_DepthRT = m_GraphicsContext.CreateTexture(gfx::TextureDesc::Builder()
-		.Type(gfx::TextureType::TEXTURE_2D)
-		.Format(gfx::Format::D32_FLOAT)
-		.Width(windowSize.x)
-		.Height(windowSize.y)
-		.ViewFlags(gfx::TextureViewFlags::DSV)
-		.ClearDepth(1.0f));
+		.SetType(gfx::TextureType::TEXTURE_2D)
+		.SetFormat(gfx::Format::D32_FLOAT)
+		.SetWidth(windowSize.x)
+		.SetHeight(windowSize.y)
+		.SetViewFlags(gfx::TextureViewFlags::DSV)
+		.SetDepthClearValue(1.0f));
 
 	gfx::RenderPassLayout fullscreenPass =
 	{
@@ -53,10 +53,10 @@ SampleBase3D::SampleBase3D(gfx::GraphicsContext& ctx)
 	};
 
 	m_FullscreenPso = m_GraphicsContext.CreatePipeline(gfx::PipelineDesc::Builder()
-		.VS("fullscreen.hlsl", "VS_Main")
-		.PS("fullscreen.hlsl", "PS_Main")
-		.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-		.RenderPass(fullscreenPass));
+		.SetVertexShader("fullscreen.hlsl", "VS_Main")
+		.SetPixelShader("fullscreen.hlsl", "PS_Main")
+		.SetDepthStencilState(gfx::DepthStencilState::Preset::kDisabled)
+		.SetRenderPassLayout(fullscreenPass));
 
 	m_ColorTexIdx = m_GraphicsContext.GetBindlessIndex(m_ColorRT);
 }

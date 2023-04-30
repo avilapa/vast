@@ -36,17 +36,17 @@ public:
 
 		// TODO: Move triangle.hlsl to a project local shaders folder?
 		m_TrianglePso = m_GraphicsContext.CreatePipeline(gfx::PipelineDesc::Builder()
-			.VS("triangle.hlsl", "VS_Main")
-			.PS("triangle.hlsl", "PS_Main")
-			.DepthStencil(gfx::DepthStencilState::Preset::kDisabled)
-			.RenderPass(trianglePass));
+			.SetVertexShader("triangle.hlsl", "VS_Main")
+			.SetPixelShader("triangle.hlsl", "PS_Main")
+			.SetDepthStencilState(gfx::DepthStencilState::Preset::kDisabled)
+			.SetRenderPassLayout(trianglePass));
 
 		auto vtxBufDesc = gfx::BufferDesc::Builder()
-			.Size(sizeof(m_TriangleVertexData)).Stride(sizeof(m_TriangleVertexData[0]))
-			.ViewFlags(gfx::BufferViewFlags::SRV)
-			.CpuAccess(gfx::BufferCpuAccess::WRITE)
-			.Usage(gfx::ResourceUsage::DYNAMIC)
-			.IsRawAccess(true);
+			.SetSize(sizeof(m_TriangleVertexData)).SetStride(sizeof(m_TriangleVertexData[0]))
+			.SetViewFlags(gfx::BufferViewFlags::SRV)
+			.SetCpuAccess(gfx::BufferCpuAccess::WRITE)
+			.SetUsage(gfx::ResourceUsage::DYNAMIC)
+			.SetIsRawAccess(true);
 
 		m_TriangleVtxBuf = m_GraphicsContext.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		m_TriangleVtxBufIdx = m_GraphicsContext.GetBindlessIndex(m_TriangleVtxBuf);
