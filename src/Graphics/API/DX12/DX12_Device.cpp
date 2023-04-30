@@ -572,8 +572,8 @@ namespace vast::gfx
 
 		psDesc.SampleMask = 0xFFFFFFFF;
 
-		psDesc.RasterizerState.FillMode					= D3D12_FILL_MODE_SOLID;
-		psDesc.RasterizerState.CullMode					= D3D12_CULL_MODE_NONE;
+		psDesc.RasterizerState.FillMode					= TranslateToDX12(desc.rasterizerState.fillMode);
+		psDesc.RasterizerState.CullMode					= TranslateToDX12(desc.rasterizerState.cullMode);
 		psDesc.RasterizerState.FrontCounterClockwise	= false;
 		psDesc.RasterizerState.DepthBias				= D3D12_DEFAULT_DEPTH_BIAS;
 		psDesc.RasterizerState.DepthBiasClamp			= D3D12_DEFAULT_DEPTH_BIAS_CLAMP;

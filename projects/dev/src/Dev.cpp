@@ -9,7 +9,6 @@
 //	> Shader Visual Studio integration 2: shader compilation from solution.
 //		- req: Shader Precompilation
 //
-//	> GFX Rasterizer State.
 //	> GFX Stencil State.
 //	> GFX Compute Shaders.
 //	> GFX Display List: command recording for later execution.
@@ -19,7 +18,6 @@
 //		- req: Camera Object
 //	> GFX Deferred Rendering.
 //	> GFX Line Rendering.
-//		- req: Rasterizer State
 //
 //	> Object Loading from file (.obj).
 //	> Scene Loading (.gltf, .usd?).
@@ -200,7 +198,7 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	m_MeshPso = ctx.CreatePipeline(gfx::PipelineDesc::Builder()
 		.VS("mesh.hlsl", "VS_Main")
 		.PS("mesh.hlsl", "PS_Main")
-		// TODO: Rasterizer state
+		.Rasterizer(gfx::RasterizerState{gfx::FillMode::WIREFRAME, gfx::CullMode::NONE})
 		.RenderPass(colorDepthPass));
 	m_MeshCbvBufProxy = ctx.LookupShaderResource(m_MeshPso, "CB");
 

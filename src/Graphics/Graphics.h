@@ -99,6 +99,19 @@ namespace vast::gfx
 		ALWAYS
 	};
 
+	enum class FillMode
+	{
+		SOLID,
+		WIREFRAME,
+	};
+
+	enum class CullMode
+	{
+		NONE,
+		FRONT,
+		BACK,
+	};
+
 	enum class Blend
 	{
 		ZERO,
@@ -247,6 +260,12 @@ namespace vast::gfx
 		static constexpr DepthStencilState kEnabledWrite{ true,  true,	CompareFunc::LESS_EQUAL };
 	};
 
+	struct RasterizerState
+	{
+		FillMode fillMode = FillMode::SOLID;
+		CullMode cullMode = CullMode::NONE;
+	};
+
 	struct BlendState
 	{
 		bool blendEnable = false;
@@ -290,6 +309,7 @@ namespace vast::gfx
 		ShaderDesc ps;
 		RenderPassLayout renderPassLayout;
 		DepthStencilState depthStencilState;
+		RasterizerState rasterizerState;
 
 		struct Builder;
 	};
@@ -299,6 +319,7 @@ namespace vast::gfx
 		Builder& VS(const std::string& fileName, const std::string& entryPoint) { desc.vs = ShaderDesc{ ShaderType::VERTEX, fileName, entryPoint }; return *this; }
  		Builder& PS(const std::string& fileName, const std::string& entryPoint) { desc.ps = ShaderDesc{ ShaderType::PIXEL,  fileName, entryPoint }; return *this; }
 		Builder& DepthStencil(DepthStencilState ds) { desc.depthStencilState = ds; return *this; }
+		Builder& Rasterizer(RasterizerState rs) { desc.rasterizerState = rs; return *this; }
 		Builder& RenderPass(RenderPassLayout pass) { desc.renderPassLayout = pass; return *this; }
 
 		operator PipelineDesc() { return desc; }

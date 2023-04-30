@@ -239,6 +239,27 @@ namespace vast::gfx
 		}
 	}
 
+	constexpr D3D12_FILL_MODE TranslateToDX12(const FillMode& v)
+	{
+		switch (v)
+		{
+		case FillMode::SOLID:		return D3D12_FILL_MODE_SOLID;
+		case FillMode::WIREFRAME:	return D3D12_FILL_MODE_WIREFRAME;
+		default: VAST_ASSERTF(0, "FillMode not supported on this platform."); return D3D12_FILL_MODE_SOLID;
+		}
+	}
+
+	constexpr D3D12_CULL_MODE TranslateToDX12(const CullMode& v)
+	{
+		switch (v)
+		{
+		case CullMode::NONE:	return D3D12_CULL_MODE_NONE;
+		case CullMode::FRONT:	return D3D12_CULL_MODE_FRONT;
+		case CullMode::BACK:	return D3D12_CULL_MODE_BACK;
+		default: VAST_ASSERTF(0, "CullMode not supported on this platform."); return D3D12_CULL_MODE_NONE;
+		}
+	}
+
 	constexpr D3D12_BLEND TranslateToDX12(const Blend& v)
 	{
 		switch (v)
