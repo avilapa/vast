@@ -30,6 +30,8 @@ namespace vast::gfx
 		void BeginFrame() override;
 		void EndFrame() override;
 
+		void FlushGPU() override;
+
 		void SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt) override;
 		void SetRenderTarget(const TextureHandle h) override;
 		void SetDepthStencilTarget(const TextureHandle h) override;

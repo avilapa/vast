@@ -41,6 +41,8 @@ namespace vast::gfx
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
+		// Waits for all active GPU work to finish as well as any queued resource destructions.
+		virtual void FlushGPU() = 0;
 
 		virtual void SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt) = 0;
 		virtual void SetRenderTarget(const TextureHandle h) = 0;

@@ -147,6 +147,16 @@ namespace vast::gfx
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
+	void DX12GraphicsContext::FlushGPU()
+	{
+		WaitForIdle();
+
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			ProcessDestructions(i);
+		}
+	}
+
 	void DX12GraphicsContext::SubmitCommandList(DX12CommandList& cmdList)
 	{
 		switch (cmdList.GetCommandType())

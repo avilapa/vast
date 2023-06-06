@@ -38,15 +38,22 @@ void SamplesApp::Update()
 {
 	if (!m_SampleInitialized)
 	{
+		gfx::GraphicsContext& ctx = GetGraphicsContext();
+
 		if (m_CurrentSample)
 		{
 			m_CurrentSample = nullptr;
+			// Flushing the GPU is not strictly necessary, but it ensures all resources for the 
+			// current scene are destroyed before loading a new scene.
+			ctx.FlushGPU();
 		}
+
+		VAST_WARNING("[Samples] Loading sample scene '{}'", s_SampleSceneNames[m_CurrentSampleIdx]);
 
 		switch (m_CurrentSampleIdx)
 		{
-		case IDX(SampleScenes::HELLO_TRIANGLE): m_CurrentSample = MakePtr<HelloTriangle>(GetGraphicsContext()); break;
-		case IDX(SampleScenes::HELLO_3D): m_CurrentSample = MakePtr<Hello3D>(GetGraphicsContext()); break;
+		case IDX(SampleScenes::HELLO_TRIANGLE): m_CurrentSample = MakePtr<HelloTriangle>(ctx); break;
+		case IDX(SampleScenes::HELLO_3D): m_CurrentSample = MakePtr<Hello3D>(ctx); break;
 		default: return;
 		}
 
