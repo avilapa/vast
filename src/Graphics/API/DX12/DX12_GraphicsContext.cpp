@@ -39,9 +39,9 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_FUNCTION();
 
-		m_Buffers = MakePtr<ResourceHandlePool<Buffer, DX12Buffer, NUM_BUFFERS>>();
-		m_Textures = MakePtr<ResourceHandlePool<Texture, DX12Texture, NUM_TEXTURES>>();
-		m_Pipelines = MakePtr<ResourceHandlePool<Pipeline, DX12Pipeline, NUM_PIPELINES>>();
+		m_Buffers   = MakePtr<HandlePool<DX12Buffer,   Buffer,   NUM_BUFFERS>>();
+		m_Textures  = MakePtr<HandlePool<DX12Texture,  Texture,  NUM_TEXTURES>>();
+		m_Pipelines = MakePtr<HandlePool<DX12Pipeline, Pipeline, NUM_PIPELINES>>();
 
 		m_Device = MakePtr<DX12Device>();
 
@@ -635,7 +635,7 @@ namespace vast::gfx
 
 		return BufferView
 		{ 
-			// TODO: If we separate handle from data in ResourceHandles each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
+			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
 			m_TempFrameAllocators[m_FrameId].buffer, 
 			(uint8*)(buf->data + offset),
 			offset,

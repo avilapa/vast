@@ -2,8 +2,8 @@
 
 #include "Core/Core.h"
 #include "Core/Types.h"
+#include "Core/Handles.h"
 #include "Graphics/Graphics.h"
-#include "Graphics/ResourceHandles.h"
 #include "Graphics/ShaderResourceProxy.h"
 
 namespace vast::gfx
@@ -12,13 +12,13 @@ namespace vast::gfx
 	class Texture;
 	class Pipeline;
 
-	using BufferHandle = ResourceHandle<Buffer>;
-	using TextureHandle	= ResourceHandle<Texture>;
-	using PipelineHandle = ResourceHandle<Pipeline>;
+	using BufferHandle = Handle<Buffer>;
+	using TextureHandle	= Handle<Texture>;
+	using PipelineHandle = Handle<Pipeline>;
 
 	struct BufferView
 	{
-		ResourceHandle<Buffer> buffer;
+		Handle<Buffer> buffer;
 		uint8* data;
 		uint32 offset;
 	};

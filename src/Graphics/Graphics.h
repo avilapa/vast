@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Graphics/ResourceHandles.h"
-
 namespace vast::gfx
 {
 

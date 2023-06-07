@@ -1,6 +1,6 @@
 #pragma once
 
- #include "Graphics/ResourceHandles.h"
+ #include "Core/Handles.h"
 
 namespace vast::gfx
 {
@@ -26,7 +26,7 @@ namespace vast::gfx
 	template<typename T>
 	class Resource
 	{
-		template<typename T, typename Timpl, const uint32 numResources> friend class ResourceHandlePool;
+		template<typename T, typename H, const uint32 SIZE> friend class HandlePool;
 	public:
 		Resource(ResourceType type) : m_Type(type) {}
 
@@ -37,7 +37,7 @@ namespace vast::gfx
 		ResourceType m_Type;
 
 	private:
-		ResourceHandle<T> m_Handle;
+		Handle<T> m_Handle;
 	};
 
 #define __VAST_RESOURCE_TYPE_COMMON_DECL(className, resourceType)											\
