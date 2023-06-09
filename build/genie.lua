@@ -8,7 +8,7 @@ solution "vast"
 	platforms { "x64" }
 		
 	language "C++"
-	flags { "Cpp17" }
+	flags { "CppLatest" }
 	
 	-- TODO: Add platform specific folders
 	configuration "Debug"

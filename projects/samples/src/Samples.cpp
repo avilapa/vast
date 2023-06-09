@@ -14,7 +14,7 @@ enum class SampleScenes
 	HELLO_3D,
 	COUNT,
 };
-static constexpr char* s_SampleSceneNames[]
+static const char* s_SampleSceneNames[]
 {
 	"Hello Triangle",
 	"Hello 3D",
@@ -43,7 +43,7 @@ void SamplesApp::Update()
 		if (m_CurrentSample)
 		{
 			m_CurrentSample = nullptr;
-			// Flushing the GPU is not strictly necessary, but it ensures all resources for the 
+			// Flushing the GPU is not strictly necessary, but it ensures all resources used in the 
 			// current scene are destroyed before loading a new scene.
 			ctx.FlushGPU();
 		}

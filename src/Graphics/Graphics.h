@@ -13,7 +13,7 @@ namespace vast::gfx
 		COUNT
 	};
 
-	static constexpr char* g_SamplerNames[]
+	static const char* g_SamplerNames[]
 	{
 		"LinearWrapSampler",
 		"LinearClampSampler",

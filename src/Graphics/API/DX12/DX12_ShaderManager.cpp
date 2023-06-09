@@ -3,9 +3,9 @@
 
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
-static constexpr wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
+static const wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
 // TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
-static constexpr wchar_t* SHADER_OUTPUT_PATH = L"../../shaders/compiled/";
+static const wchar_t* SHADER_OUTPUT_PATH = L"../../shaders/compiled/";
 
 // Note: Root 32 Bit constants are identified on shaders by using a reserved binding point b999.
 // This is because DXC shader reflection has no way to tell apart a CBV from a Root 32 Bit Constant.

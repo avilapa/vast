@@ -13,7 +13,7 @@ namespace vast::gfx
 		COUNT,
 	};
 
-	constexpr char* g_ResourceTypeNames[]
+	static const char* g_ResourceTypeNames[]
 	{
 		"Unknown",
 		"Buffer",
@@ -40,10 +40,10 @@ namespace vast::gfx
 		Handle<T> m_Handle;
 	};
 
-#define __VAST_RESOURCE_TYPE_COMMON_DECL(className, resourceType)											\
-	className() : Resource<className>(resourceType) {}														\
-	static constexpr ResourceType GetStaticResourceType() { return resourceType; }							\
-	static constexpr char* GetStaticResourceTypeName() { return g_ResourceTypeNames[IDX(resourceType)]; }
+#define __VAST_RESOURCE_TYPE_COMMON_DECL(className, resourceType)										\
+	className() : Resource<className>(resourceType) {}													\
+	static const ResourceType GetStaticResourceType() { return resourceType; }							\
+	static const char* GetStaticResourceTypeName() { return g_ResourceTypeNames[IDX(resourceType)]; }
 
 	class Buffer : public Resource<Buffer>
 	{

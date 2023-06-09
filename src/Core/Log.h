@@ -1,6 +1,9 @@
 #pragma once
 
-// TODO: Unable to compile this library using any version higher than C++17.
+#if (_MSC_VER >= 1929) && (__cplusplus >= 202002L) // VS2019 16.10 && C++20
+// Read more: https://github.com/gabime/spdlog/pull/2170
+#define SPDLOG_USE_STD_FORMAT
+#endif
 #include "spdlog/include/spdlog/spdlog.h"
 
 namespace vast

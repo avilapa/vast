@@ -15,7 +15,7 @@
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 
-static constexpr wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
+static const wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 
 namespace vast::gfx
 {

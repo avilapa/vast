@@ -63,9 +63,9 @@ namespace vast
 		virtual ~IEvent() = default;
 	};
 
-#define EVENT_CLASS_DECL_STATIC_TYPE(type)								\
-	static constexpr EventType GetType() { return EventType::type; }	\
-	static constexpr char* GetName() { return STR(type##Event); }
+#define EVENT_CLASS_DECL_STATIC_TYPE(type)							\
+	static const EventType GetType() { return EventType::type; }	\
+	static const char* GetName() { return STR(type##Event); }
 
 	class EventSystem
 	{
