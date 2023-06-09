@@ -23,9 +23,6 @@ solution "vast"
 		flags 		{ "Optimize" }
 		defines 	{ "VAST_RELEASE" }
 		
-	configuration "vs2019"
-	windowstargetplatformversion "10.0"
-
 	startproject "dev"
 	
 function AddLibrary(lib)
