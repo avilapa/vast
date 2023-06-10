@@ -63,11 +63,13 @@ namespace vast::gfx
 
 		uint32 tempFrameBufferSize = 1024 * 1024;
 
-		auto tempFrameBufferDesc = BufferDesc::Builder()
-			.SetSize(tempFrameBufferSize * 2) // TODO: Alignment?
-			.SetCpuAccess(gfx::BufferCpuAccess::WRITE)
+		BufferDesc tempFrameBufferDesc =
+		{
+			.size = tempFrameBufferSize * 2, // TODO: Alignment?
+			.cpuAccess = BufCpuAccess::WRITE,
 			// TODO: Should this be dynamic?
-			.SetIsRawAccess(true);
+			.isRawAccess = true,
+		};
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -289,7 +291,7 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetVertexBuffer(*buf, offset, stride);
 	}
 
-	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, Format format /* = Format::UNKNOWN */)
+	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, TexFormat format /* = Format::UNKNOWN */)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
@@ -380,7 +382,7 @@ namespace vast::gfx
 		m_Device->CreateBuffer(desc, buf);
 		if (initialData != nullptr)
 		{
-			if (desc.cpuAccess == BufferCpuAccess::WRITE)
+			if (desc.cpuAccess == BufCpuAccess::WRITE)
 			{
 				SetBufferData(buf, initialData, dataSize);
 			}
@@ -523,17 +525,18 @@ namespace vast::gfx
 			format = DirectX::MakeSRGB(format);
 		}
 
-		TextureType type = TranslateFromDX12(static_cast<D3D12_RESOURCE_DIMENSION>(metaData.dimension));
+		TexType type = TranslateFromDX12(static_cast<D3D12_RESOURCE_DIMENSION>(metaData.dimension));
 
-		auto texDesc = gfx::TextureDesc::Builder()
-			.SetType(type)
-			.SetFormat(TranslateFromDX12(metaData.format))
-			.SetWidth(static_cast<uint32>(metaData.width))
-			.SetHeight(static_cast<uint32>(metaData.height))
-			.SetDepthOrArraySize(static_cast<uint32>((type == TextureType::TEXTURE_3D) ? metaData.depth : metaData.arraySize))
-			.SetMipCount(static_cast<uint32>(metaData.mipLevels))
-			.SetViewFlags(gfx::TextureViewFlags::SRV); // TODO: Provide option to add more flags when needed
-
+		TextureDesc texDesc =
+		{
+			.type = type,
+			.format = TranslateFromDX12(metaData.format),
+			.width  = static_cast<uint32>(metaData.width),
+			.height = static_cast<uint32>(metaData.height),
+			.depthOrArraySize = static_cast<uint32>((type == TexType::TEXTURE_3D) ? metaData.depth : metaData.arraySize),
+			.mipCount = static_cast<uint32>(metaData.mipLevels),
+			.viewFlags = TexViewFlags::SRV, // TODO: Provide option to add more flags when needed
+		};
 		return CreateTexture(texDesc, image.GetPixels());
 	}
 
@@ -658,7 +661,7 @@ namespace vast::gfx
 		return m_SwapChain->GetSize();
 	}
 
-	Format DX12GraphicsContext::GetBackBufferFormat() const
+	TexFormat DX12GraphicsContext::GetBackBufferFormat() const
 	{
 		return m_SwapChain->GetBackBufferFormat();
 	}
@@ -675,7 +678,7 @@ namespace vast::gfx
 		return m_Textures->LookupResource(h)->heapIdx;
 	}
 	
-	Format DX12GraphicsContext::GetTextureFormat(const TextureHandle h)
+	TexFormat DX12GraphicsContext::GetTextureFormat(const TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return TranslateFromDX12(m_Textures->LookupResource(h)->resource->GetDesc().Format);

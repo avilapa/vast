@@ -170,55 +170,55 @@ namespace vast::gfx
 		return (uint64)((valueToAlign + alignment) & ~alignment);
 	}
 
-	constexpr DXGI_FORMAT TranslateToDX12(const Format& v)
+	constexpr DXGI_FORMAT TranslateToDX12(const TexFormat& v)
 	{
 		switch (v)
 		{
-		case Format::UNKNOWN:			return DXGI_FORMAT_UNKNOWN;
-		case Format::RG32_FLOAT:		return DXGI_FORMAT_R32G32_FLOAT;
-		case Format::RGBA8_UNORM:		return DXGI_FORMAT_R8G8B8A8_UNORM;
-		case Format::RGBA8_UNORM_SRGB:	return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		case Format::D32_FLOAT:			return DXGI_FORMAT_D32_FLOAT;
-		case Format::R16_UINT:			return DXGI_FORMAT_R16_UINT;
+		case TexFormat::UNKNOWN:			return DXGI_FORMAT_UNKNOWN;
+		case TexFormat::RG32_FLOAT:		return DXGI_FORMAT_R32G32_FLOAT;
+		case TexFormat::RGBA8_UNORM:		return DXGI_FORMAT_R8G8B8A8_UNORM;
+		case TexFormat::RGBA8_UNORM_SRGB:	return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		case TexFormat::D32_FLOAT:			return DXGI_FORMAT_D32_FLOAT;
+		case TexFormat::R16_UINT:			return DXGI_FORMAT_R16_UINT;
 		default: VAST_ASSERTF(0, "Format not supported on this platform."); return DXGI_FORMAT_UNKNOWN;
 		}
 	}
 
-	constexpr Format TranslateFromDX12(const DXGI_FORMAT& v)
+	constexpr TexFormat TranslateFromDX12(const DXGI_FORMAT& v)
 	{
 		switch (v)
 		{
-		case DXGI_FORMAT_UNKNOWN:				return Format::UNKNOWN;
-		case DXGI_FORMAT_R32G32_FLOAT:			return Format::RG32_FLOAT;
-		case DXGI_FORMAT_R8G8B8A8_UNORM:		return Format::RGBA8_UNORM;
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return Format::RGBA8_UNORM_SRGB;
-		case DXGI_FORMAT_D32_FLOAT:				return Format::D32_FLOAT;
-		case DXGI_FORMAT_R16_UINT:				return Format::R16_UINT;
-		default: VAST_ASSERTF(0, "Unknown Format."); return Format::UNKNOWN;
+		case DXGI_FORMAT_UNKNOWN:				return TexFormat::UNKNOWN;
+		case DXGI_FORMAT_R32G32_FLOAT:			return TexFormat::RG32_FLOAT;
+		case DXGI_FORMAT_R8G8B8A8_UNORM:		return TexFormat::RGBA8_UNORM;
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return TexFormat::RGBA8_UNORM_SRGB;
+		case DXGI_FORMAT_D32_FLOAT:				return TexFormat::D32_FLOAT;
+		case DXGI_FORMAT_R16_UINT:				return TexFormat::R16_UINT;
+		default: VAST_ASSERTF(0, "Unknown Format."); return TexFormat::UNKNOWN;
 		}
 	}
 
-	constexpr D3D12_RESOURCE_DIMENSION TranslateToDX12(const TextureType& v)
+	constexpr D3D12_RESOURCE_DIMENSION TranslateToDX12(const TexType& v)
 	{
 		switch (v)
 		{
-		case TextureType::UNKNOWN:		return D3D12_RESOURCE_DIMENSION_UNKNOWN;
-		case TextureType::TEXTURE_1D:	return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
-		case TextureType::TEXTURE_2D:	return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		case TextureType::TEXTURE_3D:	return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+		case TexType::UNKNOWN:		return D3D12_RESOURCE_DIMENSION_UNKNOWN;
+		case TexType::TEXTURE_1D:	return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+		case TexType::TEXTURE_2D:	return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		case TexType::TEXTURE_3D:	return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 		default: VAST_ASSERTF(0, "TextureType not supported on this platform."); return D3D12_RESOURCE_DIMENSION_UNKNOWN;
 		}
 	}
 
-	constexpr TextureType TranslateFromDX12(const D3D12_RESOURCE_DIMENSION& v)
+	constexpr TexType TranslateFromDX12(const D3D12_RESOURCE_DIMENSION& v)
 	{
 		switch (v)
 		{
-		case D3D12_RESOURCE_DIMENSION_UNKNOWN:		return TextureType::UNKNOWN;
-		case D3D12_RESOURCE_DIMENSION_TEXTURE1D:	return TextureType::TEXTURE_1D;
-		case D3D12_RESOURCE_DIMENSION_TEXTURE2D:	return TextureType::TEXTURE_2D;
-		case D3D12_RESOURCE_DIMENSION_TEXTURE3D:	return TextureType::TEXTURE_3D;
-		default: VAST_ASSERTF(0, "Unknown TextureType."); return TextureType::UNKNOWN;
+		case D3D12_RESOURCE_DIMENSION_UNKNOWN:		return TexType::UNKNOWN;
+		case D3D12_RESOURCE_DIMENSION_TEXTURE1D:	return TexType::TEXTURE_1D;
+		case D3D12_RESOURCE_DIMENSION_TEXTURE2D:	return TexType::TEXTURE_2D;
+		case D3D12_RESOURCE_DIMENSION_TEXTURE3D:	return TexType::TEXTURE_3D;
+		default: VAST_ASSERTF(0, "Unknown TextureType."); return TexType::UNKNOWN;
 		}
 	}
 

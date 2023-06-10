@@ -241,7 +241,7 @@ namespace vast::gfx
 		VAST_ASSERT(outBuf);
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
-		if (desc.cpuAccess == BufferCpuAccess::NONE)
+		if (desc.cpuAccess == BufCpuAccess::NONE)
 		{
 			outBuf->state = D3D12_RESOURCE_STATE_COPY_DEST;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
@@ -263,7 +263,7 @@ namespace vast::gfx
 		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
 		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
 
-		if ((desc.viewFlags & BufferViewFlags::CBV) == BufferViewFlags::CBV)
+		if ((desc.viewFlags & BufViewFlags::CBV) == BufViewFlags::CBV)
 		{
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 			cbvDesc.BufferLocation = outBuf->gpuAddress;
@@ -275,7 +275,7 @@ namespace vast::gfx
 
 		const uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
 
-		if ((desc.viewFlags & BufferViewFlags::SRV) == BufferViewFlags::SRV)
+		if ((desc.viewFlags & BufViewFlags::SRV) == BufViewFlags::SRV)
 		{
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 			srvDesc.Format = desc.isRawAccess ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
@@ -296,7 +296,7 @@ namespace vast::gfx
 			CopySRVHandleToReservedTable(outBuf->srv, outBuf->heapIdx);
 		}
 
-		if ((desc.viewFlags & BufferViewFlags::UAV) == BufferViewFlags::UAV)
+		if ((desc.viewFlags & BufViewFlags::UAV) == BufViewFlags::UAV)
 		{
 			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
@@ -311,7 +311,7 @@ namespace vast::gfx
 			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
 		}
 
-		if (desc.cpuAccess == BufferCpuAccess::WRITE)
+		if (desc.cpuAccess == BufCpuAccess::WRITE)
 		{
 			// TODO: Persistent mapping may require manual GPU sync. Mapping/Unmapping every time may yield better performance
 			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
@@ -347,10 +347,10 @@ namespace vast::gfx
 
 		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
 
-		bool hasRTV = (desc.viewFlags & TextureViewFlags::RTV) == TextureViewFlags::RTV;
-		bool hasDSV = (desc.viewFlags & TextureViewFlags::DSV) == TextureViewFlags::DSV;
-		bool hasSRV = (desc.viewFlags & TextureViewFlags::SRV) == TextureViewFlags::SRV;
-		bool hasUAV = (desc.viewFlags & TextureViewFlags::UAV) == TextureViewFlags::UAV;
+		bool hasRTV = (desc.viewFlags & TexViewFlags::RTV) == TexViewFlags::RTV;
+		bool hasDSV = (desc.viewFlags & TexViewFlags::DSV) == TexViewFlags::DSV;
+		bool hasSRV = (desc.viewFlags & TexViewFlags::SRV) == TexViewFlags::SRV;
+		bool hasUAV = (desc.viewFlags & TexViewFlags::UAV) == TexViewFlags::UAV;
 
 		D3D12_RESOURCE_STATES rscState = D3D12_RESOURCE_STATE_COPY_DEST;
 		DXGI_FORMAT srvFormat = rscDesc.Format;
@@ -362,10 +362,10 @@ namespace vast::gfx
 			rscDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 			rscState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-			outTex->clearValue.Color[0] = desc.clear.x;
-			outTex->clearValue.Color[1] = desc.clear.y;
-			outTex->clearValue.Color[2] = desc.clear.z;
-			outTex->clearValue.Color[3] = desc.clear.w;
+			outTex->clearValue.Color[0] = desc.clear.color.x;
+			outTex->clearValue.Color[1] = desc.clear.color.y;
+			outTex->clearValue.Color[2] = desc.clear.color.z;
+			outTex->clearValue.Color[3] = desc.clear.color.w;
 		}
 
 		if (hasDSV)
@@ -431,7 +431,7 @@ namespace vast::gfx
 			}
 			else
 			{
-				if ((desc.type == TextureType::TEXTURE_2D) && (desc.depthOrArraySize == 6))
+				if ((desc.type == TexType::TEXTURE_2D) && (desc.depthOrArraySize == 6))
 				{
 					// Cubemap
 					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -600,7 +600,7 @@ namespace vast::gfx
 		for (psDesc.NumRenderTargets = 0; psDesc.NumRenderTargets < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++psDesc.NumRenderTargets)
 		{
 			uint32 i = psDesc.NumRenderTargets;
-			if (desc.renderPassLayout.renderTargets[i].format == Format::UNKNOWN)
+			if (desc.renderPassLayout.renderTargets[i].format == TexFormat::UNKNOWN)
 			{
 				break;
 			}

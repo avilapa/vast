@@ -26,8 +26,8 @@ namespace vast
 
 		gfx::GraphicsParams params;
 		params.swapChainSize = m_Window->GetSize();
-		params.swapChainFormat = gfx::Format::RGBA8_UNORM;
-		params.backBufferFormat = gfx::Format::RGBA8_UNORM;
+		params.swapChainFormat = gfx::TexFormat::RGBA8_UNORM;
+		params.backBufferFormat = gfx::TexFormat::RGBA8_UNORM;
 
 		m_GraphicsContext = gfx::GraphicsContext::Create(params);
 		m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);

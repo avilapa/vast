@@ -12,15 +12,15 @@ namespace vast::gfx
 	{
 	public:
 		// TODO: HWND is platform specific!
-		DX12SwapChain(const uint2& size, const Format& format, const Format& backBufferFormat,
+		DX12SwapChain(const uint2& size, const TexFormat& format, const TexFormat& backBufferFormat,
 			DX12Device& device, ID3D12CommandQueue& graphicsQueue, HWND windowHandle = ::GetActiveWindow());
 		~DX12SwapChain();
 
 		DX12Texture& GetCurrentBackBuffer() const;
 
 		uint2 GetSize() const { return m_Size; }
-		Format GetFormat() const { return m_Format; }
-		Format GetBackBufferFormat() const { return m_BackBufferFormat; }
+		TexFormat GetFormat() const { return m_Format; }
+		TexFormat GetBackBufferFormat() const { return m_BackBufferFormat; }
 
 		void Present();
 
@@ -38,8 +38,8 @@ namespace vast::gfx
 		Array<Ptr<DX12Texture>, NUM_BACK_BUFFERS> m_BackBuffers;
 
 		vast::uint2 m_Size;
-		Format m_Format;
-		Format m_BackBufferFormat;
+		TexFormat m_Format;
+		TexFormat m_BackBufferFormat;
 	};
 
 }

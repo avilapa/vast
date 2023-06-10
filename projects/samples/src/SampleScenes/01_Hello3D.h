@@ -3,32 +3,35 @@
 #include "SampleBase.h"
 #include "shaders_shared.h"
 
+using namespace vast::gfx;
+
 class Hello3D final : public SampleBase3D
 {
 private:
-	gfx::PipelineHandle m_MeshPso;
-	gfx::ShaderResourceProxy m_MeshCbvBufProxy;
-	gfx::BufferHandle m_MeshVtxBuf;
-	gfx::BufferHandle m_MeshCbvBuf;
-	gfx::TextureHandle m_MeshColorTex;
+	PipelineHandle m_MeshPso;
+	ShaderResourceProxy m_MeshCbvBufProxy;
+	BufferHandle m_MeshVtxBuf;
+	BufferHandle m_MeshCbvBuf;
+	TextureHandle m_MeshColorTex;
 	MeshCB m_MeshCB;
 
 public:
-	Hello3D(gfx::GraphicsContext& ctx) : SampleBase3D(ctx)
+	Hello3D(GraphicsContext& ctx) : SampleBase3D(ctx)
 	{
 		auto colorTargetFormat = m_GraphicsContext.GetTextureFormat(m_ColorRT);
-		auto depthTargetFormat = gfx::Format::D32_FLOAT; // m_GraphicsContext.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
+		auto depthTargetFormat = TexFormat::D32_FLOAT; // m_GraphicsContext.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
 
-		gfx::RenderPassLayout colorDepthPass =
+		RenderPassLayout colorDepthPass =
 		{
-			{ colorTargetFormat, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, gfx::ResourceState::SHADER_RESOURCE },
-			{ depthTargetFormat, gfx::LoadOp::CLEAR, gfx::StoreOp::STORE, gfx::ResourceState::NONE }
+			{ colorTargetFormat, LoadOp::CLEAR, StoreOp::STORE,ResourceState::SHADER_RESOURCE },
+			{ depthTargetFormat, LoadOp::CLEAR, StoreOp::STORE,ResourceState::NONE }
 		};
 
-		m_MeshPso = m_GraphicsContext.CreatePipeline(gfx::PipelineDesc::Builder()
-			.SetVertexShader("mesh.hlsl", "VS_Main")
-			.SetPixelShader("mesh.hlsl", "PS_Main")
-			.SetRenderPassLayout(colorDepthPass));
+		m_MeshPso = m_GraphicsContext.CreatePipeline(PipelineDesc{
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "mesh.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "mesh.hlsl", .entryPoint = "PS_Main"},
+			.renderPassLayout = colorDepthPass,
+		});
 		m_MeshCbvBufProxy = m_GraphicsContext.LookupShaderResource(m_MeshPso, "CB");
 
 		Array<Vtx3fPos3fNormal2fUv, 36> cubeVertexData =
@@ -77,11 +80,14 @@ public:
 			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 0.0f }},
 		} };
 
-		auto vtxBufDesc = gfx::BufferDesc::Builder()
-			.SetSize(sizeof(cubeVertexData)).SetStride(sizeof(cubeVertexData[0]))
-			.SetViewFlags(gfx::BufferViewFlags::SRV)
-			.SetCpuAccess(gfx::BufferCpuAccess::NONE)
-			.SetIsRawAccess(true);
+		BufferDesc vtxBufDesc =
+		{
+			.size = sizeof(cubeVertexData),
+			.stride = sizeof(cubeVertexData[0]),
+			.viewFlags = BufViewFlags::SRV,
+			.cpuAccess = BufCpuAccess::NONE,
+			.isRawAccess = true,
+		};
 		m_MeshVtxBuf = m_GraphicsContext.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
 
 		m_MeshColorTex = m_GraphicsContext.CreateTexture("image.tga");
@@ -91,20 +97,23 @@ public:
 		float aspectRatio = (float)windowSize.x / (float)windowSize.y;
 		m_MeshCB =
 		{
-			float4x4(),
-			float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
-			float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
-			{ -3.0f, 3.0f, -8.0f },
-			m_GraphicsContext.GetBindlessIndex(m_MeshVtxBuf),
-			m_GraphicsContext.GetBindlessIndex(m_MeshColorTex),
-			IDX(gfx::SamplerState::POINT_CLAMP),
+			.model = float4x4(),
+			.view = float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
+			.proj = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
+			.cameraPos = { -3.0f, 3.0f, -8.0f },
+			.vtxBufIdx = ctx.GetBindlessIndex(m_MeshVtxBuf),
+			.colorTexIdx = ctx.GetBindlessIndex(m_MeshColorTex),
+			.colorSamplerIdx = IDX(SamplerState::POINT_CLAMP),
 		};
 
-		auto cbvBufDesc = gfx::BufferDesc::Builder()
-			.SetSize(sizeof(MeshCB))
-			.SetViewFlags(gfx::BufferViewFlags::CBV)
-			.SetUsage(gfx::ResourceUsage::DYNAMIC);
-
+		BufferDesc cbvBufDesc =
+		{
+			.size = sizeof(MeshCB),
+			.viewFlags = BufViewFlags::CBV,
+			.cpuAccess = BufCpuAccess::WRITE,
+			.usage = ResourceUsage::DYNAMIC,
+			.isRawAccess = true,
+		};
 		m_MeshCbvBuf = m_GraphicsContext.CreateBuffer(cbvBufDesc, &m_MeshCB, sizeof(MeshCB));
 	}
 

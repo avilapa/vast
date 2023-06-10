@@ -3,11 +3,13 @@
 #include "SampleBase.h"
 #include "imgui/imgui.h"
 
+using namespace vast::gfx;
+
 class HelloTriangle final : public SampleBase
 {
 private:
-	gfx::PipelineHandle m_TrianglePso;
-	gfx::BufferHandle m_TriangleVtxBuf;
+	PipelineHandle m_TrianglePso;
+	BufferHandle m_TriangleVtxBuf;
 	uint32 m_TriangleVtxBufIdx;
 
 	struct Vtx2fPos3fColor
@@ -26,28 +28,32 @@ private:
 	bool m_UpdateTriangle = false;
 
 public:
-	HelloTriangle(gfx::GraphicsContext& ctx) : SampleBase(ctx)
+	HelloTriangle(GraphicsContext& ctx) : SampleBase(ctx)
 	{
-		gfx::RenderPassLayout trianglePass;
+		RenderPassLayout trianglePass;
 		trianglePass.renderTargets[0].format = m_GraphicsContext.GetBackBufferFormat();
-		trianglePass.renderTargets[0].loadOp = gfx::LoadOp::CLEAR;
-		trianglePass.renderTargets[0].storeOp = gfx::StoreOp::STORE;
-		trianglePass.renderTargets[0].nextUsage = gfx::ResourceState::PRESENT;
+		trianglePass.renderTargets[0].loadOp = LoadOp::CLEAR;
+		trianglePass.renderTargets[0].storeOp = StoreOp::STORE;
+		trianglePass.renderTargets[0].nextUsage = ResourceState::PRESENT;
 
 		// TODO: Move triangle.hlsl to a project local shaders folder?
-		m_TrianglePso = m_GraphicsContext.CreatePipeline(gfx::PipelineDesc::Builder()
-			.SetVertexShader("triangle.hlsl", "VS_Main")
-			.SetPixelShader("triangle.hlsl", "PS_Main")
-			.SetDepthStencilState(gfx::DepthStencilState::Preset::kDisabled)
-			.SetRenderPassLayout(trianglePass));
+		PipelineDesc trianglePipelineDesc =
+		{
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "triangle.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "triangle.hlsl", .entryPoint = "PS_Main"},
+			.renderPassLayout = trianglePass,
+			.depthStencilState = DepthStencilState::Preset::kDisabled,
+		};
+		m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
 
-		auto vtxBufDesc = gfx::BufferDesc::Builder()
-			.SetSize(sizeof(m_TriangleVertexData)).SetStride(sizeof(m_TriangleVertexData[0]))
-			.SetViewFlags(gfx::BufferViewFlags::SRV)
-			.SetCpuAccess(gfx::BufferCpuAccess::WRITE)
-			.SetUsage(gfx::ResourceUsage::DYNAMIC)
-			.SetIsRawAccess(true);
-
+		BufferDesc vtxBufDesc =
+		{
+			.size = sizeof(m_TriangleVertexData),
+			.stride = sizeof(m_TriangleVertexData[0]),
+			.cpuAccess = BufCpuAccess::WRITE,
+			.usage = ResourceUsage::DYNAMIC,
+			.isRawAccess = true,
+		};
 		m_TriangleVtxBuf = m_GraphicsContext.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		m_TriangleVtxBufIdx = m_GraphicsContext.GetBindlessIndex(m_TriangleVtxBuf);
 	}

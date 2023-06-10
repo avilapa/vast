@@ -11,7 +11,7 @@
 namespace vast::gfx
 {
 
-	DX12SwapChain::DX12SwapChain(const uint2& size, const Format& format, const Format& backBufferFormat,
+	DX12SwapChain::DX12SwapChain(const uint2& size, const TexFormat& format, const TexFormat& backBufferFormat,
 		DX12Device& device, ID3D12CommandQueue& graphicsQueue, HWND windowHandle /*= ::GetActiveWindow()*/)
 		: m_SwapChain(nullptr)
 		, m_Size(size)

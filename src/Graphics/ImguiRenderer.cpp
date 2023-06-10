@@ -31,12 +31,13 @@ namespace vast::gfx
 			gfx::RenderPassLayout renderPass;
 			renderPass.renderTargets[0] = { ctx.GetBackBufferFormat(), LoadOp::LOAD, StoreOp::STORE, ResourceState::PRESENT, bs };
 
-			auto pipelineDesc = PipelineDesc::Builder()
-				.SetVertexShader("imgui.hlsl", "VS_Main")
-				.SetPixelShader("imgui.hlsl", "PS_Main")
-				.SetDepthStencilState(DepthStencilState::Preset::kDisabled)
-				.SetRenderPassLayout(renderPass);
-
+			PipelineDesc pipelineDesc =
+			{
+				.vs = {.type = ShaderType::VERTEX, .shaderName = "imgui.hlsl", .entryPoint = "VS_Main"},
+				.ps = {.type = ShaderType::PIXEL,  .shaderName = "imgui.hlsl", .entryPoint = "PS_Main"},
+				.renderPassLayout = renderPass,
+				.depthStencilState = DepthStencilState::Preset::kDisabled,
+			};
 			m_Pipeline = ctx.CreatePipeline(pipelineDesc);
 		}
 
@@ -46,15 +47,13 @@ namespace vast::gfx
 			int32 texWidth, texHeight;
 			io.Fonts->GetTexDataAsRGBA32(&texData, &texWidth, &texHeight);
 
-			auto texDesc = TextureDesc::Builder()
-				.SetType(TextureType::TEXTURE_2D)
-				.SetFormat(Format::RGBA8_UNORM_SRGB)
-				.SetWidth(texWidth)
-				.SetHeight(texHeight)
-				.SetDepthOrArraySize(1)
-				.SetMipCount(1)
-				.SetViewFlags(TextureViewFlags::SRV);
-
+			TextureDesc texDesc =
+			{
+				.format = TexFormat::RGBA8_UNORM_SRGB,
+				.width  = static_cast<uint32>(texWidth),
+				.height = static_cast<uint32>(texHeight),
+				.viewFlags = TexViewFlags::SRV,
+			};
 			m_FontTex = ctx.CreateTexture(texDesc, texData);
 
 			m_FontTexProxy = ctx.LookupShaderResource(m_Pipeline, "FontTexture");
@@ -138,7 +137,7 @@ namespace vast::gfx
 		ctx.BeginRenderPass(m_Pipeline);
 		{
 			ctx.SetVertexBuffer(vtxView.buffer, vtxView.offset, sizeof(ImDrawVert));
-			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, Format::R16_UINT);
+			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, TexFormat::R16_UINT);
 			const float4x4 mvp = ComputeProjectionMatrix(drawData);
 			ctx.SetPushConstants(&mvp, sizeof(float4x4));
 			ctx.SetShaderResource(m_FontTex, m_FontTexProxy);

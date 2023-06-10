@@ -25,11 +25,11 @@ namespace vast::gfx
 
 	struct GraphicsParams
 	{
-		GraphicsParams() : swapChainSize(1600, 900), swapChainFormat(Format::RGBA8_UNORM), backBufferFormat(Format::RGBA8_UNORM_SRGB) {}
+		GraphicsParams() : swapChainSize(1600, 900), swapChainFormat(TexFormat::RGBA8_UNORM), backBufferFormat(TexFormat::RGBA8_UNORM_SRGB) {}
 
 		uint2 swapChainSize;
-		Format swapChainFormat;
-		Format backBufferFormat;
+		TexFormat swapChainFormat;
+		TexFormat backBufferFormat;
 	};
 
 	class GraphicsContext
@@ -52,7 +52,7 @@ namespace vast::gfx
 		virtual void EndRenderPass() = 0;
 
 		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
-		virtual void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, Format format = Format::UNKNOWN) = 0;
+		virtual void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, TexFormat format = TexFormat::UNKNOWN) = 0;
 		virtual void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
 		virtual void SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
 		// Passes some data to be used in the GPU under a constant buffer declared in a shader using slot
@@ -89,8 +89,8 @@ namespace vast::gfx
 
 		virtual uint2 GetSwapChainSize() const = 0;
 
-		virtual Format GetBackBufferFormat() const = 0;
-		virtual Format GetTextureFormat(const TextureHandle h) = 0;
+		virtual TexFormat GetBackBufferFormat() const = 0;
+		virtual TexFormat GetTextureFormat(const TextureHandle h) = 0;
 
 		virtual uint32 GetBindlessIndex(const BufferHandle h) = 0;
 		virtual uint32 GetBindlessIndex(const TextureHandle h) = 0;

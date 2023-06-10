@@ -1,8 +1,9 @@
 #include "SampleBase.h"
 
 using namespace vast;
+using namespace vast::gfx;
 
-SampleBase::SampleBase(gfx::GraphicsContext& ctx)
+SampleBase::SampleBase(GraphicsContext& ctx)
 	: m_GraphicsContext(ctx)
 {
 }
@@ -25,38 +26,44 @@ void SampleBase::OnGUI()
 
 //
 
-SampleBase3D::SampleBase3D(gfx::GraphicsContext& ctx)
+SampleBase3D::SampleBase3D(GraphicsContext& ctx)
 	: SampleBase(ctx)
 {
 	auto windowSize = m_GraphicsContext.GetSwapChainSize();
 
 	// Create intermediate color and depth buffers
-	m_ColorRT = m_GraphicsContext.CreateTexture(gfx::TextureDesc::Builder()
-		.SetType(gfx::TextureType::TEXTURE_2D)
-		.SetFormat(gfx::Format::RGBA8_UNORM)
-		.SetWidth(windowSize.x)
-		.SetHeight(windowSize.y)
-		.SetViewFlags(gfx::TextureViewFlags::RTV | gfx::TextureViewFlags::SRV)
-		.SetRenderTargetClearColor(float4(0.6f, 0.2f, 0.9f, 1.0f)));
-
-	m_DepthRT = m_GraphicsContext.CreateTexture(gfx::TextureDesc::Builder()
-		.SetType(gfx::TextureType::TEXTURE_2D)
-		.SetFormat(gfx::Format::D32_FLOAT)
-		.SetWidth(windowSize.x)
-		.SetHeight(windowSize.y)
-		.SetViewFlags(gfx::TextureViewFlags::DSV)
-		.SetDepthClearValue(1.0f));
-
-	gfx::RenderPassLayout fullscreenPass =
+	TextureDesc colorTargetDesc =
 	{
-		{ m_GraphicsContext.GetBackBufferFormat(), gfx::LoadOp::LOAD, gfx::StoreOp::STORE, gfx::ResourceState::PRESENT }
+		.format		= TexFormat::RGBA8_UNORM,
+		.width		= windowSize.x,
+		.height		= windowSize.y,
+		.viewFlags	= TexViewFlags::RTV | TexViewFlags::SRV,
+		.clear		= ClearValue(float4(0.6f, 0.2f, 0.9f, 1.0f)),
 	};
 
-	m_FullscreenPso = m_GraphicsContext.CreatePipeline(gfx::PipelineDesc::Builder()
-		.SetVertexShader("fullscreen.hlsl", "VS_Main")
-		.SetPixelShader("fullscreen.hlsl", "PS_Main")
-		.SetDepthStencilState(gfx::DepthStencilState::Preset::kDisabled)
-		.SetRenderPassLayout(fullscreenPass));
+	TextureDesc depthTargetDesc =
+	{
+		.format		= TexFormat::D32_FLOAT,
+		.width		= windowSize.x,
+		.height		= windowSize.y,
+		.viewFlags	= TexViewFlags::DSV,
+		.clear		= ClearValue(1.0f, 1), // TODO: Default stencil value?
+	};
+
+	m_ColorRT = ctx.CreateTexture(colorTargetDesc);
+	m_DepthRT = ctx.CreateTexture(depthTargetDesc);
+
+	RenderPassLayout fullscreenPass =
+	{
+		{ m_GraphicsContext.GetBackBufferFormat(), LoadOp::LOAD, StoreOp::STORE, ResourceState::PRESENT }
+	};
+
+	m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
+		.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
+		.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+		.renderPassLayout = fullscreenPass,
+		.depthStencilState = DepthStencilState::Preset::kDisabled,
+	});
 
 	m_ColorTexIdx = m_GraphicsContext.GetBindlessIndex(m_ColorRT);
 }
