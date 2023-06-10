@@ -52,7 +52,7 @@ namespace vast::gfx
 		virtual void EndRenderPass() = 0;
 
 		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
-		virtual void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, TexFormat format = TexFormat::UNKNOWN) = 0;
+		virtual void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) = 0;
 		virtual void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
 		virtual void SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
 		// Passes some data to be used in the GPU under a constant buffer declared in a shader using slot

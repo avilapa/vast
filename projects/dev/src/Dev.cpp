@@ -325,7 +325,7 @@ void Dev::CreateSphereResources()
 		.cameraPos = { -3.0f, 3.0f, -8.0f },
 		.vtxBufIdx = ctx.GetBindlessIndex(m_SphereVtxBuf),
 		.colorTexIdx = ctx.GetBindlessIndex(m_SphereColorTex),
-		.colorSamplerIdx = IDX(gfx::SamplerState::LINEAR_CLAMP),
+		.colorSamplerIdx = IDX(SamplerState::LINEAR_CLAMP),
 	};
 
 	BufferDesc cbvBufDesc =
@@ -341,7 +341,7 @@ void Dev::CreateSphereResources()
 
 Dev::~Dev()
 {
-	gfx::GraphicsContext& ctx = GetGraphicsContext();
+	GraphicsContext& ctx = GetGraphicsContext();
 
 	ctx.DestroyPipeline(m_FullscreenPso);
 	ctx.DestroyPipeline(m_TrianglePso);
@@ -372,7 +372,7 @@ void Dev::Update()
 
 void Dev::Render()
 {
-	gfx::GraphicsContext& ctx = GetGraphicsContext();
+	GraphicsContext& ctx = GetGraphicsContext();
 
 	if (s_ReloadTriangle)
 	{
@@ -419,7 +419,7 @@ void Dev::Render()
 		if (ctx.GetIsReady(m_SphereVtxBuf) && ctx.GetIsReady(m_SphereIdxBuf) && ctx.GetIsReady(m_SphereColorTex))
 		{
 			ctx.SetShaderResource(m_SphereCbvBuf, m_MeshCbvBufProxy);
-			ctx.SetIndexBuffer(m_SphereIdxBuf, 0, gfx::TexFormat::R16_UINT);
+			ctx.SetIndexBuffer(m_SphereIdxBuf, 0, IndexBufFormat::R16_UINT);
 			ctx.DrawIndexed(static_cast<uint32>(s_SphereIndexData.size()));
 		}
 	}

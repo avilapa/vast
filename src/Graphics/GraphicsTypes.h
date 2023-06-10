@@ -53,6 +53,12 @@ namespace vast::gfx
 		COUNT,
 	};
 
+	enum class IndexBufFormat
+	{
+		UNKNOWN,
+		R16_UINT,
+	};
+
 	enum class TexType
 	{
 		UNKNOWN,

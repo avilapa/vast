@@ -137,7 +137,7 @@ namespace vast::gfx
 		ctx.BeginRenderPass(m_Pipeline);
 		{
 			ctx.SetVertexBuffer(vtxView.buffer, vtxView.offset, sizeof(ImDrawVert));
-			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, TexFormat::R16_UINT);
+			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, IndexBufFormat::R16_UINT);
 			const float4x4 mvp = ComputeProjectionMatrix(drawData);
 			ctx.SetPushConstants(&mvp, sizeof(float4x4));
 			ctx.SetShaderResource(m_FontTex, m_FontTexProxy);

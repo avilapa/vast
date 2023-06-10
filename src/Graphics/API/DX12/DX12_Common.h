@@ -170,6 +170,16 @@ namespace vast::gfx
 		return (uint64)((valueToAlign + alignment) & ~alignment);
 	}
 
+	constexpr DXGI_FORMAT TranslateToDX12(const IndexBufFormat& v)
+	{
+		switch (v)
+		{
+		case IndexBufFormat::UNKNOWN:	return DXGI_FORMAT_UNKNOWN;
+		case IndexBufFormat::R16_UINT:	return DXGI_FORMAT_R16_UINT;
+		default: VAST_ASSERTF(0, "IndexBufFormat not supported on this platform."); return DXGI_FORMAT_UNKNOWN;
+		}
+	}
+
 	constexpr DXGI_FORMAT TranslateToDX12(const TexFormat& v)
 	{
 		switch (v)
@@ -180,7 +190,7 @@ namespace vast::gfx
 		case TexFormat::RGBA8_UNORM_SRGB:	return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		case TexFormat::D32_FLOAT:			return DXGI_FORMAT_D32_FLOAT;
 		case TexFormat::R16_UINT:			return DXGI_FORMAT_R16_UINT;
-		default: VAST_ASSERTF(0, "Format not supported on this platform."); return DXGI_FORMAT_UNKNOWN;
+		default: VAST_ASSERTF(0, "TexFormat not supported on this platform."); return DXGI_FORMAT_UNKNOWN;
 		}
 	}
 

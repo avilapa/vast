@@ -40,7 +40,7 @@ namespace vast::gfx
 		void EndRenderPass() override;
 
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
-		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, TexFormat format = TexFormat::UNKNOWN) override;
+		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) override;
 		void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
 		void SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) override;
 		void SetPushConstants(const void* data, const uint32 size) override;

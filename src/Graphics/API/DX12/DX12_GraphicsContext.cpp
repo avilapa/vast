@@ -291,7 +291,7 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetVertexBuffer(*buf, offset, stride);
 	}
 
-	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, TexFormat format /* = Format::UNKNOWN */)
+	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
 	{
 		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(h.IsValid());
