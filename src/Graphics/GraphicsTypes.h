@@ -176,14 +176,9 @@ namespace vast::gfx
 
 	union ClearValue
 	{
-		ClearValue(float4 color) : color(color) {}
-		ClearValue(float depth, uint8 stencil) : ds(depth, stencil) {}
-
 		float4 color = float4(1, 1, 1, 1);
 		struct ClearDepthStencil
 		{
-			ClearDepthStencil(float depth, uint8 stencil) : depth(depth), stencil(stencil) {}
-
 			float depth;
 			uint8 stencil;
 		} ds;

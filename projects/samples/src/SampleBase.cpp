@@ -38,7 +38,7 @@ SampleBase3D::SampleBase3D(GraphicsContext& ctx)
 		.width		= windowSize.x,
 		.height		= windowSize.y,
 		.viewFlags	= TexViewFlags::RTV | TexViewFlags::SRV,
-		.clear		= ClearValue(float4(0.6f, 0.2f, 0.9f, 1.0f)),
+		.clear		= {.color = float4(0.6f, 0.2f, 0.9f, 1.0f) },
 	};
 
 	TextureDesc depthTargetDesc =
@@ -47,7 +47,7 @@ SampleBase3D::SampleBase3D(GraphicsContext& ctx)
 		.width		= windowSize.x,
 		.height		= windowSize.y,
 		.viewFlags	= TexViewFlags::DSV,
-		.clear		= ClearValue(1.0f, 1), // TODO: Default stencil value?
+		.clear		= {.ds = {.depth = 1.0f } },
 	};
 
 	m_ColorRT = ctx.CreateTexture(colorTargetDesc);
