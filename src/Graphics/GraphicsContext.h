@@ -3,19 +3,11 @@
 #include "Core/Core.h"
 #include "Core/Types.h"
 #include "Core/Handles.h"
-#include "Graphics/Graphics.h"
+#include "Graphics/Resources.h"
 #include "Graphics/ShaderResourceProxy.h"
 
 namespace vast::gfx
 {
-	class Buffer;
-	class Texture;
-	class Pipeline;
-
-	using BufferHandle = Handle<Buffer>;
-	using TextureHandle	= Handle<Texture>;
-	using PipelineHandle = Handle<Pipeline>;
-
 	struct BufferView
 	{
 		Handle<Buffer> buffer;

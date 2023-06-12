@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Graphics/Graphics.h"
 #include "Graphics/Resources.h"
 #include "Graphics/ShaderResourceProxy.h"
 

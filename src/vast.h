@@ -8,5 +8,6 @@
 #include "Core/EventTypes.h"
 
 #include "Graphics/Window.h"
-#include "Graphics/Graphics.h"
+#include "Graphics/GraphicsTypes.h"
+#include "Graphics/Resources.h"
 #include "Graphics/GraphicsContext.h"

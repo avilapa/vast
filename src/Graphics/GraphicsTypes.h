@@ -3,26 +3,12 @@
 namespace vast::gfx
 {
 
-	enum class SamplerState
+	// TODO: Should CPU writable and Dynamic be exclusive? (cpu write is always dynamic, in which case dynamic would only be used for upload buffers)
+	enum class BufCpuAccess
 	{
-		LINEAR_WRAP = 0,
-		LINEAR_CLAMP,
-		POINT_CLAMP,
-		COUNT
-	};
-
-	static const char* g_SamplerNames[]
-	{
-		"LinearWrapSampler",
-		"LinearClampSampler",
-		"PointClampSampler",
-	};
-	static_assert(NELEM(g_SamplerNames) == IDX(SamplerState::COUNT));
-
-	enum class ResourceUsage // TODO: Update Frequency?
-	{
-		STATIC,
-		DYNAMIC,
+		NONE,
+		WRITE,
+		// TODO: READBACK
 	};
 
 	enum class BufViewFlags
@@ -33,39 +19,6 @@ namespace vast::gfx
 		UAV = BIT(2),
 	};
 	ENUM_CLASS_ALLOW_FLAGS(BufViewFlags);
-
-	// TODO: Should CPU writable and Dynamic be exclusive? (cpu write is always dynamic, in which case dynamic would only be used for upload buffers)
-	enum class BufCpuAccess
-	{
-		NONE,
-		WRITE,
-		// TODO: READBACK
-	};
-
-	enum class TexFormat
-	{
-		UNKNOWN,
-		RG32_FLOAT,
-		RGBA8_UNORM,
-		RGBA8_UNORM_SRGB,
-		D32_FLOAT,
-		R16_UINT,
-		COUNT,
-	};
-
-	enum class IndexBufFormat
-	{
-		UNKNOWN,
-		R16_UINT,
-	};
-
-	enum class TexType
-	{
-		UNKNOWN,
-		TEXTURE_1D,
-		TEXTURE_2D,
-		TEXTURE_3D,
-	};
 
 	enum class TexViewFlags
 	{
@@ -79,6 +32,32 @@ namespace vast::gfx
 		DSV_SRV = DSV | SRV,
 	};
 	ENUM_CLASS_ALLOW_FLAGS(TexViewFlags);
+
+	enum class IndexBufFormat
+	{
+		UNKNOWN,
+		R16_UINT,
+		R32_UINT,
+	};
+
+	enum class TexFormat
+	{
+		UNKNOWN,
+		RG32_FLOAT,
+		RGBA8_UNORM,
+		RGBA8_UNORM_SRGB,
+		D32_FLOAT,
+		R16_UINT,
+		COUNT,
+	};
+
+	enum class TexType
+	{
+		UNKNOWN,
+		TEXTURE_1D,
+		TEXTURE_2D,
+		TEXTURE_3D,
+	};
 
 	enum class ShaderType
 	{
@@ -179,6 +158,29 @@ namespace vast::gfx
 		DEPTH_READ,
 		PRESENT,
 	};
+
+	// TODO: Update Frequency?
+	enum class ResourceUsage
+	{
+		STATIC,
+		DYNAMIC,
+	};
+
+	enum class SamplerState
+	{
+		LINEAR_WRAP = 0,
+		LINEAR_CLAMP,
+		POINT_CLAMP,
+		COUNT
+	};
+
+	static const char* g_SamplerNames[]
+	{
+		"LinearWrapSampler",
+		"LinearClampSampler",
+		"PointClampSampler",
+	};
+	static_assert(NELEM(g_SamplerNames) == IDX(SamplerState::COUNT));
 
 	union ClearValue
 	{

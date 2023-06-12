@@ -235,14 +235,7 @@ void Dev::CreateTriangleResources(const RenderPassLayout& pass)
 	};
 	m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
 
-	BufferDesc vtxBufDesc =
-	{
-		.size	= sizeof(s_TriangleVertexData),
-		.stride = sizeof(s_TriangleVertexData[0]),
-		.cpuAccess = BufCpuAccess::WRITE,
-		.usage = ResourceUsage::DYNAMIC,
-		.isRawAccess = true,
-	};
+	BufferDesc vtxBufDesc = AllocVertexBufferDesc(sizeof(s_TriangleVertexData), sizeof(s_TriangleVertexData[0]));
 	m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
 	m_TriangleVtxBufIdx = ctx.GetBindlessIndex(m_TriangleVtxBuf);
 }
@@ -251,14 +244,7 @@ void Dev::CreateCubeResources()
 {
 	GraphicsContext& ctx = GetGraphicsContext();
 
-	BufferDesc vtxBufDesc =
-	{
-		.size	= sizeof(s_CubeVertexData),
-		.stride = sizeof(s_CubeVertexData[0]),
-		.viewFlags = BufViewFlags::SRV,
-		.cpuAccess = BufCpuAccess::NONE,
-		.isRawAccess = true,
-	};
+	BufferDesc vtxBufDesc = AllocVertexBufferDesc(sizeof(s_CubeVertexData), sizeof(s_CubeVertexData[0]));
 	m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
 
 	m_CubeColorTex = ctx.CreateTexture("image.tga");
@@ -277,14 +263,7 @@ void Dev::CreateCubeResources()
 		.colorSamplerIdx = IDX(SamplerState::POINT_CLAMP),
 	};
 
-	BufferDesc cbvBufDesc =
-	{
-		.size = sizeof(MeshCB),
-		.viewFlags = BufViewFlags::CBV,
-		.cpuAccess = BufCpuAccess::WRITE,
-		.usage = ResourceUsage::DYNAMIC,
-		.isRawAccess = true,
-	};
+	BufferDesc cbvBufDesc = AllocCbvBufferDesc(sizeof(MeshCB));
 	m_CubeCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_CubeCB, sizeof(MeshCB));
 }
 
@@ -294,22 +273,11 @@ void Dev::CreateSphereResources()
 
 	ConstructUVSphere(1.2f, 18, 36, s_SphereVertexData, s_SphereIndexData);
 
-	BufferDesc vtxBufDesc =
-	{
-		.size	= static_cast<uint32>(s_SphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv)),
-		.stride = sizeof(Vtx3fPos3fNormal2fUv),
-		.viewFlags = BufViewFlags::SRV,
-		.cpuAccess = BufCpuAccess::NONE,
-		.isRawAccess = true,
-	};
+	const uint32 vtxSize = static_cast<uint32>(s_SphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
+	BufferDesc vtxBufDesc = AllocVertexBufferDesc(vtxSize, sizeof(Vtx3fPos3fNormal2fUv));
 	m_SphereVtxBuf = ctx.CreateBuffer(vtxBufDesc, s_SphereVertexData.data(), s_SphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
 
-	BufferDesc idxBufDesc =
-	{
-		.size	= static_cast<uint32>(s_SphereIndexData.size() * sizeof(uint16)),
-		.stride = sizeof(uint16),
-		.cpuAccess = BufCpuAccess::NONE,
-	};
+	BufferDesc idxBufDesc = AllocIndexBufferDesc(s_SphereIndexData.size());
 	m_SphereIdxBuf = ctx.CreateBuffer(idxBufDesc, s_SphereIndexData.data(), s_SphereIndexData.size() * sizeof(uint16));
 
 	m_SphereColorTex = ctx.CreateTexture("2k_earth_daymap.jpg");
@@ -328,14 +296,7 @@ void Dev::CreateSphereResources()
 		.colorSamplerIdx = IDX(SamplerState::LINEAR_CLAMP),
 	};
 
-	BufferDesc cbvBufDesc =
-	{
-		.size = sizeof(MeshCB),
-		.viewFlags = BufViewFlags::CBV,
-		.cpuAccess = BufCpuAccess::WRITE,
-		.usage = ResourceUsage::DYNAMIC,
-		.isRawAccess = true,
-	};
+	BufferDesc cbvBufDesc = AllocCbvBufferDesc(sizeof(MeshCB));
 	m_SphereCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_SphereCB, sizeof(MeshCB));
 }
 
