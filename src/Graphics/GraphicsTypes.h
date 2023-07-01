@@ -192,17 +192,4 @@ namespace vast::gfx
 		} ds;
 	};
 
-// 	union TextureDimensions
-// 	{
-// 		uint4 dimensions = uint4(1, 1, 1, 1);
-// 		struct
-// 		{
-// 			uint32 width;
-// 			uint32 height;
-// 			uint32 depthOrArraySize;
-// 			uint32 mipCount;
-// 		};
-// 		static_assert(sizeof(uint4) == (sizeof(uint32) * 4));
-// 	};
-
 }

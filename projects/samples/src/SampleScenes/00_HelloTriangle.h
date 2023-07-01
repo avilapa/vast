@@ -48,8 +48,9 @@ public:
 
 		BufferDesc vtxBufDesc =
 		{
-			.size = sizeof(m_TriangleVertexData),
+			.size	= sizeof(m_TriangleVertexData),
 			.stride = sizeof(m_TriangleVertexData[0]),
+			.viewFlags = BufViewFlags::SRV,
 			.cpuAccess = BufCpuAccess::WRITE,
 			.usage = ResourceUsage::DYNAMIC,
 			.isRawAccess = true,

@@ -82,7 +82,7 @@ public:
 
 		BufferDesc vtxBufDesc =
 		{
-			.size = sizeof(cubeVertexData),
+			.size	= sizeof(cubeVertexData),
 			.stride = sizeof(cubeVertexData[0]),
 			.viewFlags = BufViewFlags::SRV,
 			.cpuAccess = BufCpuAccess::NONE,
