@@ -670,16 +670,16 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf->heapIdx != kInvalidHeapIdx);
-		return buf->heapIdx;
+		VAST_ASSERT(buf->descriptorHeapIdx != kInvalidHeapIdx);
+		return buf->descriptorHeapIdx;
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessIndex(const TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		auto tex = m_Textures->LookupResource(h);
-		VAST_ASSERT(tex->heapIdx != kInvalidHeapIdx);
-		return tex->heapIdx;
+		VAST_ASSERT(tex->descriptorHeapIdx != kInvalidHeapIdx);
+		return tex->descriptorHeapIdx;
 	}
 	
 	TexFormat DX12GraphicsContext::GetTextureFormat(const TextureHandle h)

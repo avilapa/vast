@@ -56,7 +56,7 @@ namespace vast::gfx
 		D3D12MA::Allocation* allocation = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-		uint32 heapIdx = kInvalidHeapIdx;
+		uint32 descriptorHeapIdx = kInvalidHeapIdx;
 		bool isReady = false;
 		ResourceUsage usage = ResourceUsage::STATIC;
 
@@ -66,7 +66,7 @@ namespace vast::gfx
 			allocation = nullptr;
 			gpuAddress = 0;
 			state = D3D12_RESOURCE_STATE_COMMON;
-			heapIdx = kInvalidHeapIdx;
+			descriptorHeapIdx = kInvalidHeapIdx;
 			isReady = false;
 			usage = ResourceUsage::STATIC;
 		}

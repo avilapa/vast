@@ -289,11 +289,11 @@ namespace vast::gfx
 			outBuf->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateShaderResourceView(outBuf->resource, &srvDesc, outBuf->srv.cpuHandle);
 
-			outBuf->heapIdx = m_FreeReservedDescriptorIndices.back();
+			outBuf->descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
 			// TODO: For dynamic bindless vertex/index buffers we need to be able to update the SRVs accordingly
-			CopySRVHandleToReservedTable(outBuf->srv, outBuf->heapIdx);
+			CopySRVHandleToReservedTable(outBuf->srv, outBuf->descriptorHeapIdx);
 		}
 
 		if ((desc.viewFlags & BufViewFlags::UAV) == BufViewFlags::UAV)
@@ -449,10 +449,10 @@ namespace vast::gfx
 				}
 			}
 
-			outTex->heapIdx = m_FreeReservedDescriptorIndices.back();
+			outTex->descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
-			CopySRVHandleToReservedTable(outTex->srv, outTex->heapIdx);
+			CopySRVHandleToReservedTable(outTex->srv, outTex->descriptorHeapIdx);
 		}
 
 		if (hasRTV)
@@ -657,7 +657,7 @@ namespace vast::gfx
 		if (buf->srv.IsValid())
 		{
 			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->srv);
-			m_FreeReservedDescriptorIndices.push_back(buf->heapIdx);
+			m_FreeReservedDescriptorIndices.push_back(buf->descriptorHeapIdx);
 		}
 
 		if (buf->uav.IsValid())
@@ -691,7 +691,7 @@ namespace vast::gfx
 		if (tex->srv.IsValid())
 		{
 			m_SRVStagingDescriptorHeap->FreeDescriptor(tex->srv);
-			m_FreeReservedDescriptorIndices.push_back(tex->heapIdx);
+			m_FreeReservedDescriptorIndices.push_back(tex->descriptorHeapIdx);
 		}
 
 		if (tex->uav.IsValid())
