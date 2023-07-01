@@ -112,7 +112,6 @@ public:
 			.viewFlags = BufViewFlags::CBV,
 			.cpuAccess = BufCpuAccess::WRITE,
 			.usage = ResourceUsage::DYNAMIC,
-			.isRawAccess = true,
 		};
 		m_MeshCbvBuf = m_GraphicsContext.CreateBuffer(cbvBufDesc, &m_MeshCB, sizeof(MeshCB));
 	}

@@ -22,7 +22,7 @@ namespace vast::gfx
 	// Dynamic buffers
 	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, bool bCpuAccess = false, bool bBindless = true);
 	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format = IndexBufFormat::R16_UINT);
-	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess = true, bool bBindless = true);
+	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess = true);
 
 	struct TextureDesc
 	{

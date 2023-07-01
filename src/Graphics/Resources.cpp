@@ -10,7 +10,7 @@ namespace vast::gfx
 		{
 			.size = size,
 			.stride = stride,
-			.viewFlags = BufViewFlags::SRV,
+			.viewFlags = bBindless ? BufViewFlags::SRV : BufViewFlags::NONE,
 			.cpuAccess = bCpuAccess ? BufCpuAccess::WRITE : BufCpuAccess::NONE,
 			.usage = bCpuAccess ? ResourceUsage::DYNAMIC : ResourceUsage::STATIC,
 			.isRawAccess = bBindless,
@@ -26,19 +26,23 @@ namespace vast::gfx
 		{
 			.size = numIndices * indexSize,
 			.stride = indexSize,
+			.viewFlags = BufViewFlags::NONE,
 			.cpuAccess = BufCpuAccess::NONE,
+			.usage = ResourceUsage::STATIC,
+			.isRawAccess = false,
 		};
 	}
 
-	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess /* = true */, bool bBindless /* = true */)
+	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess /* = true */)
 	{
 		return BufferDesc
 		{
 			.size = size,
+			.stride = 0,
 			.viewFlags = BufViewFlags::CBV,
 			.cpuAccess = bCpuAccess ? BufCpuAccess::WRITE : BufCpuAccess::NONE,
 			.usage = bCpuAccess ? ResourceUsage::DYNAMIC : ResourceUsage::STATIC,
-			.isRawAccess = bBindless,
+			.isRawAccess = false,
 		};
 	}
 
