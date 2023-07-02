@@ -11,7 +11,6 @@ namespace vast
 	};
 
 	class Window;
-	class WindowResizeEvent;
 
 	namespace gfx
 	{

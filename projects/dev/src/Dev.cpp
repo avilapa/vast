@@ -146,22 +146,12 @@ void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCo
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
+	VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(Dev::OnWindowResizeEvent, WindowResizeEvent));
+
 	GraphicsContext& ctx = GetGraphicsContext();
 
-	// Create intermediate color and depth buffers
-	{
-		auto windowSize = GetWindow().GetSize();
-
-		TextureDesc depthTargetDesc =
-		{
-			.format		= TexFormat::D32_FLOAT,
-			.width		= windowSize.x,
-			.height		= windowSize.y,
-			.viewFlags	= TexViewFlags::DSV,
-			.clear		= {.ds = {.depth = 1.0f } },
-		};
-		m_DepthRT = ctx.CreateTexture(depthTargetDesc);
-	}
+	// Create intermediate depth buffer
+	m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, GetWindow().GetSize()));
 
 	// Create triangle PSO and vertex buffer (to be bound bindlessly via push constants).
 	CreateTriangleResources();
@@ -379,4 +369,13 @@ void Dev::OnGUI()
 		}
 	}
 	ImGui::End();
+}
+
+void Dev::OnWindowResizeEvent(const WindowResizeEvent& event)
+{
+	GraphicsContext& ctx = GetGraphicsContext();
+
+	ctx.FlushGPU();
+	ctx.DestroyTexture(m_DepthRT);
+	m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 }

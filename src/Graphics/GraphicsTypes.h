@@ -190,14 +190,16 @@ namespace vast::gfx
 	};
 	static_assert(NELEM(g_SamplerNames) == IDX(SamplerState::COUNT));
 
+	struct ClearDepthStencil
+	{
+		float depth = 1.0f;
+		uint8 stencil = 0;
+	};
+
 	union ClearValue
 	{
-		float4 color = float4(1, 1, 1, 1);
-		struct ClearDepthStencil
-		{
-			float depth;
-			uint8 stencil;
-		} ds;
+		float4 color = float4(0, 0, 0, 1);
+		ClearDepthStencil ds;
 	};
 
 }

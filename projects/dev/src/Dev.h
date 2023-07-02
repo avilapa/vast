@@ -15,6 +15,8 @@ private:
 	void Update() override;
 	void Render() override;
 	void OnGUI();
+	void OnWindowResizeEvent(const WindowResizeEvent& event);
+
 
 	void CreateTriangleResources();
 	void CreateCubeResources();

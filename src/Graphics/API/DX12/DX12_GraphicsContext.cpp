@@ -831,13 +831,7 @@ namespace vast::gfx
 
 		VAST_ASSERT(!m_OutputRTHandle.IsValid() && !m_OutputRT);
 		auto [h, tex] = m_Textures->AcquireResource();
-		m_Device->CreateTexture(TextureDesc{
-			.format = m_SwapChain->GetBackBufferFormat(),
-			.width  = m_SwapChain->GetSize().x,
-			.height = m_SwapChain->GetSize().y,
-			.viewFlags = TexViewFlags::RTV | TexViewFlags::SRV,
-			.clear = {.color = float4(0.0f, 0.0f, 0.0f, 1.0f) },
-		}, tex);
+		m_Device->CreateTexture(AllocRenderTargetDesc(m_SwapChain->GetBackBufferFormat(), m_SwapChain->GetSize()), tex);
 
 		// We need the handle to allow the user to render to this target.
 		m_OutputRTHandle = h;
@@ -858,13 +852,7 @@ namespace vast::gfx
 		// GPU must be flushed so that we can recreate the target in place.
 		m_Device->DestroyTexture(m_OutputRT);
 		m_OutputRT->Reset();
-		m_Device->CreateTexture(TextureDesc{
-			.format = m_SwapChain->GetBackBufferFormat(),
-			.width  = m_SwapChain->GetSize().x,
-			.height = m_SwapChain->GetSize().y,
-			.viewFlags = TexViewFlags::RTV | TexViewFlags::SRV,
-			.clear = {.color = float4(0.0f, 0.0f, 0.0f, 1.0f) },
-		}, m_OutputRT);
+		m_Device->CreateTexture(AllocRenderTargetDesc(m_SwapChain->GetBackBufferFormat(), m_SwapChain->GetSize()), m_OutputRT);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////

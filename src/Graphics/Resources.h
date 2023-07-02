@@ -48,6 +48,9 @@ namespace vast::gfx
 		ClearValue clear = ClearValue(float4(1.0f, 1.0f, 1.0f, 1.0f));
 	};
 
+	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear = float4(0, 0, 0, 1));
+	TextureDesc AllocDepthStencilTargetDesc(TexFormat format, uint2 dimensions, ClearDepthStencil clear = { 1.0f, 0 });
+
 	struct ShaderDesc
 	{
 		ShaderType type = ShaderType::UNKNOWN;

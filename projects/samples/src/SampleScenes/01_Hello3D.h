@@ -21,17 +21,11 @@ public:
 	Hello3D(GraphicsContext& ctx) : SampleBase(ctx)
 	{
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
+		// TODO: Need to unsubscribe on destruction!
 		VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
 
 		auto windowSize = m_GraphicsContext.GetOutputRenderTargetSize();
-
-		m_DepthRT = m_GraphicsContext.CreateTexture(TextureDesc{
-			.format = TexFormat::D32_FLOAT,
-			.width  = windowSize.x,
-			.height = windowSize.y,
-			.viewFlags = TexViewFlags::DSV,
-			.clear = {.ds = {.depth = 1.0f } },
-		});
+		m_DepthRT = m_GraphicsContext.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, windowSize));
 
 		m_MeshPso = m_GraphicsContext.CreatePipeline(PipelineDesc{
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "mesh.hlsl", .entryPoint = "VS_Main"},
@@ -162,13 +156,6 @@ public:
 	{
 		m_GraphicsContext.FlushGPU();
 		m_GraphicsContext.DestroyTexture(m_DepthRT);
-
-		m_DepthRT = m_GraphicsContext.CreateTexture(TextureDesc{
-			.format = TexFormat::D32_FLOAT,
-			.width  = event.m_WindowSize.x,
-			.height = event.m_WindowSize.y,
-			.viewFlags = TexViewFlags::DSV,
-			.clear = {.ds = {.depth = 1.0f } },
-		});
+		m_DepthRT = m_GraphicsContext.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 	}
 };
