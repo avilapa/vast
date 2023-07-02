@@ -129,6 +129,7 @@ namespace vast::gfx
 
 		void CreateOutputPassResources();
 		void DestroyOutputPassResources();
+		void ResizeOutputRenderTarget();
 
 	private:
 		struct TempAllocator

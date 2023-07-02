@@ -24,7 +24,7 @@ namespace vast::gfx
 
 		void Present();
 
-		[[nodiscard]] uint32 Resize(uint2 newSize);
+		uint32 Resize(uint2 newSize);
 
 	private:
 		void CreateBackBuffers();

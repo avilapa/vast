@@ -765,13 +765,15 @@ namespace vast::gfx
 	void DX12GraphicsContext::OnWindowResizeEvent(const WindowResizeEvent& event)
 	{
 		VAST_PROFILE_FUNCTION();
-		// TODO: Need to resize output rt
+
 		const uint2 scSize = m_SwapChain->GetSize();
 
 		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
 		{
 			WaitForIdle();
-			m_FrameId = m_SwapChain->Resize(event.m_WindowSize);
+			// We reset the frame ID since it corresponds to the current backbuffer index.
+			m_SwapChain->Resize(event.m_WindowSize);
+			ResizeOutputRenderTarget();
 		}
 	}
 
@@ -817,24 +819,22 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(!m_OutputToBackBufferPSO);
 		m_OutputToBackBufferPSO = MakePtr<DX12Pipeline>();
-		m_Device->CreatePipeline(PipelineDesc
-			{
-				.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
-				.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
-				.depthStencilState = DepthStencilState::Preset::kDisabled,
-				.renderPassLayout = {.rtFormats = { m_SwapChain->GetFormat() } },
-			}, m_OutputToBackBufferPSO.get());
+		m_Device->CreatePipeline(PipelineDesc{
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.depthStencilState = DepthStencilState::Preset::kDisabled,
+			.renderPassLayout = {.rtFormats = { m_SwapChain->GetFormat() } },
+		}, m_OutputToBackBufferPSO.get());
 
 		VAST_ASSERT(!m_OutputRTHandle.IsValid() && !m_OutputRT);
 		auto [h, tex] = m_Textures->AcquireResource();
-		m_Device->CreateTexture(TextureDesc
-			{
-				.format = m_SwapChain->GetBackBufferFormat(),
-				.width = m_SwapChain->GetSize().x,
-				.height = m_SwapChain->GetSize().y,
-				.viewFlags = TexViewFlags::RTV | TexViewFlags::SRV,
-				.clear = {.color = float4(0.0f, 0.0f, 0.0f, 1.0f) },
-			}, tex);
+		m_Device->CreateTexture(TextureDesc{
+			.format = m_SwapChain->GetBackBufferFormat(),
+			.width  = m_SwapChain->GetSize().x,
+			.height = m_SwapChain->GetSize().y,
+			.viewFlags = TexViewFlags::RTV | TexViewFlags::SRV,
+			.clear = {.color = float4(0.0f, 0.0f, 0.0f, 1.0f) },
+		}, tex);
 
 		// We need the handle to allow the user to render to this target.
 		m_OutputRTHandle = h;
@@ -848,6 +848,20 @@ namespace vast::gfx
 		m_OutputToBackBufferPSO->Reset();
 
 		DestroyTexture(m_OutputRTHandle);
+	}
+
+	void DX12GraphicsContext::ResizeOutputRenderTarget()
+	{
+		// GPU must be flushed so that we can recreate the target in place.
+		m_Device->DestroyTexture(m_OutputRT);
+		m_OutputRT->Reset();
+		m_Device->CreateTexture(TextureDesc{
+			.format = m_SwapChain->GetBackBufferFormat(),
+			.width  = m_SwapChain->GetSize().x,
+			.height = m_SwapChain->GetSize().y,
+			.viewFlags = TexViewFlags::RTV | TexViewFlags::SRV,
+			.clear = {.color = float4(0.0f, 0.0f, 0.0f, 1.0f) },
+		}, m_OutputRT);
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////
