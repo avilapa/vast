@@ -57,6 +57,8 @@
 #define VAST_CRITICAL(...)
 #endif // VAST_LOGGING_ENABLED
 
+#define VAST_ENABLE_LOGGING_RESOURCE_BARRIERS (0 && VAST_ENABLE_LOGGING)
+
 // - Asserts ----------------------------------------------------------------------------------- //
 
 #ifdef VAST_DEBUG

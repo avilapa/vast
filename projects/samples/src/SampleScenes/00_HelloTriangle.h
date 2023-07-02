@@ -30,21 +30,15 @@ private:
 public:
 	HelloTriangle(GraphicsContext& ctx) : SampleBase(ctx)
 	{
-		RenderPassLayout trianglePass;
-		trianglePass.renderTargets[0].format = m_GraphicsContext.GetBackBufferFormat();
-		trianglePass.renderTargets[0].loadOp = LoadOp::CLEAR;
-		trianglePass.renderTargets[0].storeOp = StoreOp::STORE;
-		trianglePass.renderTargets[0].nextUsage = ResourceState::PRESENT;
-
 		// TODO: Move triangle.hlsl to a project local shaders folder?
 		PipelineDesc trianglePipelineDesc =
 		{
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "triangle.hlsl", .entryPoint = "VS_Main"},
 			.ps = {.type = ShaderType::PIXEL,  .shaderName = "triangle.hlsl", .entryPoint = "PS_Main"},
-			.renderPassLayout = trianglePass,
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
+			.renderPassLayout = { .rtFormats = { m_GraphicsContext.GetOutputRenderTargetFormat() },	},
 		};
-		m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
+		m_TrianglePso = m_GraphicsContext.CreatePipeline(trianglePipelineDesc);
 
 		BufferDesc vtxBufDesc =
 		{
@@ -76,7 +70,8 @@ public:
 
 	void Draw() override
 	{
-		m_GraphicsContext.BeginRenderPass(m_TrianglePso);
+		const RenderTargetDesc outputTargetDesc = {.h = m_GraphicsContext.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
+		m_GraphicsContext.BeginRenderPass(m_TrianglePso, RenderPassTargets{ .rt = { outputTargetDesc } });
 		{
 			m_GraphicsContext.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
 			m_GraphicsContext.Draw(3);

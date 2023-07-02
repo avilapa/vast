@@ -152,15 +152,6 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 	{
 		auto windowSize = GetWindow().GetSize();
 
-		TextureDesc colorTargetDesc =
-		{
-			.format		= TexFormat::RGBA8_UNORM,
-			.width		= windowSize.x,
-			.height		= windowSize.y,
-			.viewFlags	= TexViewFlags::RTV | TexViewFlags::SRV,
-			.clear		= {.color = float4(0.6f, 0.2f, 0.9f, 1.0f) },
-		};
-
 		TextureDesc depthTargetDesc =
 		{
 			.format		= TexFormat::D32_FLOAT,
@@ -169,60 +160,31 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 			.viewFlags	= TexViewFlags::DSV,
 			.clear		= {.ds = {.depth = 1.0f } },
 		};
-
-		m_ColorRT = ctx.CreateTexture(colorTargetDesc);
 		m_DepthRT = ctx.CreateTexture(depthTargetDesc);
 	}
 
-	TexFormat colorTargetFormat = ctx.GetTextureFormat(m_ColorRT);
-	TexFormat depthTargetFormat = TexFormat::D32_FLOAT; // ctx.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
-	TexFormat backBufferFormat = ctx.GetBackBufferFormat();
-
-	// Render triangle to intermediate color buffer. Clear color buffer, since it's the first usage of it in the frame.
-	RenderPassLayout triangleRenderPass = 
-	{ 
-		{ colorTargetFormat, LoadOp::CLEAR, StoreOp::STORE, ResourceState::NONE }
-	};
-	// Render cube to intermediate color + depth buffers. Clear depth buffer, since  it's the first usage of it in the frame.
-	RenderPassLayout colorDepthPass = 
-	{ 
-		{ colorTargetFormat, LoadOp::LOAD, StoreOp::STORE, ResourceState::SHADER_RESOURCE },
-		{ depthTargetFormat, LoadOp::CLEAR, StoreOp::STORE, ResourceState::NONE }
-	};
-	// Render color buffer to back buffer. Doesn't need to be cleared since we're rendering full screen.
-	RenderPassLayout fullscreenPass = 
-	{
-		{ backBufferFormat, LoadOp::LOAD, StoreOp::STORE, ResourceState::PRESENT }
-	};
-
 	// Create triangle PSO and vertex buffer (to be bound bindlessly via push constants).
-	CreateTriangleResources(triangleRenderPass);
+	CreateTriangleResources();
 	
 	// Create PSO to be used by the cube and sphere.
 	PipelineDesc meshPipelineDesc =
 	{
 		.vs = {.type = ShaderType::VERTEX, .shaderName = "mesh.hlsl", .entryPoint = "VS_Main"},
 		.ps = {.type = ShaderType::PIXEL,  .shaderName = "mesh.hlsl", .entryPoint = "PS_Main"},
-		.renderPassLayout = colorDepthPass,
+		.renderPassLayout = 
+		{ 
+			.rtFormats = { ctx.GetOutputRenderTargetFormat() },
+			.dsFormat = { TexFormat::D32_FLOAT }, // ctx.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
+		},
 	};
 	m_MeshPso = ctx.CreatePipeline(meshPipelineDesc);
 	m_MeshCbvBufProxy = ctx.LookupShaderResource(m_MeshPso, "CB");
 
 	CreateCubeResources();
 	CreateSphereResources();
-
-	PipelineDesc fsPipelineDesc =
-	{
-		.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
-		.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
-		.renderPassLayout = fullscreenPass,
-		.depthStencilState = DepthStencilState::Preset::kDisabled,
-	};
-	m_FullscreenPso = ctx.CreatePipeline(fsPipelineDesc);
-	m_ColorTexIdx = ctx.GetBindlessIndex(m_ColorRT);
 }
 
-void Dev::CreateTriangleResources(const RenderPassLayout& pass)
+void Dev::CreateTriangleResources()
 {
 	GraphicsContext& ctx = GetGraphicsContext();
 
@@ -230,8 +192,8 @@ void Dev::CreateTriangleResources(const RenderPassLayout& pass)
 	{
 		.vs = {.type = ShaderType::VERTEX, .shaderName = "triangle.hlsl", .entryPoint = "VS_Main"},
 		.ps = {.type = ShaderType::PIXEL,  .shaderName = "triangle.hlsl", .entryPoint = "PS_Main"},
-		.renderPassLayout = pass,
 		.depthStencilState = DepthStencilState::Preset::kDisabled,
+		.renderPassLayout = { .rtFormats = { ctx.GetOutputRenderTargetFormat() } },
 	};
 	m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
 
@@ -277,7 +239,7 @@ void Dev::CreateSphereResources()
 	BufferDesc vtxBufDesc = AllocVertexBufferDesc(vtxSize, sizeof(Vtx3fPos3fNormal2fUv));
 	m_SphereVtxBuf = ctx.CreateBuffer(vtxBufDesc, s_SphereVertexData.data(), s_SphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
 
-	BufferDesc idxBufDesc = AllocIndexBufferDesc(s_SphereIndexData.size());
+	BufferDesc idxBufDesc = AllocIndexBufferDesc(static_cast<uint32>(s_SphereIndexData.size()));
 	m_SphereIdxBuf = ctx.CreateBuffer(idxBufDesc, s_SphereIndexData.data(), s_SphereIndexData.size() * sizeof(uint16));
 
 	m_SphereColorTex = ctx.CreateTexture("2k_earth_daymap.jpg");
@@ -304,10 +266,8 @@ Dev::~Dev()
 {
 	GraphicsContext& ctx = GetGraphicsContext();
 
-	ctx.DestroyPipeline(m_FullscreenPso);
 	ctx.DestroyPipeline(m_TrianglePso);
 	ctx.DestroyPipeline(m_MeshPso);
-	ctx.DestroyTexture(m_ColorRT);
 	ctx.DestroyTexture(m_DepthRT);
 	ctx.DestroyTexture(m_CubeColorTex);
 	ctx.DestroyTexture(m_SphereColorTex);
@@ -357,19 +317,23 @@ void Dev::Render()
 	ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(MeshCB));
 	ctx.UpdateBuffer(m_SphereCbvBuf, &m_SphereCB, sizeof(MeshCB));
 
-	// Draw triangle to intermediate buffer
-	ctx.SetRenderTarget(m_ColorRT);
-	ctx.BeginRenderPass(m_TrianglePso);
+	// Render triangle to color color target. Clear target, since it's the first usage of it in the frame.
+	RenderPassTargets trianglePassTargets;
+	trianglePassTargets.rt[0] = { ctx.GetOutputRenderTarget(), LoadOp::CLEAR, StoreOp::STORE, ResourceState::NONE };
+
+	ctx.BeginRenderPass(m_TrianglePso, trianglePassTargets);
 	{
 		ctx.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
 		ctx.Draw(3);
 	}
 	ctx.EndRenderPass();
 
-	// Draw cube and sphere to intermediate buffer + depth
-	ctx.SetRenderTarget(m_ColorRT);
-	ctx.SetDepthStencilTarget(m_DepthRT);
-	ctx.BeginRenderPass(m_MeshPso);
+	// Render cube to output color target + depth buffers. Clear depth buffer, since  it's the first usage of it in the frame.
+	RenderPassTargets meshPassTargets;
+	meshPassTargets.rt[0] = { ctx.GetOutputRenderTarget(), LoadOp::LOAD, StoreOp::STORE, ResourceState::SHADER_RESOURCE };
+	meshPassTargets.ds = { m_DepthRT, LoadOp::CLEAR, StoreOp::STORE, ResourceState::NONE };
+
+	ctx.BeginRenderPass(m_MeshPso, meshPassTargets);
 	{
 		if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeColorTex))
 		{
@@ -383,13 +347,6 @@ void Dev::Render()
 			ctx.SetIndexBuffer(m_SphereIdxBuf, 0, IndexBufFormat::R16_UINT);
 			ctx.DrawIndexed(static_cast<uint32>(s_SphereIndexData.size()));
 		}
-	}
-	ctx.EndRenderPass();
-
-	ctx.BeginRenderPass(m_FullscreenPso);
-	{
-		ctx.SetPushConstants(&m_ColorTexIdx, sizeof(uint32));
-		ctx.DrawFullscreenTriangle();
 	}
 	ctx.EndRenderPass();
 }

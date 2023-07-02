@@ -34,7 +34,7 @@ namespace vast::gfx
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
-	static_assert(RenderPassLayout::MAX_RENDERTARGETS == D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
+	static_assert(MAX_RENDERTARGETS == D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
 	// - Resources -------------------------------------------------------------------------------- //
 
@@ -123,7 +123,6 @@ namespace vast::gfx
 		Ref<DX12Shader> ps = nullptr;
 		ID3D12PipelineState* pipelineState = nullptr;
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-		RenderPassLayout renderPassLayout = {};
 		Ptr<ShaderResourceProxyTable> resourceProxyTable = nullptr;
 		uint8 pushConstantIndex = UINT8_MAX;
 		uint8 descriptorTableIndex = UINT8_MAX;
@@ -134,7 +133,6 @@ namespace vast::gfx
 			ps = nullptr;
 			pipelineState = nullptr;
 			desc = {};
-			renderPassLayout = {};
 			pushConstantIndex = UINT8_MAX;
 			descriptorTableIndex = UINT8_MAX;
 		}
@@ -203,7 +201,7 @@ namespace vast::gfx
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return TexFormat::RGBA8_UNORM_SRGB;
 		case DXGI_FORMAT_D32_FLOAT:				return TexFormat::D32_FLOAT;
 		case DXGI_FORMAT_R16_UINT:				return TexFormat::R16_UINT;
-		default: VAST_ASSERTF(0, "Unknown Format."); return TexFormat::UNKNOWN;
+		default: VAST_ASSERTF(0, "Unknown TexFormat."); return TexFormat::UNKNOWN;
 		}
 	}
 
@@ -215,7 +213,7 @@ namespace vast::gfx
 		case TexType::TEXTURE_1D:	return D3D12_RESOURCE_DIMENSION_TEXTURE1D;
 		case TexType::TEXTURE_2D:	return D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		case TexType::TEXTURE_3D:	return D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-		default: VAST_ASSERTF(0, "TextureType not supported on this platform."); return D3D12_RESOURCE_DIMENSION_UNKNOWN;
+		default: VAST_ASSERTF(0, "TexType not supported on this platform."); return D3D12_RESOURCE_DIMENSION_UNKNOWN;
 		}
 	}
 
@@ -227,7 +225,7 @@ namespace vast::gfx
 		case D3D12_RESOURCE_DIMENSION_TEXTURE1D:	return TexType::TEXTURE_1D;
 		case D3D12_RESOURCE_DIMENSION_TEXTURE2D:	return TexType::TEXTURE_2D;
 		case D3D12_RESOURCE_DIMENSION_TEXTURE3D:	return TexType::TEXTURE_3D;
-		default: VAST_ASSERTF(0, "Unknown TextureType."); return TexType::UNKNOWN;
+		default: VAST_ASSERTF(0, "Unknown TexType."); return TexType::UNKNOWN;
 		}
 	}
 
@@ -353,8 +351,20 @@ namespace vast::gfx
 		case ResourceState::RENDER_TARGET:		return D3D12_RESOURCE_STATE_RENDER_TARGET;
 		case ResourceState::DEPTH_WRITE:		return D3D12_RESOURCE_STATE_DEPTH_WRITE;
 		case ResourceState::DEPTH_READ:			return D3D12_RESOURCE_STATE_DEPTH_READ;
-		case ResourceState::PRESENT:			return D3D12_RESOURCE_STATE_PRESENT;
-		default: VAST_ASSERTF(0, "Resource State not supported on this platform."); return D3D12_RESOURCE_STATE_COMMON;
+		default: VAST_ASSERTF(0, "ResourceState not supported on this platform."); return D3D12_RESOURCE_STATE_COMMON;
+		}
+	}
+
+	constexpr ResourceState TranslateFromDX12(const D3D12_RESOURCE_STATES& v)
+	{
+		switch (v)
+		{
+		case D3D12_RESOURCE_STATE_COMMON:			return ResourceState::NONE;
+		case D3D12_RESOURCE_STATE_GENERIC_READ:		return ResourceState::SHADER_RESOURCE;
+		case D3D12_RESOURCE_STATE_RENDER_TARGET:	return ResourceState::RENDER_TARGET;
+		case D3D12_RESOURCE_STATE_DEPTH_WRITE:		return ResourceState::DEPTH_WRITE;
+		case D3D12_RESOURCE_STATE_DEPTH_READ:		return ResourceState::DEPTH_READ;
+		default: VAST_ASSERTF(0, "ResourceState not supported on this platform."); return ResourceState::NONE;
 		}
 	}
 

@@ -20,6 +20,9 @@ static const wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 namespace vast::gfx
 {
 
+	static bool s_bHasBackBufferBeenCleared = false;
+	static bool s_bIsInRenderPass = false;
+
 	DX12GraphicsContext::DX12GraphicsContext(const GraphicsParams& params)
 		: m_Device(nullptr)
 		, m_SwapChain(nullptr)
@@ -27,13 +30,15 @@ namespace vast::gfx
 		, m_UploadCommandLists({ nullptr })
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
-		, m_CurrentRenderPass(nullptr)
 		, m_Buffers(nullptr)
 		, m_Textures(nullptr)
 		, m_Pipelines(nullptr)
 		, m_BuffersMarkedForDestruction({})
 		, m_TexturesMarkedForDestruction({})
 		, m_PipelinesMarkedForDestruction({})
+		, m_OutputRTHandle()
+		, m_OutputRT(nullptr)
+		, m_OutputToBackBufferPSO(nullptr)
 		, m_TempFrameAllocators({})
 		, m_FrameId(0)
 	{
@@ -59,24 +64,8 @@ namespace vast::gfx
 			m_UploadCommandLists[i] = MakePtr<DX12UploadCommandList>(*m_Device);
 		}
 
-		m_CurrentRenderPass = MakePtr<DX12RenderPassResources>();
-
-		uint32 tempFrameBufferSize = 1024 * 1024;
-
-		BufferDesc tempFrameBufferDesc =
-		{
-			.size = tempFrameBufferSize * 2, // TODO: Alignment?
-			.cpuAccess = BufCpuAccess::WRITE,
-			// TODO: Should this be dynamic?
-			.isRawAccess = true,
-		};
-
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			m_TempFrameAllocators[i].buffer = CreateBuffer(tempFrameBufferDesc);
-			m_TempFrameAllocators[i].size = tempFrameBufferSize;
-			m_TempFrameAllocators[i].offset = 0;
-		}
+		CreateTempFrameAllocators();
+		CreateOutputPassResources();
 
 		VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
 	}
@@ -86,10 +75,10 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 
 		WaitForIdle();
-
-		DestroyBuffer(m_TempFrameAllocators[0].buffer);
-		DestroyBuffer(m_TempFrameAllocators[1].buffer);
 		
+		DestroyTempFrameAllocators();
+		DestroyOutputPassResources();
+
 		m_GraphicsCommandList = nullptr;
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
@@ -144,8 +133,13 @@ namespace vast::gfx
 		SubmitCommandList(*m_UploadCommandLists[m_FrameId]);
 		SignalEndOfFrame(QueueType::UPLOAD);
 
+		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
+		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
+		m_GraphicsCommandList->FlushBarriers();
+
 		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
+		s_bHasBackBufferBeenCleared = false;
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
@@ -190,97 +184,156 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12GraphicsContext::SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt)
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// Render Passes
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	DX12RenderPassData DX12GraphicsContext::SetupBackBufferRenderPassBarrierTransitions()
 	{
-		VAST_ASSERTF(count && m_CurrentRenderPass && (m_CurrentRenderPass->rtCount + count) < RenderPassLayout::MAX_RENDERTARGETS, "Attempted to bind too many render targets for one Render Pass.");
-		for (uint32 i = m_CurrentRenderPass->rtCount; i < count; ++i)
+		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
+		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		// No need for an end barrier since we only present once at the end of the frame.
+		DX12RenderPassData rdp;
+		rdp.rtCount = 1;
+		rdp.rtDesc[0].cpuDescriptor = backBuffer.rtv.cpuHandle;
+		if (s_bHasBackBufferBeenCleared)
 		{
-			SetRenderTarget(rt[i]);
+			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
 		}
-	}
-	
-	void DX12GraphicsContext::SetRenderTarget(const TextureHandle h)
-	{
-		VAST_ASSERTF(m_CurrentRenderPass && m_CurrentRenderPass->rtCount < RenderPassLayout::MAX_RENDERTARGETS, "Attempted to bind too many render targets for one Render Pass.");
-		VAST_ASSERT(h.IsValid());
-		auto rt = m_Textures->LookupResource(h);
-		VAST_ASSERT(rt);
-		m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = { rt, ResourceState::NONE };
+		else
+		{
+			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+			s_bHasBackBufferBeenCleared = true;
+			// TODO: Clear Value
+		}
+		rdp.rtDesc[0].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+
+		return rdp;
 	}
 
-	void DX12GraphicsContext::SetDepthStencilTarget(const TextureHandle h)
+	DX12RenderPassData DX12GraphicsContext::SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets)
 	{
-		VAST_ASSERT(m_CurrentRenderPass);
-		VAST_ASSERT(h.IsValid());
-		auto dst = m_Textures->LookupResource(h);
-		VAST_ASSERT(dst);
-		m_CurrentRenderPass->depthStencilTarget = { dst, ResourceState::NONE };
+		DX12RenderPassData rpd;
+		rpd.rtCount = pipeline->desc.NumRenderTargets;
+		for (uint32 i = 0; i < rpd.rtCount; ++i)
+		{
+			VAST_ASSERT(pipeline->desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);
+			VAST_ASSERT(targets.rt[i].h.IsValid());
+			auto rt = m_Textures->LookupResource(targets.rt[i].h);
+			VAST_ASSERT(rt);
+
+			m_GraphicsCommandList->AddBarrier(*rt, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			if (targets.rt[i].nextUsage != ResourceState::NONE)
+			{
+				m_RenderPassEndBarriers.push_back(std::make_pair(rt, TranslateToDX12(targets.rt[i].nextUsage)));
+			}
+
+			rpd.rtDesc[i].cpuDescriptor = rt->rtv.cpuHandle;
+			rpd.rtDesc[i].BeginningAccess.Type = TranslateToDX12(targets.rt[i].loadOp);
+			rpd.rtDesc[i].BeginningAccess.Clear.ClearValue = rt->clearValue;
+			rpd.rtDesc[i].EndingAccess.Type = TranslateToDX12(targets.rt[i].storeOp);
+			// TODO: Multisample support (EndingAccess.Resolve)
+		}
+
+		VAST_ASSERT(targets.ds.h.IsValid() == (pipeline->desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
+		if (targets.ds.h.IsValid())
+		{
+			auto ds = m_Textures->LookupResource(targets.ds.h);
+			VAST_ASSERT(ds);
+
+			m_GraphicsCommandList->AddBarrier(*ds, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			if (targets.ds.nextUsage != ResourceState::NONE)
+			{
+				m_RenderPassEndBarriers.push_back(std::make_pair(ds, TranslateToDX12(targets.ds.nextUsage)));
+			}
+
+			rpd.dsDesc.cpuDescriptor = ds->dsv.cpuHandle;
+			rpd.dsDesc.DepthBeginningAccess.Type = TranslateToDX12(targets.ds.loadOp);
+			rpd.dsDesc.DepthBeginningAccess.Clear.ClearValue = ds->clearValue;
+			rpd.dsDesc.DepthEndingAccess.Type = TranslateToDX12(targets.ds.storeOp);
+			rpd.dsDesc.DepthEndingAccess.Resolve.pSrcResource = ds->resource;
+			rpd.dsDesc.DepthEndingAccess.Resolve.PreserveResolveSource = rpd.dsDesc.DepthEndingAccess.Type == D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+			// TODO: Fill Stencil access
+		}
+		return rpd;
 	}
 
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h)
+	void DX12GraphicsContext::BeginRenderPass_Internal(const DX12RenderPassData& rpd)
+	{
+		m_GraphicsCommandList->FlushBarriers();
+
+		VAST_ASSERTF(!s_bIsInRenderPass, "BeginRenderPass called before previous EndRenderPass call.");
+		m_GraphicsCommandList->BeginRenderPass(rpd);
+		s_bIsInRenderPass = true;
+
+		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
+	}
+
+	void DX12GraphicsContext::BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline)
+	{
+		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPassToBackBuffer");
+
+		VAST_ASSERT(pipeline);
+		m_GraphicsCommandList->SetPipeline(pipeline);
+
+		DX12RenderPassData rdp = SetupBackBufferRenderPassBarrierTransitions();
+		BeginRenderPass_Internal(rdp);
+	}
+
+	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h)
+	{
+		VAST_ASSERT(m_Pipelines && h.IsValid());
+		BeginRenderPassToBackBuffer_Internal(m_Pipelines->LookupResource(h));
+	}
+
+	void DX12GraphicsContext::ValidateRenderPassTargets(DX12Pipeline* pipeline, RenderPassTargets targets) const
+	{
+		// Validate user bindings against PSO.
+		uint32 rtCount = 0;
+		for (uint32 i = 0; i < MAX_RENDERTARGETS; ++i)
+		{
+			if (targets.rt[i].h.IsValid())
+				rtCount++;
+		}
+		VAST_ASSERT(rtCount == pipeline->desc.NumRenderTargets);
+	}
+
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets)
 	{
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPass");
-		VAST_ASSERT(m_CurrentRenderPass);
-		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(m_Pipelines && m_Textures && h.IsValid());
 		auto pipeline = m_Pipelines->LookupResource(h);
 		VAST_ASSERT(pipeline);
 		m_GraphicsCommandList->SetPipeline(pipeline);
 
-		if (!m_CurrentRenderPass->rtCount)
-		{
-			// If no render targets have been set, we render to the back buffer.
-			m_CurrentRenderPass->renderTargets[m_CurrentRenderPass->rtCount++] = { &m_SwapChain->GetCurrentBackBuffer(), ResourceState::NONE };
-		}
-
-		for (uint32 i = 0; i < m_CurrentRenderPass->rtCount; ++i)
-		{
-			m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->renderTargets[i].first, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			m_CurrentRenderPass->renderTargets[i].second = pipeline->renderPassLayout.renderTargets[i].nextUsage;
-		}
-
-		if (m_CurrentRenderPass->depthStencilTarget.first)
-		{
-			m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->depthStencilTarget.first, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-			m_CurrentRenderPass->depthStencilTarget.second = pipeline->renderPassLayout.depthStencilTarget.nextUsage;
-		}
-		
-		m_GraphicsCommandList->FlushBarriers();
-
-		m_GraphicsCommandList->BeginRenderPass(*m_CurrentRenderPass, pipeline->renderPassLayout);
-
-		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
+#ifdef VAST_DEBUG
+		ValidateRenderPassTargets(pipeline, targets);
+#endif
+		DX12RenderPassData rdp = SetupCommonRenderPassBarrierTransitions(pipeline, targets);
+		BeginRenderPass_Internal(rdp);
 	}
 
 	void DX12GraphicsContext::EndRenderPass()
 	{
 		VAST_PROFILE_SCOPE("DX12GraphicsContext", "EndRenderPass");
-		VAST_ASSERTF(m_CurrentRenderPass && m_CurrentRenderPass->rtCount, "EndRenderPass called without matching BeginRenderPass call.");
 
+		VAST_ASSERTF(s_bIsInRenderPass, "EndRenderPass called without matching BeginRenderPass call.");
 		m_GraphicsCommandList->EndRenderPass();
+		s_bIsInRenderPass = false;
 
-		for (uint32 i = 0; i < m_CurrentRenderPass->rtCount; ++i)
+		for (auto i : m_RenderPassEndBarriers)
 		{
-			auto& nextUsage = m_CurrentRenderPass->renderTargets[i].second;
-			if (nextUsage != ResourceState::NONE)
-			{
-				m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->renderTargets[i].first, TranslateToDX12(nextUsage));
-			}
+			m_GraphicsCommandList->AddBarrier(*i.first, i.second);
 		}
-
-		if (m_CurrentRenderPass->depthStencilTarget.first)
-		{
-			auto& nextUsage = m_CurrentRenderPass->depthStencilTarget.second;
-			if (nextUsage != ResourceState::NONE)
-			{
-				m_GraphicsCommandList->AddBarrier(*m_CurrentRenderPass->depthStencilTarget.first, TranslateToDX12(nextUsage));
-			}
-		}
-
-		m_GraphicsCommandList->FlushBarriers(); // TODO: Do we need to flush barriers here?
-		m_CurrentRenderPass->Reset();
+		m_RenderPassEndBarriers.clear();
 
 		m_GraphicsCommandList->SetPipeline(nullptr);
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// Resource Binding
+	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
@@ -331,6 +384,8 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetPushConstants(data, size);
 	}
 
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
 	void DX12GraphicsContext::SetScissorRect(int4 rect)
 	{
 		VAST_PROFILE_FUNCTION();
@@ -343,6 +398,10 @@ namespace vast::gfx
 		VAST_PROFILE_FUNCTION();
 		m_GraphicsCommandList->GetCommandList()->OMSetBlendFactor((float*)&blend);;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// Draw Commands
+	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	void DX12GraphicsContext::Draw(uint32 vtxCount, uint32 vtxStartLocation /* = 0 */)
 	{
@@ -373,6 +432,10 @@ namespace vast::gfx
 		m_GraphicsCommandList->GetCommandList()->IASetIndexBuffer(nullptr);
 		DrawInstanced(3, 1);
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// Resource Creation/Destruction/Update
+	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
@@ -441,7 +504,6 @@ namespace vast::gfx
 		memcpy(upload->data.get(), srcMem, srcSize);
 		m_UploadCommandLists[m_FrameId]->UploadBuffer(std::move(upload));
 	}
-
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
 	{
@@ -617,33 +679,7 @@ namespace vast::gfx
 		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
 	}
 
-	BufferView DX12GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
-	{
-		VAST_PROFILE_FUNCTION();
-		VAST_ASSERT(size);
-		VAST_ASSERT(m_TempFrameAllocators[m_FrameId].size);
-
-		uint32 allocSize = size + alignment;
-		uint32 offset = m_TempFrameAllocators[m_FrameId].offset;
-		if (alignment > 0)
-		{
-			offset = AlignU32(offset, alignment);
-		}
-		VAST_ASSERT(offset + size <= m_TempFrameAllocators[m_FrameId].size);
-
-		m_TempFrameAllocators[m_FrameId].offset += allocSize;
-
-		auto buf = m_Buffers->LookupResource(m_TempFrameAllocators[m_FrameId].buffer);
-		VAST_ASSERT(buf);
-
-		return BufferView
-		{ 
-			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
-			m_TempFrameAllocators[m_FrameId].buffer, 
-			(uint8*)(buf->data + offset),
-			offset,
-		};
-	}
+	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName)
 	{
@@ -656,21 +692,11 @@ namespace vast::gfx
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
 
-	uint2 DX12GraphicsContext::GetSwapChainSize() const
-	{
-		return m_SwapChain->GetSize();
-	}
-
-	TexFormat DX12GraphicsContext::GetBackBufferFormat() const
-	{
-		return m_SwapChain->GetBackBufferFormat();
-	}
-
 	uint32 DX12GraphicsContext::GetBindlessIndex(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf->descriptorHeapIdx != kInvalidHeapIdx);
+		VAST_ASSERT(buf && buf->descriptorHeapIdx != kInvalidHeapIdx);
 		return buf->descriptorHeapIdx;
 	}
 
@@ -678,7 +704,7 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		auto tex = m_Textures->LookupResource(h);
-		VAST_ASSERT(tex->descriptorHeapIdx != kInvalidHeapIdx);
+		VAST_ASSERT(tex && tex->descriptorHeapIdx != kInvalidHeapIdx);
 		return tex->descriptorHeapIdx;
 	}
 	
@@ -739,7 +765,7 @@ namespace vast::gfx
 	void DX12GraphicsContext::OnWindowResizeEvent(const WindowResizeEvent& event)
 	{
 		VAST_PROFILE_FUNCTION();
-
+		// TODO: Need to resize output rt
 		const uint2 scSize = m_SwapChain->GetSize();
 
 		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
@@ -748,4 +774,140 @@ namespace vast::gfx
 			m_FrameId = m_SwapChain->Resize(event.m_WindowSize);
 		}
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// OutputRT -> BackBuffer
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	void DX12GraphicsContext::RenderOutputToBackBuffer()
+	{
+		VAST_PROFILE_SCOPE("DX12GraphicsContext", "RenderOutputToBackBuffer");
+		BeginRenderPassToBackBuffer_Internal(m_OutputToBackBufferPSO.get());
+		{
+			VAST_ASSERT(m_OutputRT && m_OutputRT->descriptorHeapIdx != kInvalidHeapIdx);
+			SetPushConstants(&m_OutputRT->descriptorHeapIdx, sizeof(uint32));
+			DrawFullscreenTriangle();
+		}
+		EndRenderPass();
+	}
+
+	TextureHandle DX12GraphicsContext::GetOutputRenderTarget() const
+	{
+		VAST_ASSERT(m_OutputRTHandle.IsValid());
+		return m_OutputRTHandle;
+	}
+
+	TexFormat DX12GraphicsContext::GetOutputRenderTargetFormat() const
+	{
+		VAST_ASSERT(m_OutputRT && m_OutputRT->resource);
+		TexFormat format = TranslateFromDX12(m_OutputRT->resource->GetDesc().Format);
+		VAST_ASSERT(m_SwapChain && m_SwapChain->GetFormat() == format);
+		return format;
+	}
+
+	uint2 DX12GraphicsContext::GetOutputRenderTargetSize() const
+	{
+		VAST_ASSERT(m_OutputRT && m_OutputRT->resource);
+		uint2 size = uint2(m_OutputRT->resource->GetDesc().Width, m_OutputRT->resource->GetDesc().Height);
+		VAST_ASSERT(m_SwapChain && m_SwapChain->GetSize().x == size.x && m_SwapChain->GetSize().y == size.y);
+		return size;
+	}
+
+	void DX12GraphicsContext::CreateOutputPassResources()
+	{
+		VAST_ASSERT(!m_OutputToBackBufferPSO);
+		m_OutputToBackBufferPSO = MakePtr<DX12Pipeline>();
+		m_Device->CreatePipeline(PipelineDesc
+			{
+				.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
+				.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+				.depthStencilState = DepthStencilState::Preset::kDisabled,
+				.renderPassLayout = {.rtFormats = { m_SwapChain->GetFormat() } },
+			}, m_OutputToBackBufferPSO.get());
+
+		VAST_ASSERT(!m_OutputRTHandle.IsValid() && !m_OutputRT);
+		auto [h, tex] = m_Textures->AcquireResource();
+		m_Device->CreateTexture(TextureDesc
+			{
+				.format = m_SwapChain->GetBackBufferFormat(),
+				.width = m_SwapChain->GetSize().x,
+				.height = m_SwapChain->GetSize().y,
+				.viewFlags = TexViewFlags::RTV | TexViewFlags::SRV,
+				.clear = {.color = float4(0.0f, 0.0f, 0.0f, 1.0f) },
+			}, tex);
+
+		// We need the handle to allow the user to render to this target.
+		m_OutputRTHandle = h;
+		m_OutputRT = tex;
+	}
+
+	void DX12GraphicsContext::DestroyOutputPassResources()
+	{
+		VAST_ASSERT(m_OutputToBackBufferPSO);
+		m_Device->DestroyPipeline(m_OutputToBackBufferPSO.get());
+		m_OutputToBackBufferPSO->Reset();
+
+		DestroyTexture(m_OutputRTHandle);
+	}
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// Temp Frame Allocator
+	///////////////////////////////////////////////////////////////////////////////////////////////
+
+	BufferView DX12GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
+	{
+		VAST_PROFILE_FUNCTION();
+		VAST_ASSERT(size);
+		VAST_ASSERT(m_TempFrameAllocators[m_FrameId].size);
+
+		uint32 allocSize = size + alignment;
+		uint32 offset = m_TempFrameAllocators[m_FrameId].offset;
+		if (alignment > 0)
+		{
+			offset = AlignU32(offset, alignment);
+		}
+		VAST_ASSERT(offset + size <= m_TempFrameAllocators[m_FrameId].size);
+
+		m_TempFrameAllocators[m_FrameId].offset += allocSize;
+
+		auto buf = m_Buffers->LookupResource(m_TempFrameAllocators[m_FrameId].buffer);
+		VAST_ASSERT(buf);
+
+		return BufferView
+		{
+			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
+			m_TempFrameAllocators[m_FrameId].buffer,
+			(uint8*)(buf->data + offset),
+			offset,
+		};
+	}
+
+	void DX12GraphicsContext::CreateTempFrameAllocators()
+	{
+		uint32 tempFrameBufferSize = 1024 * 1024;
+
+		BufferDesc tempFrameBufferDesc =
+		{
+			.size = tempFrameBufferSize * 2, // TODO: Alignment?
+			.cpuAccess = BufCpuAccess::WRITE,
+			// TODO: Should this be dynamic?
+			.isRawAccess = true,
+		};
+
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			VAST_ASSERT(!m_TempFrameAllocators[i].buffer.IsValid());
+			m_TempFrameAllocators[i].buffer = CreateBuffer(tempFrameBufferDesc);
+			m_TempFrameAllocators[i].size = tempFrameBufferSize;
+			m_TempFrameAllocators[i].offset = 0;
+		}
+	}
+
+	void DX12GraphicsContext::DestroyTempFrameAllocators()
+	{
+		DestroyBuffer(m_TempFrameAllocators[0].buffer);
+		DestroyBuffer(m_TempFrameAllocators[1].buffer);
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
 }

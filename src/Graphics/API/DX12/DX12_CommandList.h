@@ -38,25 +38,11 @@ namespace vast::gfx
 		DX12RenderPassDescriptorHeap* m_CurrentSRVDescriptorHeap;
 	};
 
-	struct DX12RenderPassResources
+	struct DX12RenderPassData
 	{
-		using RenderPassTarget = std::pair<DX12Texture*, ResourceState>;
-
-		uint32 rtCount = 0;
-		Array<RenderPassTarget, RenderPassLayout::MAX_RENDERTARGETS> renderTargets;
-		RenderPassTarget depthStencilTarget;
-
-		void Reset()
-		{
-			for (uint32 i = 0; i < rtCount; ++i)
-			{
-				renderTargets[i].first = nullptr;
-				renderTargets[i].second = ResourceState::NONE;
-			}
-			depthStencilTarget.first = nullptr;
-			depthStencilTarget.second = ResourceState::NONE;
-			rtCount = 0;
-		}
+		uint32 rtCount;
+		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[MAX_RENDERTARGETS] = {};
+		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dsDesc = {};
 	};
 
 	class DX12GraphicsCommandList final : public DX12CommandList
@@ -64,7 +50,7 @@ namespace vast::gfx
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
 
-		void BeginRenderPass(const DX12RenderPassResources& renderPass, const RenderPassLayout& renderPassLayout);
+		void BeginRenderPass(const DX12RenderPassData& rpd);
 		void EndRenderPass();
 
 		void SetPipeline(DX12Pipeline* pipeline);

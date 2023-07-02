@@ -28,15 +28,13 @@ namespace vast::gfx
 			BlendState bs = BlendState::Preset::kAdditive;
 			bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
 
-			gfx::RenderPassLayout renderPass;
-			renderPass.renderTargets[0] = { ctx.GetBackBufferFormat(), LoadOp::LOAD, StoreOp::STORE, ResourceState::PRESENT, bs };
-
 			PipelineDesc pipelineDesc =
 			{
 				.vs = {.type = ShaderType::VERTEX, .shaderName = "imgui.hlsl", .entryPoint = "VS_Main"},
 				.ps = {.type = ShaderType::PIXEL,  .shaderName = "imgui.hlsl", .entryPoint = "PS_Main"},
-				.renderPassLayout = renderPass,
+				.blendStates = { bs },
 				.depthStencilState = DepthStencilState::Preset::kDisabled,
+				.renderPassLayout = { .rtFormats = { ctx.GetOutputRenderTargetFormat() } },
 			};
 			m_Pipeline = ctx.CreatePipeline(pipelineDesc);
 		}
@@ -134,7 +132,7 @@ namespace vast::gfx
 			idxCpuMem += drawList->IdxBuffer.Size;
 		}
 
-		ctx.BeginRenderPass(m_Pipeline);
+		ctx.BeginRenderPassToBackBuffer(m_Pipeline);
 		{
 			ctx.SetVertexBuffer(vtxView.buffer, vtxView.offset, sizeof(ImDrawVert));
 			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, IndexBufFormat::R16_UINT);

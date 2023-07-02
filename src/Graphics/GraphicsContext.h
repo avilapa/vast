@@ -8,13 +8,6 @@
 
 namespace vast::gfx
 {
-	struct BufferView
-	{
-		Handle<Buffer> buffer;
-		uint8* data;
-		uint32 offset;
-	};
-
 	struct GraphicsParams
 	{
 		GraphicsParams() : swapChainSize(1600, 900), swapChainFormat(TexFormat::RGBA8_UNORM), backBufferFormat(TexFormat::RGBA8_UNORM_SRGB) {}
@@ -33,16 +26,17 @@ namespace vast::gfx
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
+		// Dump Output RT to BackBuffer to allow UI elements to blend on top before EndFrame is called.
+		virtual void RenderOutputToBackBuffer() = 0;
 		// Waits for all active GPU work to finish as well as any queued resource destructions.
 		virtual void FlushGPU() = 0;
 
-		virtual void SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt) = 0;
-		virtual void SetRenderTarget(const TextureHandle h) = 0;
-		virtual void SetDepthStencilTarget(const TextureHandle h) = 0;
-
-		virtual void BeginRenderPass(const PipelineHandle h) = 0;
+		// Render Passes
+		virtual void BeginRenderPassToBackBuffer(const PipelineHandle h) = 0;
+		virtual void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) = 0;
 		virtual void EndRenderPass() = 0;
 
+		// Resource Binding
 		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
 		virtual void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) = 0;
 		virtual void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
@@ -61,6 +55,7 @@ namespace vast::gfx
 		virtual void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) = 0;
 		virtual void DrawFullscreenTriangle() = 0;
 
+		// Resource Creation/Destruction/Update
 		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) = 0;
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) = 0;
 		virtual TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) = 0;
@@ -79,9 +74,10 @@ namespace vast::gfx
 
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
 
-		virtual uint2 GetSwapChainSize() const = 0;
+		virtual TextureHandle GetOutputRenderTarget() const = 0;
+		virtual TexFormat GetOutputRenderTargetFormat() const = 0;
+		virtual uint2 GetOutputRenderTargetSize() const = 0;
 
-		virtual TexFormat GetBackBufferFormat() const = 0;
 		virtual TexFormat GetTextureFormat(const TextureHandle h) = 0;
 
 		virtual uint32 GetBindlessIndex(const BufferHandle h) = 0;

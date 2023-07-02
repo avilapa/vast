@@ -57,6 +57,7 @@ namespace vast
 			Update();
 			Render();
 
+			m_GraphicsContext->RenderOutputToBackBuffer();
 			m_ImguiRenderer->EndFrame();
 			m_GraphicsContext->EndFrame();
 		}

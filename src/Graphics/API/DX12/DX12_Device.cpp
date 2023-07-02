@@ -558,16 +558,16 @@ namespace vast::gfx
 		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
 		{
 			D3D12_RENDER_TARGET_BLEND_DESC* rtBlendDesc = &psDesc.BlendState.RenderTarget[i];
-			rtBlendDesc->BlendEnable			= desc.renderPassLayout.renderTargets[i].bs.blendEnable;
+			rtBlendDesc->BlendEnable			= desc.blendStates[i].blendEnable;
 			rtBlendDesc->LogicOpEnable			= false;
-			rtBlendDesc->SrcBlend				= TranslateToDX12(desc.renderPassLayout.renderTargets[i].bs.srcBlend);
-			rtBlendDesc->DestBlend				= TranslateToDX12(desc.renderPassLayout.renderTargets[i].bs.dstBlend);
-			rtBlendDesc->BlendOp				= TranslateToDX12(desc.renderPassLayout.renderTargets[i].bs.blendOp);
-			rtBlendDesc->SrcBlendAlpha			= TranslateToDX12(desc.renderPassLayout.renderTargets[i].bs.srcBlendAlpha);
-			rtBlendDesc->DestBlendAlpha			= TranslateToDX12(desc.renderPassLayout.renderTargets[i].bs.dstBlendAlpha);
-			rtBlendDesc->BlendOpAlpha			= TranslateToDX12(desc.renderPassLayout.renderTargets[i].bs.blendOpAlpha);
+			rtBlendDesc->SrcBlend				= TranslateToDX12(desc.blendStates[i].srcBlend);
+			rtBlendDesc->DestBlend				= TranslateToDX12(desc.blendStates[i].dstBlend);
+			rtBlendDesc->BlendOp				= TranslateToDX12(desc.blendStates[i].blendOp);
+			rtBlendDesc->SrcBlendAlpha			= TranslateToDX12(desc.blendStates[i].srcBlendAlpha);
+			rtBlendDesc->DestBlendAlpha			= TranslateToDX12(desc.blendStates[i].dstBlendAlpha);
+			rtBlendDesc->BlendOpAlpha			= TranslateToDX12(desc.blendStates[i].blendOpAlpha);
 			rtBlendDesc->LogicOp				= D3D12_LOGIC_OP_NOOP;
-			rtBlendDesc->RenderTargetWriteMask	= TranslateToDX12(desc.renderPassLayout.renderTargets[i].bs.writeMask);
+			rtBlendDesc->RenderTargetWriteMask	= TranslateToDX12(desc.blendStates[i].writeMask);
 		}
 
 		psDesc.SampleMask = 0xFFFFFFFF;
@@ -600,13 +600,13 @@ namespace vast::gfx
 		for (psDesc.NumRenderTargets = 0; psDesc.NumRenderTargets < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++psDesc.NumRenderTargets)
 		{
 			uint32 i = psDesc.NumRenderTargets;
-			if (desc.renderPassLayout.renderTargets[i].format == TexFormat::UNKNOWN)
+			if (desc.renderPassLayout.rtFormats[i] == TexFormat::UNKNOWN)
 			{
 				break;
 			}
-			psDesc.RTVFormats[i] = TranslateToDX12(desc.renderPassLayout.renderTargets[i].format);
+			psDesc.RTVFormats[i] = TranslateToDX12(desc.renderPassLayout.rtFormats[i]);
 		}
-		psDesc.DSVFormat = TranslateToDX12(desc.renderPassLayout.depthStencilTarget.format);
+		psDesc.DSVFormat = TranslateToDX12(desc.renderPassLayout.dsFormat);
 
 		// TODO: Multisample support
 		psDesc.SampleDesc.Count = 1;
@@ -615,7 +615,6 @@ namespace vast::gfx
 		psDesc.NodeMask = 0;
 
 		outPipeline->desc = psDesc;
-		outPipeline->renderPassLayout = desc.renderPassLayout;
 		DX12Check(m_Device->CreateGraphicsPipelineState(&outPipeline->desc, IID_PPV_ARGS(&outPipeline->pipelineState)));
 	}
 

@@ -1,36 +1,42 @@
 #pragma once
 
-#include "SampleBase.h"
 #include "shaders_shared.h"
 
 using namespace vast::gfx;
 
-class Hello3D final : public SampleBase3D
+class Hello3D final : public SampleBase
 {
 private:
+	TextureHandle m_DepthRT;
+
 	PipelineHandle m_MeshPso;
 	ShaderResourceProxy m_MeshCbvBufProxy;
+
 	BufferHandle m_MeshVtxBuf;
 	BufferHandle m_MeshCbvBuf;
 	TextureHandle m_MeshColorTex;
 	MeshCB m_MeshCB;
 
 public:
-	Hello3D(GraphicsContext& ctx) : SampleBase3D(ctx)
+	Hello3D(GraphicsContext& ctx) : SampleBase(ctx)
 	{
-		auto colorTargetFormat = m_GraphicsContext.GetTextureFormat(m_ColorRT);
-		auto depthTargetFormat = TexFormat::D32_FLOAT; // m_GraphicsContext.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
+		auto windowSize = m_GraphicsContext.GetOutputRenderTargetSize();
 
-		RenderPassLayout colorDepthPass =
-		{
-			{ colorTargetFormat, LoadOp::CLEAR, StoreOp::STORE,ResourceState::SHADER_RESOURCE },
-			{ depthTargetFormat, LoadOp::CLEAR, StoreOp::STORE,ResourceState::NONE }
-		};
+		m_DepthRT = m_GraphicsContext.CreateTexture(TextureDesc{
+			.format = TexFormat::D32_FLOAT,
+			.width  = windowSize.x,
+			.height = windowSize.y,
+			.viewFlags = TexViewFlags::DSV,
+			.clear = {.ds = {.depth = 1.0f } },
+		});
 
 		m_MeshPso = m_GraphicsContext.CreatePipeline(PipelineDesc{
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "mesh.hlsl", .entryPoint = "VS_Main"},
 			.ps = {.type = ShaderType::PIXEL,  .shaderName = "mesh.hlsl", .entryPoint = "PS_Main"},
-			.renderPassLayout = colorDepthPass,
+			.renderPassLayout = {
+				.rtFormats = { m_GraphicsContext.GetOutputRenderTargetFormat() },
+				.dsFormat = { TexFormat::D32_FLOAT }, // ctx.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
+			},
 		});
 		m_MeshCbvBufProxy = m_GraphicsContext.LookupShaderResource(m_MeshPso, "CB");
 
@@ -92,7 +98,6 @@ public:
 
 		m_MeshColorTex = m_GraphicsContext.CreateTexture("image.tga");
 
-		auto windowSize = m_GraphicsContext.GetSwapChainSize();
 		float fieldOfView = float(PI) / 4.0f;
 		float aspectRatio = (float)windowSize.x / (float)windowSize.y;
 		m_MeshCB =
@@ -118,6 +123,7 @@ public:
 
 	~Hello3D()
 	{
+		m_GraphicsContext.DestroyTexture(m_DepthRT);
 		m_GraphicsContext.DestroyPipeline(m_MeshPso);
 		m_GraphicsContext.DestroyBuffer(m_MeshVtxBuf);
 		m_GraphicsContext.DestroyBuffer(m_MeshCbvBuf);
@@ -135,9 +141,10 @@ public:
 	{
 		m_GraphicsContext.UpdateBuffer(m_MeshCbvBuf, &m_MeshCB, sizeof(MeshCB));
 
-		SetRenderTargets();
+		const RenderTargetDesc outputTargetDesc = { .h = m_GraphicsContext.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
+		const RenderTargetDesc depthTargetDesc = { .h = m_DepthRT, .loadOp = LoadOp::CLEAR, .nextUsage = ResourceState::NONE };
 
-		m_GraphicsContext.BeginRenderPass(m_MeshPso);
+		m_GraphicsContext.BeginRenderPass(m_MeshPso, RenderPassTargets{ .rt = { outputTargetDesc }, .ds = depthTargetDesc });
 		{
 			if (m_GraphicsContext.GetIsReady(m_MeshVtxBuf) && m_GraphicsContext.GetIsReady(m_MeshColorTex))
 			{
@@ -146,7 +153,5 @@ public:
 			}
 		}
 		m_GraphicsContext.EndRenderPass();
-
-		DrawToBackBuffer();
 	}
 };

@@ -5,6 +5,11 @@
 
 namespace vast::gfx
 {
+	// - Resource Handles ------------------------------------------------------------------------- //
+
+	using BufferHandle = Handle<class Buffer>;
+	using TextureHandle = Handle<class Texture>;
+	using PipelineHandle = Handle<class Pipeline>;
 
 	// - Resource Descriptors --------------------------------------------------------------------- //
 
@@ -23,6 +28,13 @@ namespace vast::gfx
 	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, bool bCpuAccess = false, bool bBindless = true);
 	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format = IndexBufFormat::R16_UINT);
 	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess = true);
+
+	struct BufferView
+	{
+		BufferHandle buffer;
+		uint8* data;
+		uint32 offset;
+	};
 
 	struct TextureDesc
 	{
@@ -86,30 +98,36 @@ namespace vast::gfx
 		static constexpr BlendState kAdditive{ true };
 	};
 
-	struct RenderTargetDesc
-	{
-		TexFormat format = TexFormat::UNKNOWN;
-		LoadOp loadOp = LoadOp::LOAD;
-		StoreOp storeOp = StoreOp::STORE;
-		ResourceState nextUsage = ResourceState::SHADER_RESOURCE;
-		BlendState bs = BlendState::Preset::kDisabled;
-	};
+	static constexpr uint32 MAX_RENDERTARGETS = 8;
 
 	struct RenderPassLayout
 	{
-		static constexpr uint32 MAX_RENDERTARGETS = 8;
-
-		Array<RenderTargetDesc, MAX_RENDERTARGETS> renderTargets;
-		RenderTargetDesc depthStencilTarget;
+		Array<TexFormat, MAX_RENDERTARGETS> rtFormats;
+		TexFormat dsFormat;
 	};
 
 	struct PipelineDesc
 	{
 		ShaderDesc vs = {};
 		ShaderDesc ps = {};
-		RenderPassLayout renderPassLayout = {};
+		Array<BlendState, MAX_RENDERTARGETS> blendStates = {};
 		DepthStencilState depthStencilState = {};
 		RasterizerState rasterizerState = {};
+		RenderPassLayout renderPassLayout = {};
+	};
+
+	struct RenderTargetDesc
+	{
+		TextureHandle h;
+		LoadOp loadOp = LoadOp::LOAD;
+		StoreOp storeOp = StoreOp::STORE;
+		ResourceState nextUsage = ResourceState::SHADER_RESOURCE;
+	};
+
+	struct RenderPassTargets
+	{
+		Array<RenderTargetDesc, MAX_RENDERTARGETS> rt = {};
+		RenderTargetDesc ds = {};
 	};
 
 	// - Internal Resources ----------------------------------------------------------------------- //
@@ -122,7 +140,6 @@ namespace vast::gfx
 		PIPELINE,
 		COUNT,
 	};
-
 	static const char* g_ResourceTypeNames[]
 	{
 		"Unknown",
@@ -130,7 +147,6 @@ namespace vast::gfx
 		"Texture",
 		"Pipeline",
 	};
-
 	static_assert(NELEM(g_ResourceTypeNames) == IDX(ResourceType::COUNT));	
 
 	template<typename T>
@@ -172,11 +188,5 @@ namespace vast::gfx
 	public:
 		__VAST_RESOURCE_TYPE_COMMON_DECL(Pipeline, ResourceType::PIPELINE);
 	};
-
-	// - Resource Handles ------------------------------------------------------------------------- //
-
-	using BufferHandle = Handle<Buffer>;
-	using TextureHandle = Handle<Texture>;
-	using PipelineHandle = Handle<Pipeline>;
 
 }

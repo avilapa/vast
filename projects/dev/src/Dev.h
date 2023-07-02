@@ -16,15 +16,11 @@ private:
 	void Render() override;
 	void OnGUI();
 
-	void CreateTriangleResources(const gfx::RenderPassLayout& pass);
+	void CreateTriangleResources();
 	void CreateCubeResources();
 	void CreateSphereResources();
 
-	gfx::TextureHandle m_ColorRT;
 	gfx::TextureHandle m_DepthRT;
-
-	gfx::PipelineHandle m_FullscreenPso;
-	uint32 m_ColorTexIdx;
 
 	gfx::PipelineHandle m_TrianglePso;
 	gfx::BufferHandle m_TriangleVtxBuf;

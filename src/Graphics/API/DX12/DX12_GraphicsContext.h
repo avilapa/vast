@@ -11,7 +11,7 @@ namespace vast::gfx
 	class DX12GraphicsCommandList;
 	class DX12UploadCommandList;
 	class DX12CommandQueue;
-	struct DX12RenderPassResources;
+	struct DX12RenderPassData;
 
 	enum class QueueType
 	{
@@ -29,14 +29,12 @@ namespace vast::gfx
 
 		void BeginFrame() override;
 		void EndFrame() override;
+		void RenderOutputToBackBuffer() override;
 
 		void FlushGPU() override;
 
-		void SetRenderTargets(uint32 count, const Array<TextureHandle, RenderPassLayout::MAX_RENDERTARGETS> rt) override;
-		void SetRenderTarget(const TextureHandle h) override;
-		void SetDepthStencilTarget(const TextureHandle h) override;
-
-		void BeginRenderPass(const PipelineHandle h) override;
+		void BeginRenderPassToBackBuffer(const PipelineHandle h) override;
+		void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) override;
 		void EndRenderPass() override;
 
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
@@ -71,9 +69,10 @@ namespace vast::gfx
 
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
-		uint2 GetSwapChainSize() const override;
-		
-		TexFormat GetBackBufferFormat() const override;
+		TextureHandle GetOutputRenderTarget() const override;
+		TexFormat GetOutputRenderTargetFormat() const override;
+		uint2 GetOutputRenderTargetSize() const override;
+
 		TexFormat GetTextureFormat(const TextureHandle h) override;
 
 		uint32 GetBindlessIndex(const BufferHandle h) override;
@@ -81,11 +80,19 @@ namespace vast::gfx
 		bool GetIsReady(const BufferHandle h) override;
 		bool GetIsReady(const TextureHandle h) override;
 
-
 	private:
 		void SubmitCommandList(DX12CommandList& ctx);
 		void SignalEndOfFrame(const QueueType type);
 		void WaitForIdle();
+
+		void ProcessDestructions(uint32 frameId);
+
+	private:
+		DX12RenderPassData SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets);
+		DX12RenderPassData SetupBackBufferRenderPassBarrierTransitions();
+		void BeginRenderPass_Internal(const DX12RenderPassData& rpd);
+		void BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline);
+		void ValidateRenderPassTargets(DX12Pipeline* pipeline, RenderPassTargets targets) const;
 
 		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
@@ -93,8 +100,6 @@ namespace vast::gfx
 
 		void UploadBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize);
 		void UploadTextureData(DX12Texture* tex, void* srcMem);
-
-		void ProcessDestructions(uint32 frameId);
 
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;
@@ -104,7 +109,8 @@ namespace vast::gfx
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;
 		Array<Array<uint64, NUM_FRAMES_IN_FLIGHT>, IDX(QueueType::COUNT)> m_FrameFenceValues;
 
-		Ptr<DX12RenderPassResources> m_CurrentRenderPass;
+		using RenderPassEndBarrier = std::pair<DX12Texture*, D3D12_RESOURCE_STATES>;
+		Vector<RenderPassEndBarrier> m_RenderPassEndBarriers;
 
 		Ptr<HandlePool<DX12Buffer,   Buffer,   NUM_BUFFERS>>   m_Buffers;
 		Ptr<HandlePool<DX12Texture,  Texture,  NUM_TEXTURES>>  m_Textures;
@@ -114,6 +120,17 @@ namespace vast::gfx
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
 
+		uint32 m_FrameId;
+		
+	private:
+		TextureHandle m_OutputRTHandle;
+		DX12Texture* m_OutputRT;
+		Ptr<DX12Pipeline> m_OutputToBackBufferPSO;
+
+		void CreateOutputPassResources();
+		void DestroyOutputPassResources();
+
+	private:
 		struct TempAllocator
 		{
 			BufferHandle buffer;
@@ -125,6 +142,7 @@ namespace vast::gfx
 		// TODO: This could be replaced by a single, big dynamic buffer?
 		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators;
 
-		uint32 m_FrameId;
+		void CreateTempFrameAllocators();
+		void DestroyTempFrameAllocators();
 	};
 }

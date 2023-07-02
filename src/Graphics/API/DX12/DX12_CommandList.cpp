@@ -92,16 +92,33 @@ namespace vast::gfx
 			desc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 			desc.UAV.pResource = resource.resource;
 		}
+
+#if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
+		VAST_TRACE("[barrier] Added new resource barrier transition ({} -> {})", 
+			std::string(g_ResourceStateNames[IDX(TranslateFromDX12(oldState))]), 
+			std::string(g_ResourceStateNames[IDX(TranslateFromDX12(newState))]));
+#endif
 	}
 
 	void DX12CommandList::FlushBarriers()
 	{
-		if (m_NumQueuedBarriers > 0)
-		{
-			VAST_PROFILE_SCOPE("DX12CommandList", "FlushBarriers");
-			m_CommandList->ResourceBarrier(m_NumQueuedBarriers, m_ResourceBarrierQueue.data());
-			m_NumQueuedBarriers = 0;
-		}
+		if (m_NumQueuedBarriers == 0)
+			return;
+
+		VAST_PROFILE_SCOPE("DX12CommandList", "FlushBarriers");
+
+		// TODO: Optimize barriers
+// 		Array<D3D12_RESOURCE_BARRIER, MAX_QUEUED_BARRIERS> optimizedResourceBarrierQueue;
+// 		for (uint32 i = 0; i < m_NumQueuedBarriers; ++i)
+// 		{
+// 
+// 		}
+
+#if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
+		VAST_TRACE("[barrier] Flushing {} cached barrier transitions...", m_NumQueuedBarriers);
+#endif
+		m_CommandList->ResourceBarrier(m_NumQueuedBarriers, m_ResourceBarrierQueue.data());
+		m_NumQueuedBarriers = 0;
 	}
 
 	void DX12CommandList::CopyResource(const DX12Resource& dst, const DX12Resource& src)
@@ -157,38 +174,15 @@ namespace vast::gfx
 	{
 	}
 
-	void DX12GraphicsCommandList::BeginRenderPass(const DX12RenderPassResources& renderPass, const RenderPassLayout& renderPassLayout)
+	void DX12GraphicsCommandList::BeginRenderPass(const DX12RenderPassData& rpd)
 	{
 		VAST_PROFILE_FUNCTION();
-
-		D3D12_RENDER_PASS_RENDER_TARGET_DESC rtDesc[D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT] = {};
-		D3D12_RENDER_PASS_DEPTH_STENCIL_DESC dsDesc = {};
-
-		VAST_ASSERT(renderPass.rtCount);
-		for (uint32 i = 0; i < renderPass.rtCount; ++i)
-		{
-			auto& rt = renderPass.renderTargets[i].first;
-			VAST_ASSERTF(rt, "Attempted to bind NULL render target");
-			rtDesc[i].cpuDescriptor = rt->rtv.cpuHandle;
-			rtDesc[i].BeginningAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].loadOp);
-			rtDesc[i].BeginningAccess.Clear.ClearValue = rt->clearValue;
-			rtDesc[i].EndingAccess.Type = TranslateToDX12(renderPassLayout.renderTargets[i].storeOp);
-			// TODO: Multisample support (EndingAccess.Resolve)
-		}
-
-		if (auto& ds = renderPass.depthStencilTarget.first)
-		{
-			dsDesc.cpuDescriptor = ds->dsv.cpuHandle;
-			dsDesc.DepthBeginningAccess.Type = TranslateToDX12(renderPassLayout.depthStencilTarget.loadOp);
-			dsDesc.DepthBeginningAccess.Clear.ClearValue = ds->clearValue;
-			dsDesc.DepthEndingAccess.Type = TranslateToDX12(renderPassLayout.depthStencilTarget.storeOp);
-			dsDesc.DepthEndingAccess.Resolve.pSrcResource = ds->resource;
-			dsDesc.DepthEndingAccess.Resolve.PreserveResolveSource = dsDesc.DepthEndingAccess.Type == D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-			// TODO: Fill Stencil access
-		}
-
-		// TODO: This should be D3D12_RENDER_PASS_FLAG_NONE by default, test when we have some UAV example.
-		m_CommandList->BeginRenderPass(renderPass.rtCount, rtDesc, (dsDesc.cpuDescriptor.ptr != 0) ? &dsDesc : nullptr, D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES);
+		m_CommandList->BeginRenderPass(
+			rpd.rtCount, 
+			rpd.rtDesc, 
+			(rpd.dsDesc.cpuDescriptor.ptr != 0) ? &rpd.dsDesc : nullptr, 
+			D3D12_RENDER_PASS_FLAG_ALLOW_UAV_WRITES // TODO: This should be D3D12_RENDER_PASS_FLAG_NONE by default, test when we have some UAV example.
+		);
 	}
 
 	void DX12GraphicsCommandList::EndRenderPass()

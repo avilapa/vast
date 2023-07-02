@@ -156,8 +156,16 @@ namespace vast::gfx
 		RENDER_TARGET,
 		DEPTH_WRITE,
 		DEPTH_READ,
-		PRESENT,
 	};
+	static const char* g_ResourceStateNames[]
+	{
+		"None",
+		"Shader Resource",
+		"Render Target",
+		"Depth Write",
+		"Depth Read",
+	};
+	static_assert(NELEM(g_ResourceStateNames) == (IDX(ResourceState::DEPTH_READ) + 1));
 
 	// TODO: Update Frequency?
 	enum class ResourceUsage
