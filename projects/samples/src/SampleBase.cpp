@@ -23,3 +23,7 @@ void SampleBase::Draw()
 void SampleBase::OnGUI()
 {
 }
+
+void SampleBase::OnWindowResizeEvent(const WindowResizeEvent&)
+{
+}

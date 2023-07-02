@@ -13,6 +13,7 @@ public:
 	virtual void Update();
 	virtual void Draw();
 	virtual void OnGUI();
+	virtual void OnWindowResizeEvent(const WindowResizeEvent& event);
 
 protected:
 	gfx::GraphicsContext& m_GraphicsContext;

@@ -771,7 +771,10 @@ namespace vast::gfx
 		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
 		{
 			WaitForIdle();
-			// We reset the frame ID since it corresponds to the current backbuffer index.
+			// TODO: Resize() here returns the BackBuffer index after resize, which is 0. We used
+			// to assign this to m_FrameId as if resetting the count for these to be in sync, but
+			// this appears to cause issues (would need to reset some buffered members), and also
+			// it doesn't even make sense since they will lose sync after the first loop.
 			m_SwapChain->Resize(event.m_WindowSize);
 			ResizeOutputRenderTarget();
 		}
