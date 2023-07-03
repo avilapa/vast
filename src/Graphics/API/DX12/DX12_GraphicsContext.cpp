@@ -67,7 +67,7 @@ namespace vast::gfx
 		CreateTempFrameAllocators();
 		CreateOutputPassResources();
 
-		VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("gfxctx", WindowResizeEvent, VAST_EVENT_CALLBACK(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
 	}
 
 	DX12GraphicsContext::~DX12GraphicsContext()

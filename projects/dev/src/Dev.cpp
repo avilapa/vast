@@ -146,7 +146,7 @@ void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCo
 
 Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 {
-	VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(Dev::OnWindowResizeEvent, WindowResizeEvent));
+	VAST_SUBSCRIBE_TO_EVENT("dev", WindowResizeEvent, VAST_EVENT_CALLBACK(Dev::OnWindowResizeEvent, WindowResizeEvent));
 
 	GraphicsContext& ctx = GetGraphicsContext();
 

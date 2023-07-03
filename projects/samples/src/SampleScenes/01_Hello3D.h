@@ -21,8 +21,7 @@ public:
 	Hello3D(GraphicsContext& ctx) : SampleBase(ctx)
 	{
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		// TODO: Need to unsubscribe on destruction!
-		VAST_SUBSCRIBE_TO_EVENT(WindowResizeEvent, VAST_EVENT_CALLBACK(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("hello3d", WindowResizeEvent, VAST_EVENT_CALLBACK(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
 
 		auto windowSize = m_GraphicsContext.GetOutputRenderTargetSize();
 		m_DepthRT = m_GraphicsContext.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, windowSize));
@@ -120,6 +119,8 @@ public:
 
 	~Hello3D()
 	{
+		VAST_UNSUBSCRIBE_FROM_EVENT("hello3d", WindowResizeEvent);
+
 		m_GraphicsContext.DestroyTexture(m_DepthRT);
 		m_GraphicsContext.DestroyPipeline(m_MeshPso);
 		m_GraphicsContext.DestroyBuffer(m_MeshVtxBuf);
