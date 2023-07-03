@@ -13,3 +13,6 @@
 [submodule "vendor/dx12/D3D12MemoryAllocator"]
 	path = vendor/dx12/D3D12MemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator
+[submodule "vendor/minitrace"]
+	path = vendor/minitrace
+	url = https://github.com/avilapa/minitrace
