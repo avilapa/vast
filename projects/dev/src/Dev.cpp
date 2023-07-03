@@ -378,4 +378,9 @@ void Dev::OnWindowResizeEvent(const WindowResizeEvent& event)
 	ctx.FlushGPU();
 	ctx.DestroyTexture(m_DepthRT);
 	m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+
+	float fieldOfView = float(PI) / 4.0f;
+	float aspectRatio = (float)event.m_WindowSize.x / (float)event.m_WindowSize.y;
+	float4x4 projMatrix = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero));
+	m_CubeCB.proj = m_SphereCB.proj = projMatrix;
 }

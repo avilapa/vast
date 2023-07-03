@@ -158,5 +158,10 @@ public:
 		m_GraphicsContext.FlushGPU();
 		m_GraphicsContext.DestroyTexture(m_DepthRT);
 		m_DepthRT = m_GraphicsContext.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+
+
+		float fieldOfView = float(PI) / 4.0f;
+		float aspectRatio = (float)event.m_WindowSize.x / (float)event.m_WindowSize.y;
+		m_MeshCB.proj = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero));
 	}
 };
