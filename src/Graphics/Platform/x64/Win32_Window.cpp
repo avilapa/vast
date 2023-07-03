@@ -11,9 +11,9 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 namespace vast
 {
-	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam)
+	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hwnd, UINT umessage, WPARAM wParam, LPARAM lparam)
 	{
-		if (ImGui_ImplWin32_WndProcHandler(hwnd, umessage, wparam, lparam))
+		if (ImGui_ImplWin32_WndProcHandler(hwnd, umessage, wParam, lparam))
 		{
 			return true;
 		}
@@ -25,7 +25,7 @@ namespace vast
 		switch (umessage)
 		{
 		case WM_KEYDOWN:
-			if (wparam == VK_ESCAPE)
+			if (wParam == VK_ESCAPE)
 			{
 				PostQuitMessage(0);
 			}
@@ -37,7 +37,7 @@ namespace vast
 			bIsWindowBeingResized = false;
 			[[fallthrough]];
 		case WM_SIZE: 
-			if (!bIsWindowBeingResized)
+			if (!bIsWindowBeingResized && wParam != SIZE_MINIMIZED)
 			{
 				window->OnWindowResize();
 			}
@@ -50,7 +50,7 @@ namespace vast
 			break;
 		}
 
-		return DefWindowProcW(hwnd, umessage, wparam, lparam);
+		return DefWindowProcW(hwnd, umessage, wParam, lparam);
 	}
 
 	WindowImpl_Win32::WindowImpl_Win32(const WindowParams& params)
