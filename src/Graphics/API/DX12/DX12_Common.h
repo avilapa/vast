@@ -181,12 +181,17 @@ namespace vast::gfx
 	{
 		switch (v)
 		{
-		case TexFormat::UNKNOWN:			return DXGI_FORMAT_UNKNOWN;
-		case TexFormat::RG32_FLOAT:		return DXGI_FORMAT_R32G32_FLOAT;
-		case TexFormat::RGBA8_UNORM:		return DXGI_FORMAT_R8G8B8A8_UNORM;
-		case TexFormat::RGBA8_UNORM_SRGB:	return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		case TexFormat::D32_FLOAT:			return DXGI_FORMAT_D32_FLOAT;
-		case TexFormat::R16_UINT:			return DXGI_FORMAT_R16_UINT;
+		case TexFormat::UNKNOWN:				return DXGI_FORMAT_UNKNOWN;
+		case TexFormat::RG32_FLOAT:				return DXGI_FORMAT_R32G32_FLOAT;
+		case TexFormat::RGBA8_UNORM:			return DXGI_FORMAT_R8G8B8A8_UNORM;
+		case TexFormat::RGBA8_UNORM_SRGB:		return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
+		case TexFormat::D16_UNORM:				return DXGI_FORMAT_D16_UNORM;
+		case TexFormat::D32_FLOAT:				return DXGI_FORMAT_D32_FLOAT;
+		case TexFormat::D32_FLOAT_S8X24_UINT:	return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
+		case TexFormat::D24_UNORM_S8_UINT:		return DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+		case TexFormat::R16_UINT:				return DXGI_FORMAT_R16_UINT;
 		default: VAST_ASSERTF(0, "TexFormat not supported on this platform."); return DXGI_FORMAT_UNKNOWN;
 		}
 	}
@@ -199,7 +204,12 @@ namespace vast::gfx
 		case DXGI_FORMAT_R32G32_FLOAT:			return TexFormat::RG32_FLOAT;
 		case DXGI_FORMAT_R8G8B8A8_UNORM:		return TexFormat::RGBA8_UNORM;
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return TexFormat::RGBA8_UNORM_SRGB;
+
+		case DXGI_FORMAT_D16_UNORM:				return TexFormat::D16_UNORM;
 		case DXGI_FORMAT_D32_FLOAT:				return TexFormat::D32_FLOAT;
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:	return TexFormat::D32_FLOAT_S8X24_UINT;
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:		return TexFormat::D24_UNORM_S8_UINT;
+
 		case DXGI_FORMAT_R16_UINT:				return TexFormat::R16_UINT;
 		default: VAST_ASSERTF(0, "Unknown TexFormat."); return TexFormat::UNKNOWN;
 		}

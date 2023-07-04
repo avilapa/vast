@@ -31,7 +31,7 @@ VertexOutput VS_Main(VertexInput input)
 	VertexOutput output;
 	output.pos = mul(ProjectionMatrix, float4(input.pos.xy, 0.0f, 1.0f));
 	output.uv = input.uv;
-	// TODO: ImGui stores color as uint and sets the InputLayout format to DXGI_FORMAT_R8G8B8A8_UNORM,
+	// Note: ImGui stores color as uint and sets the InputLayout format to DXGI_FORMAT_R8G8B8A8_UNORM,
 	// but then declares the color in the vertex input be viewed as a float4. Since we get our Input
 	// Layouts from shader reflection we cannot make this distinction, so we do the conversion manually.
 	output.col = UnpackColorFromUint(input.col);

@@ -46,10 +46,41 @@ namespace vast::gfx
 		RG32_FLOAT,
 		RGBA8_UNORM,
 		RGBA8_UNORM_SRGB,
+
+		D16_UNORM,
 		D32_FLOAT,
+		D32_FLOAT_S8X24_UINT,
+		D24_UNORM_S8_UINT,
+
 		R16_UINT,
 		COUNT,
 	};
+
+	constexpr bool IsTexFormatDepth(TexFormat format)
+	{
+		switch (format)
+		{
+		case TexFormat::D16_UNORM:
+		case TexFormat::D32_FLOAT:
+		case TexFormat::D32_FLOAT_S8X24_UINT:
+		case TexFormat::D24_UNORM_S8_UINT:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	constexpr bool IsTexFormatStencil(TexFormat format)
+	{
+		switch (format)
+		{
+		case TexFormat::D32_FLOAT_S8X24_UINT:
+		case TexFormat::D24_UNORM_S8_UINT:
+			return true;
+		default:
+			return false;
+		}
+	}
 
 	enum class TexType
 	{
@@ -159,7 +190,7 @@ namespace vast::gfx
 	};
 	static const char* g_ResourceStateNames[]
 	{
-		"None",
+		"None/Present",
 		"Shader Resource",
 		"Render Target",
 		"Depth Write",

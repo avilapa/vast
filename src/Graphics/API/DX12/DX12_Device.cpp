@@ -75,10 +75,11 @@ namespace vast::gfx
 
 				DX12SafeRelease(adapter);
 			}
+			// Note: If we are crashing here, it's likely the system was unable to load D3D12Core.dll.
+			// Check the logs and verify that D3D12SDKPath is correct.
+			VAST_ASSERTF(bestAdapterMemory != 0, "Failed to find an adapter.");
 
 			VAST_INFO("[gfx] [dx12] GPU adapter found with index {}.", bestAdapterIndex);
-			// TODO: If we can't find the DirectXAgilitySDK dll's we will crash here. Check earlier and give a proper message.
-			VAST_ASSERTF(bestAdapterMemory != 0, "Failed to find an adapter.");
 			m_DXGIFactory->EnumAdapters1(bestAdapterIndex, &adapter);
 		}
 
@@ -255,8 +256,16 @@ namespace vast::gfx
 		// TODO: BufferCpuAccess::READBACK
 
 		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
-		// TODO: Aligned width only needed for CBV?
-		rscDesc.Width = static_cast<UINT64>(AlignU32(static_cast<uint32>(rscDesc.Width), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+
+		bool hasCBV = (desc.viewFlags & BufViewFlags::CBV) == BufViewFlags::CBV;
+		bool hasSRV = (desc.viewFlags & BufViewFlags::SRV) == BufViewFlags::SRV;
+		bool hasUAV = (desc.viewFlags & BufViewFlags::UAV) == BufViewFlags::UAV;
+
+		if (hasCBV)
+		{
+			rscDesc.Width = static_cast<UINT64>(AlignU32(static_cast<uint32>(rscDesc.Width), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+		}
+
 		if (desc.usage == ResourceUsage::DYNAMIC)
 		{
 			rscDesc.Width *= NUM_FRAMES_IN_FLIGHT; // TODO: This is not currently used!
@@ -264,7 +273,7 @@ namespace vast::gfx
 		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
 		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
 
-		if ((desc.viewFlags & BufViewFlags::CBV) == BufViewFlags::CBV)
+		if (hasCBV)
 		{
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 			cbvDesc.BufferLocation = outBuf->gpuAddress;
@@ -276,7 +285,7 @@ namespace vast::gfx
 
 		const uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
 
-		if ((desc.viewFlags & BufViewFlags::SRV) == BufViewFlags::SRV)
+		if (hasSRV)
 		{
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 			srvDesc.Format = desc.isRawAccess ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
@@ -297,7 +306,7 @@ namespace vast::gfx
 			CopySRVHandleToReservedTable(outBuf->srv, outBuf->descriptorHeapIdx);
 		}
 
-		if ((desc.viewFlags & BufViewFlags::UAV) == BufViewFlags::UAV)
+		if (hasUAV)
 		{
 			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
@@ -397,8 +406,8 @@ namespace vast::gfx
 				break;
 			}
 
-			outTex->clearValue.DepthStencil.Depth = 1.0f;
-			// TODO: Clear Stencil
+			outTex->clearValue.DepthStencil.Depth = desc.clear.ds.depth;
+			outTex->clearValue.DepthStencil.Stencil = desc.clear.ds.stencil;
 		}
 
 		if (hasUAV)
@@ -756,11 +765,6 @@ namespace vast::gfx
 		DX12Descriptor rtv = m_RTVStagingDescriptorHeap->GetNewDescriptor();
 		m_Device->CreateRenderTargetView(backBuffer, &rtvDesc, rtv.cpuHandle);
 		return rtv;
-	}
-
-	void DX12Device::DestroyBackBufferRTV(const DX12Descriptor& rtv)
-	{
-		m_RTVStagingDescriptorHeap->FreeDescriptor(rtv);
 	}
 
 	void DX12Device::CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType)

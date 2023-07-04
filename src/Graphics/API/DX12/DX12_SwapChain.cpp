@@ -43,6 +43,10 @@ namespace vast::gfx
 		DX12Check(swapChain->QueryInterface(IID_PPV_ARGS(&m_SwapChain)));
 		DX12SafeRelease(swapChain);
 
+		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
+		{
+			m_BackBuffers[i] = MakePtr<DX12Texture>();
+		}
 		CreateBackBuffers();
 	}
 
@@ -50,6 +54,10 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_SCOPE("gfx", "Destroy SwapChain");
 		DestroyBackBuffers();
+		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
+		{
+			m_BackBuffers[i] = nullptr;
+		}
 
 		VAST_INFO("[gfx] [dx12] Destroying swapchain.");
 		DX12SafeRelease(m_SwapChain);
@@ -101,9 +109,8 @@ namespace vast::gfx
 			// TODO: Figure out what we're doing with debug names
 			std::string backBufferName = std::string("Back Buffer ") + std::to_string(i);
 			backBuffer->SetName(std::wstring(backBufferName.begin(), backBufferName.end()).c_str());
-#endif // VAST_DEBUG
-
-			m_BackBuffers[i] = MakePtr<DX12Texture>();
+#endif
+			// Specialized initialization to fit specific BackBuffer needs.
 			m_BackBuffers[i]->resource = backBuffer;
 			m_BackBuffers[i]->state = D3D12_RESOURCE_STATE_PRESENT;
 			m_BackBuffers[i]->rtv = m_Device.CreateBackBufferRTV(backBuffer, TranslateToDX12(m_BackBufferFormat));
@@ -117,9 +124,9 @@ namespace vast::gfx
 
 		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
 		{
-			m_Device.DestroyBackBufferRTV(m_BackBuffers[i]->rtv);
-			DX12SafeRelease(m_BackBuffers[i]->resource);
-			m_BackBuffers[i] = nullptr;
+			VAST_ASSERT(m_BackBuffers[i]);
+			m_Device.DestroyTexture(m_BackBuffers[i].get());
+			m_BackBuffers[i]->Reset();
 		}
 	}
 

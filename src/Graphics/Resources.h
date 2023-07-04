@@ -20,7 +20,7 @@ namespace vast::gfx
 		BufViewFlags viewFlags = BufViewFlags::NONE;
 		BufCpuAccess cpuAccess = BufCpuAccess::WRITE;
 		ResourceUsage usage = ResourceUsage::STATIC;
-		bool isRawAccess = false; // TODO: This refers to using ByteAddressBuffer to read the buffer
+		bool isRawAccess = false;
 	};
 
 	// TODO: Currently usage is tied to CPU access, need to better figure out a general approach to

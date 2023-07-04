@@ -92,6 +92,11 @@ namespace vast::gfx
 		VAST_TRACE("[barrier] Added new resource barrier transition ({} -> {})", 
 			std::string(g_ResourceStateNames[IDX(TranslateFromDX12(oldState))]), 
 			std::string(g_ResourceStateNames[IDX(TranslateFromDX12(newState))]));
+
+		if (newState == D3D12_RESOURCE_STATE_GENERIC_READ)
+		{
+			VAST_WARNING("[barrier] [dx12] 'D3D12_RESOURCE_STATE_GENERIC_READ' state should be avoided where possible.");
+		}
 #endif
 	}
 

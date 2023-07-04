@@ -37,7 +37,6 @@ namespace vast::gfx
 	
 		// For internal use of the DX12SwapChain
 		DX12Descriptor CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format);
-		void DestroyBackBufferRTV(const DX12Descriptor& rtv);
 
 		void CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType);
 

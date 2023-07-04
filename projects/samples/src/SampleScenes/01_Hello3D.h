@@ -31,7 +31,7 @@ public:
 			.ps = {.type = ShaderType::PIXEL,  .shaderName = "mesh.hlsl", .entryPoint = "PS_Main"},
 			.renderPassLayout = {
 				.rtFormats = { m_GraphicsContext.GetOutputRenderTargetFormat() },
-				.dsFormat = { TexFormat::D32_FLOAT }, // ctx.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
+				.dsFormat = { ctx.GetTextureFormat(m_DepthRT) },
 			},
 		});
 		m_MeshCbvBufProxy = m_GraphicsContext.LookupShaderResource(m_MeshPso, "CB");

@@ -208,8 +208,8 @@ namespace vast::gfx
 		else
 		{
 			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
+			rdp.rtDesc[0].BeginningAccess.Clear.ClearValue = backBuffer.clearValue;
 			s_bHasBackBufferBeenCleared = true;
-			// TODO: Clear Value
 		}
 		rdp.rtDesc[0].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 
@@ -259,7 +259,11 @@ namespace vast::gfx
 			rpd.dsDesc.DepthEndingAccess.Type = TranslateToDX12(targets.ds.storeOp);
 			rpd.dsDesc.DepthEndingAccess.Resolve.pSrcResource = ds->resource;
 			rpd.dsDesc.DepthEndingAccess.Resolve.PreserveResolveSource = rpd.dsDesc.DepthEndingAccess.Type == D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-			// TODO: Fill Stencil access
+			if (IsTexFormatStencil(TranslateFromDX12(ds->clearValue.Format)))
+			{
+				rpd.dsDesc.StencilBeginningAccess = rpd.dsDesc.DepthBeginningAccess;
+				rpd.dsDesc.StencilEndingAccess = rpd.dsDesc.DepthEndingAccess;
+			}
 		}
 		return rpd;
 	}
@@ -713,7 +717,10 @@ namespace vast::gfx
 	TexFormat DX12GraphicsContext::GetTextureFormat(const TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return TranslateFromDX12(m_Textures->LookupResource(h)->resource->GetDesc().Format);
+		// Note: Clear Value stores the format given on resource creation, while the format stored
+		// in the descriptor is modified for depth/stencil targets to store a TYPELESS equivalent.
+		// We could translate back to the original format, but since we have this...
+		return TranslateFromDX12(m_Textures->LookupResource(h)->clearValue.Format);
 	}
 
 	bool DX12GraphicsContext::GetIsReady(const BufferHandle h)
@@ -771,7 +778,7 @@ namespace vast::gfx
 		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
 		{
 			WaitForIdle();
-			// TODO: Resize() here returns the BackBuffer index after resize, which is 0. We used
+			// Note: Resize() here returns the BackBuffer index after resize, which is 0. We used
 			// to assign this to m_FrameId as if resetting the count for these to be in sync, but
 			// this appears to cause issues (would need to reset some buffered members), and also
 			// it doesn't even make sense since they will lose sync after the first loop.
