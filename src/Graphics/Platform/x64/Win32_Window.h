@@ -19,6 +19,7 @@ namespace vast
 
 		void Update() override;
 
+		void SetSize(uint2 newSize) override;
 		uint2 GetSize() const override;
 
 	private:
@@ -28,6 +29,8 @@ namespace vast
 
 		void Register(HINSTANCE hInst, const wchar_t* windowClassName);
 		void Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 windowSize);
+
+		uint2 GetFullWindowSize(uint2 clientSize) const;
 
 		HWND m_Handle;
 		uint2 m_WindowSize;

@@ -11,23 +11,27 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 namespace vast
 {
-	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hwnd, UINT umessage, WPARAM wParam, LPARAM lparam)
+	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lparam)
 	{
-		if (ImGui_ImplWin32_WndProcHandler(hwnd, umessage, wParam, lparam))
+		if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lparam))
 		{
 			return true;
 		}
 
-		WindowImpl_Win32* window = reinterpret_cast<WindowImpl_Win32*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+		WindowImpl_Win32* window = reinterpret_cast<WindowImpl_Win32*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
 		static bool bIsWindowBeingResized;
 
-		switch (umessage)
+		switch (msg)
 		{
 		case WM_KEYDOWN:
 			if (wParam == VK_ESCAPE)
 			{
 				PostQuitMessage(0);
+			}
+			else if (wParam == VK_SPACE)
+			{
+				VAST_FIRE_EVENT(DebugActionEvent);
 			}
 			break;
 		case WM_ENTERSIZEMOVE:
@@ -50,15 +54,13 @@ namespace vast
 			break;
 		}
 
-		return DefWindowProcW(hwnd, umessage, wParam, lparam);
+		return DefWindowProcW(hWnd, msg, wParam, lparam);
 	}
 
 	WindowImpl_Win32::WindowImpl_Win32(const WindowParams& params)
 		: m_WindowSize(params.size)
 		, m_WindowName(std::wstring(params.name.begin(), params.name.end()))
 	{
-		VAST_PROFILE_FUNCTION();
-
 		HINSTANCE hInst = GetModuleHandle(nullptr);
 
 		const wchar_t* windowClassName = L"default";
@@ -66,7 +68,7 @@ namespace vast
 		Create(hInst, windowClassName, m_WindowName.c_str(), m_WindowSize);
 
 		{
-			VAST_PROFILE_SCOPE("Window", "Show Window");
+			//VAST_PROFILE_SCOPE("window", "Show Window");
 			ShowWindow(m_Handle, SW_SHOW);
 		}
 		SetForegroundWindow(m_Handle);
@@ -77,16 +79,12 @@ namespace vast
 
 	WindowImpl_Win32::~WindowImpl_Win32()
 	{
-		VAST_PROFILE_FUNCTION();
-
 		DestroyWindow(m_Handle);
 		m_Handle = nullptr;
 	}
 
 	void WindowImpl_Win32::Update()
 	{
-		VAST_PROFILE_FUNCTION();
-
 		MSG msg{ 0 };
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -100,18 +98,16 @@ namespace vast
 		}
 	}
 
-	void WindowImpl_Win32::OnWindowResize()
+	void WindowImpl_Win32::SetSize(uint2 newSize)
 	{
-		RECT windowRect = {};
-		::GetClientRect(m_Handle, &windowRect);
-		uint2 newWindowSize = uint2(windowRect.right - windowRect.left, windowRect.bottom - windowRect.top);
+		VAST_ASSERTF(newSize.x != 0 && newSize.y != 0, "Attempted to set innvalid window size.");
+		uint2 windowSize = GetFullWindowSize(newSize);
+	
+		::SetWindowPos(m_Handle, 0, 0, 0, windowSize.x, windowSize.y, SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+		// TODO: We cannot yet maximize the window from code. For now, set not-maximized window style on resize.
+		ShowWindow(m_Handle, SW_RESTORE);
 
-		if (newWindowSize.x != m_WindowSize.x || newWindowSize.y != m_WindowSize.y)
-		{
-			m_WindowSize = newWindowSize;
-			WindowResizeEvent event(m_WindowSize);
-			VAST_FIRE_EVENT(WindowResizeEvent, event);
-		}
+		OnWindowResize();
 	}
 
 	uint2 WindowImpl_Win32::GetSize() const
@@ -121,8 +117,6 @@ namespace vast
 
 	void WindowImpl_Win32::Register(HINSTANCE hInst, const wchar_t* windowClassName)
 	{
-		VAST_PROFILE_FUNCTION();
-
 		WNDCLASSEXW windowClass;
 		windowClass.cbSize = sizeof(WNDCLASSEX);
 		windowClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -141,28 +135,44 @@ namespace vast
 		VAST_ASSERT(atom > 0);
 	}
 
-	void WindowImpl_Win32::Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 windowSize)
+	void WindowImpl_Win32::Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 clientSize)
 	{
-		VAST_PROFILE_FUNCTION();
-
-		int screenW = ::GetSystemMetrics(SM_CXSCREEN);
-		int screenH = ::GetSystemMetrics(SM_CYSCREEN);
-
-		RECT windowRect = { 0, 0, static_cast<LONG>(windowSize.x), static_cast<LONG>(windowSize.y) };
-		::AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
-
-		int windowW = windowRect.right - windowRect.left;
-		int windowH = windowRect.bottom - windowRect.top;
+		uint2 windowSize = GetFullWindowSize(clientSize);
+		uint2 screenSize = uint2(::GetSystemMetrics(SM_CXSCREEN), ::GetSystemMetrics(SM_CYSCREEN));
 
 		// Center the window within the screen. Clamp to 0, 0 for the top-left corner.
-		int windowX = std::max<int>(0, (screenW - windowW) / 2);
-		int windowY = std::max<int>(0, (screenH - windowH) / 2);
+		uint2 screenCenterPos = hlslpp::max(uint2(0), uint2((screenSize.x - windowSize.x) / 2, (screenSize.y - windowSize.y) / 2));
 
-		m_Handle = ::CreateWindowExW(NULL, windowClassName, windowName, WS_OVERLAPPEDWINDOW, windowX, windowY, windowW, windowH, NULL, NULL, hInst, nullptr);
-		VAST_ASSERTF(m_Handle, "Failed to create window");
+		m_Handle = ::CreateWindowExW(NULL, windowClassName, windowName, WS_OVERLAPPEDWINDOW, 
+			screenCenterPos.x, screenCenterPos.y, windowSize.x, windowSize.y, 
+			NULL, NULL, hInst, nullptr);
+		VAST_ASSERTF(m_Handle, "Failed to create window.");
 
 		// Pass a pointer to the Window to the WndProc function. This can also be done via WM_CREATE.
 		SetWindowLongPtr(m_Handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+	}
+
+	void WindowImpl_Win32::OnWindowResize()
+	{
+		RECT windowRect = {};
+		::GetClientRect(m_Handle, &windowRect);
+		uint2 newSize = uint2(windowRect.right - windowRect.left, windowRect.bottom - windowRect.top);
+
+		if (newSize.x != m_WindowSize.x || newSize.y != m_WindowSize.y)
+		{
+			VAST_WARNING("[window] Resizing window to {}, {} (was {}, {})", newSize.x, newSize.y, m_WindowSize.x, m_WindowSize.y);
+			m_WindowSize = newSize;
+			WindowResizeEvent event(m_WindowSize);
+			VAST_FIRE_EVENT(WindowResizeEvent, event);
+		}
+	}
+
+	uint2 WindowImpl_Win32::GetFullWindowSize(uint2 clientSize) const
+	{
+		RECT windowRect = { 0, 0, static_cast<LONG>(clientSize.x), static_cast<LONG>(clientSize.y) };
+		::AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
+
+		return uint2(windowRect.right - windowRect.left, windowRect.bottom - windowRect.top);
 	}
 
 }

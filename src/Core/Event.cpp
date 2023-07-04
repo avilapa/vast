@@ -7,9 +7,9 @@
 namespace vast
 {
 
-	static Array<std::map<EventSystem::SubscriberKey, EventSystem::EventCallback>, static_cast<uint32>(EventType::COUNT)> s_EventsSubscribers;
+	static Array<std::map<EventSystem::SubscriberKey, EventSystem::EventHandler>, static_cast<uint32>(EventType::COUNT)> s_EventsSubscribers;
 
-	void EventSystem::SubscribeToEvent(SubscriberKey key, EventCallback&& func)
+	void EventSystem::SubscribeToEvent(SubscriberKey key, EventHandler&& func)
 	{
 		s_EventsSubscribers[key.first].insert({ key, func });
 	}

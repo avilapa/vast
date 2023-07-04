@@ -22,7 +22,7 @@ namespace vast
 		Log::Init();
 
 		m_Window = Window::Create();
-		VAST_SUBSCRIBE_TO_EVENT("windowedapp", WindowCloseEvent, VAST_EVENT_CALLBACK(WindowedApp::Quit));
+		VAST_SUBSCRIBE_TO_EVENT("windowedapp", WindowCloseEvent, VAST_EVENT_HANDLER_CB(WindowedApp::Quit));
 
 		gfx::GraphicsParams params;
 		params.swapChainSize = m_Window->GetSize();

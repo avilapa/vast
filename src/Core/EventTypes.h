@@ -17,6 +17,7 @@ namespace vast
 	{
 		NONE = 0,
 		WindowClose, WindowResize,
+		DebugAction,
 		COUNT
 	};
 
@@ -33,5 +34,12 @@ namespace vast
 		EVENT_CLASS_DECL_STATIC_TYPE(WindowResize);
 		WindowResizeEvent(uint2 windowSize) : m_WindowSize(windowSize) {}
 		uint2 m_WindowSize;
+	};
+
+	class DebugActionEvent final : public IEvent
+	{
+	public:
+		DebugActionEvent() = default;
+		EVENT_CLASS_DECL_STATIC_TYPE(DebugAction);
 	};
 }

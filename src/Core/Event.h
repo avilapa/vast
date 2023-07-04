@@ -41,21 +41,22 @@
 namespace vast
 {
 
-#define __VAST_EVENT_CALLBACK_DATA(fn, eventType) [this](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
-#define __VAST_EVENT_CALLBACK(fn) [this](const IEvent&) { fn(); }
+#define __VAST_EVENT_HANDLER_CB_DATA(fn, eventType) [this](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
+#define __VAST_EVENT_HANDLER_CB(fn) [this](const IEvent&) { fn(); }
 
-#define __VAST_EVENT_CALLBACK_STATIC_DATA(fn, eventType) [](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
-#define __VAST_EVENT_CALLBACK_STATIC(fn) [](const IEvent&) { fn(); }
+#define __VAST_EVENT_HANDLER_CB_STATIC_DATA(fn, eventType) [](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
+#define __VAST_EVENT_HANDLER_CB_STATIC(fn) [](const IEvent&) { fn(); }
 
-#define __VAST_FIRE_EVENT_DATA(eventType, data)	EventSystem::FireEvent<eventType>(data)
-#define __VAST_FIRE_EVENT(eventType) EventSystem::FireEvent<eventType>()
-
-
-#define VAST_EVENT_CALLBACK(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_CALLBACK_DATA, __VAST_EVENT_CALLBACK)(__VA_ARGS__))
-#define VAST_EVENT_CALLBACK_STATIC(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_CALLBACK_STATIC_DATA, __VAST_EVENT_CALLBACK_STATIC)(__VA_ARGS__))
+#define VAST_EVENT_HANDLER_CB(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_HANDLER_CB_DATA, __VAST_EVENT_HANDLER_CB)(__VA_ARGS__))
+#define VAST_EVENT_HANDLER_CB_STATIC(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_HANDLER_CB_STATIC_DATA, __VAST_EVENT_HANDLER_CB_STATIC)(__VA_ARGS__))
+#define VAST_EVENT_HANDLER_EXP(expression) [this](const IEvent&) { expression; }
+#define VAST_EVENT_HANDLER_EXP_STATIC(expression) [](const IEvent&) { expression; }
 
 #define VAST_SUBSCRIBE_TO_EVENT(subId, eventType, fn) EventSystem::SubscribeToEvent<eventType>(subId, fn)
 #define VAST_UNSUBSCRIBE_FROM_EVENT(subId, eventType) EventSystem::UnsubscribeFromEvent<eventType>(subId)
+
+#define __VAST_FIRE_EVENT_DATA(eventType, data)	EventSystem::FireEvent<eventType>(data)
+#define __VAST_FIRE_EVENT(eventType) EventSystem::FireEvent<eventType>()
 
 #define VAST_FIRE_EVENT(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_FIRE_EVENT_DATA, __VAST_FIRE_EVENT)(__VA_ARGS__))
 
@@ -74,11 +75,11 @@ namespace vast
 	class EventSystem
 	{
 	public:
-		using EventCallback = std::function<void(const IEvent&)>;
+		using EventHandler = std::function<void(const IEvent&)>;
 		using SubscriberKey = std::pair<uint32, std::string>;
 
 		template<typename T>
-		static void SubscribeToEvent(std::string subscriberIdx, EventCallback&& func)
+		static void SubscribeToEvent(std::string subscriberIdx, EventHandler&& func)
 		{
 			const uint32 eventIdx = static_cast<uint32>(T::GetType());
 			const SubscriberKey key = std::make_pair(eventIdx, subscriberIdx);
@@ -115,7 +116,7 @@ namespace vast
 		static uint32 GetSubscriberCount(uint32 eventIdx);
 
 	private:
-		static void SubscribeToEvent(SubscriberKey key, EventCallback&& func);
+		static void SubscribeToEvent(SubscriberKey key, EventHandler&& func);
 		static void UnsubscribeFromEevent(SubscriberKey key);
 		static void FireEvent(uint32 eventIdx, IEvent& data);
 	};

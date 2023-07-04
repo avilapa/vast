@@ -21,7 +21,7 @@ public:
 	Hello3D(GraphicsContext& ctx) : SampleBase(ctx)
 	{
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		VAST_SUBSCRIBE_TO_EVENT("hello3d", WindowResizeEvent, VAST_EVENT_CALLBACK(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("hello3d", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
 
 		auto windowSize = m_GraphicsContext.GetOutputRenderTargetSize();
 		m_DepthRT = m_GraphicsContext.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, windowSize));

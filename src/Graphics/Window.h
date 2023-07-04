@@ -20,6 +20,9 @@ namespace vast
 		virtual ~Window() = default;
 
 		virtual void Update() = 0;
+
+		// Size here refers to the client area rather than the total dimensions of the window.
+		virtual void SetSize(uint2 newSize) = 0;
 		virtual uint2 GetSize() const = 0;
 	};
 }
