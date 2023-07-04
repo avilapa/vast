@@ -28,10 +28,10 @@ namespace vast
 
 	void EventSystem::FireEvent(uint32 eventIdx, IEvent& data)
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("event", "Event Fired");
 		for (const auto& [key, callback] : s_EventsSubscribers[eventIdx])
 		{
+			VAST_PROFILE_SCOPE("event", "Event Handler");
 			callback(data);
 		}
 	}

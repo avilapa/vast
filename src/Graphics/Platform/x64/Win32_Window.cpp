@@ -61,6 +61,7 @@ namespace vast
 		: m_WindowSize(params.size)
 		, m_WindowName(std::wstring(params.name.begin(), params.name.end()))
 	{
+		VAST_PROFILE_SCOPE("window", "Create Window Impl");
 		HINSTANCE hInst = GetModuleHandle(nullptr);
 
 		const wchar_t* windowClassName = L"default";
@@ -68,7 +69,7 @@ namespace vast
 		Create(hInst, windowClassName, m_WindowName.c_str(), m_WindowSize);
 
 		{
-			//VAST_PROFILE_SCOPE("window", "Show Window");
+			VAST_PROFILE_SCOPE("window", "Show Window");
 			ShowWindow(m_Handle, SW_SHOW);
 		}
 		SetForegroundWindow(m_Handle);
@@ -79,12 +80,14 @@ namespace vast
 
 	WindowImpl_Win32::~WindowImpl_Win32()
 	{
+		VAST_PROFILE_SCOPE("window", "Destroy Window Impl");
 		DestroyWindow(m_Handle);
 		m_Handle = nullptr;
 	}
 
 	void WindowImpl_Win32::Update()
 	{
+		VAST_PROFILE_SCOPE("window", "Update (Window)");
 		MSG msg{ 0 };
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -117,6 +120,7 @@ namespace vast
 
 	void WindowImpl_Win32::Register(HINSTANCE hInst, const wchar_t* windowClassName)
 	{
+		VAST_PROFILE_SCOPE("window", "Register Window");
 		WNDCLASSEXW windowClass;
 		windowClass.cbSize = sizeof(WNDCLASSEX);
 		windowClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -137,6 +141,7 @@ namespace vast
 
 	void WindowImpl_Win32::Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 clientSize)
 	{
+		VAST_PROFILE_SCOPE("window", "Create Window");
 		uint2 windowSize = GetFullWindowSize(clientSize);
 		uint2 screenSize = uint2(::GetSystemMetrics(SM_CXSCREEN), ::GetSystemMetrics(SM_CYSCREEN));
 
@@ -154,6 +159,7 @@ namespace vast
 
 	void WindowImpl_Win32::OnWindowResize()
 	{
+		VAST_PROFILE_SCOPE("window", "Resize Window");
 		RECT windowRect = {};
 		::GetClientRect(m_Handle, &windowRect);
 		uint2 newSize = uint2(windowRect.right - windowRect.left, windowRect.bottom - windowRect.top);

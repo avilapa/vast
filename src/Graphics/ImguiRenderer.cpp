@@ -15,8 +15,7 @@ namespace vast::gfx
 	ImguiRenderer::ImguiRenderer(gfx::GraphicsContext& context, HWND windowHandle /*= ::GetActiveWindow()*/)
 		: ctx(context)
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("ui", "Create Imgui Renderer");
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
@@ -60,8 +59,7 @@ namespace vast::gfx
 
 	ImguiRenderer::~ImguiRenderer()
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("ui", "Destroy Imgui Renderer");
 		ctx.DestroyTexture(m_FontTex);
 		ctx.DestroyPipeline(m_Pipeline);
 
@@ -72,18 +70,18 @@ namespace vast::gfx
 
 	void ImguiRenderer::BeginFrame()
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("ui", "Begin Frame (UI)");
 #if USE_IMGUI_STOCK_IMPL_WIN32
 		ImGui_ImplWin32_NewFrame();
 #endif
-		ImGui::NewFrame();
+		{
+			VAST_PROFILE_SCOPE("ui", "Imgui New Frame");
+			ImGui::NewFrame();
+		}
 	}
 
 	static const float4x4 ComputeProjectionMatrix(ImDrawData* data)
 	{
-		VAST_PROFILE_FUNCTION();
-
 		float L = data->DisplayPos.x;
 		float R = data->DisplayPos.x + data->DisplaySize.x;
 		float T = data->DisplayPos.y;
@@ -98,9 +96,11 @@ namespace vast::gfx
 
 	void ImguiRenderer::EndFrame()
 	{
-		VAST_PROFILE_FUNCTION();
-
-		ImGui::Render();
+		VAST_PROFILE_SCOPE("ui", "End Frame (UI)");
+		{
+			VAST_PROFILE_SCOPE("ui", "Imgui Render");
+			ImGui::Render();
+		}
 
 		ImDrawData* drawData = ImGui::GetDrawData();
 
@@ -115,6 +115,7 @@ namespace vast::gfx
 			return;
 
 		// Get memory for vertex and index buffers
+		VAST_PROFILE_BEGIN("ui", "Merge Buffers");
 		const uint32 vtxSize = sizeof(ImDrawVert) * drawData->TotalVtxCount;
 		const uint32 idxSize = sizeof(ImDrawIdx) * drawData->TotalIdxCount;
 		BufferView vtxView = ctx.AllocTempBufferView(vtxSize, 4); // TODO: Do we need 4 alignment?
@@ -131,6 +132,7 @@ namespace vast::gfx
 			vtxCpuMem += drawList->VtxBuffer.Size;
 			idxCpuMem += drawList->IdxBuffer.Size;
 		}
+		VAST_PROFILE_END("ui", "Merge Buffers");
 
 		ctx.BeginRenderPassToBackBuffer(m_Pipeline);
 		{
@@ -142,6 +144,7 @@ namespace vast::gfx
 			ctx.SetBlendFactor(float4(0));
 			uint32 vtxOffset = 0, idxOffset = 0;
 			ImVec2 clipOff = drawData->DisplayPos;
+			VAST_PROFILE_BEGIN("ui", "Draw Loop");
 			for (int32 i = 0; i < drawData->CmdListsCount; ++i)
 			{
 				const ImDrawList* drawList = drawData->CmdLists[i];
@@ -169,6 +172,7 @@ namespace vast::gfx
 				idxOffset += drawList->IdxBuffer.Size;
 				vtxOffset += drawList->VtxBuffer.Size;
 			}
+			VAST_PROFILE_END("ui", "Draw Loop");
 		}
 		ctx.EndRenderPass();
 	}

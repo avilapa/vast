@@ -42,8 +42,7 @@ namespace vast::gfx
 		, m_TempFrameAllocators({})
 		, m_FrameId(0)
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("gfx", "Create Graphics Context");
 		m_Buffers   = MakePtr<HandlePool<DX12Buffer,   Buffer,   NUM_BUFFERS>>();
 		m_Textures  = MakePtr<HandlePool<DX12Texture,  Texture,  NUM_TEXTURES>>();
 		m_Pipelines = MakePtr<HandlePool<DX12Pipeline, Pipeline, NUM_PIPELINES>>();
@@ -72,8 +71,7 @@ namespace vast::gfx
 
 	DX12GraphicsContext::~DX12GraphicsContext()
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("gfx", "Destroy Graphics Context");
 		WaitForIdle();
 		
 		DestroyTempFrameAllocators();
@@ -107,7 +105,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginFrame()
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Begin Frame (GFX)");
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
 
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
@@ -127,8 +125,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndFrame()
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("gfx", "End Frame (GFX)");
 		m_UploadCommandLists[m_FrameId]->ProcessUploads();
 		SubmitCommandList(*m_UploadCommandLists[m_FrameId]);
 		SignalEndOfFrame(QueueType::UPLOAD);
@@ -145,6 +142,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::FlushGPU()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Flush GPU Work");
 		WaitForIdle();
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
@@ -158,12 +156,18 @@ namespace vast::gfx
 		switch (cmdList.GetCommandType())
 		{
 		case D3D12_COMMAND_LIST_TYPE_DIRECT:
+		{
+			VAST_PROFILE_SCOPE("gfx", "Execute Graphics Command List");
 			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
+		}
 		// TODO: Compute
 		case D3D12_COMMAND_LIST_TYPE_COPY:
+		{
+			VAST_PROFILE_SCOPE("gfx", "Execute Upload Command List");
 			m_CommandQueues[IDX(QueueType::UPLOAD)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
+		}
 		default:
 			VAST_ASSERTF(0, "Unsupported context submit type.");
 			break;
@@ -177,7 +181,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::WaitForIdle()
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Wait CPU on GPU");
 		for (auto& q : m_CommandQueues)
 		{
 			q->WaitForIdle();
@@ -214,6 +218,7 @@ namespace vast::gfx
 
 	DX12RenderPassData DX12GraphicsContext::SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Setup Barriers (RT)");
 		DX12RenderPassData rpd;
 		rpd.rtCount = pipeline->desc.NumRenderTargets;
 		for (uint32 i = 0; i < rpd.rtCount; ++i)
@@ -272,8 +277,6 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline)
 	{
-		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPassToBackBuffer");
-
 		VAST_ASSERT(pipeline);
 		m_GraphicsCommandList->SetPipeline(pipeline);
 
@@ -283,6 +286,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h)
 	{
+		VAST_PROFILE_BEGIN("gfx", "Render Pass");
 		VAST_ASSERT(m_Pipelines && h.IsValid());
 		BeginRenderPassToBackBuffer_Internal(m_Pipelines->LookupResource(h));
 	}
@@ -301,7 +305,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets)
 	{
-		VAST_PROFILE_SCOPE("DX12GraphicsContext", "BeginRenderPass");
+		VAST_PROFILE_BEGIN("gfx", "Render Pass");
 		VAST_ASSERT(m_Pipelines && m_Textures && h.IsValid());
 		auto pipeline = m_Pipelines->LookupResource(h);
 		VAST_ASSERT(pipeline);
@@ -316,8 +320,6 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndRenderPass()
 	{
-		VAST_PROFILE_SCOPE("DX12GraphicsContext", "EndRenderPass");
-
 		VAST_ASSERTF(s_bIsInRenderPass, "EndRenderPass called without matching BeginRenderPass call.");
 		m_GraphicsCommandList->EndRenderPass();
 		s_bIsInRenderPass = false;
@@ -329,6 +331,7 @@ namespace vast::gfx
 		m_RenderPassEndBarriers.clear();
 
 		m_GraphicsCommandList->SetPipeline(nullptr);
+		VAST_PROFILE_END("gfx", "Render Pass");
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -337,7 +340,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Set Vertex Buffer");
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
@@ -346,7 +349,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Set Index Buffer");
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		VAST_ASSERT(buf);
@@ -355,7 +358,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
@@ -365,7 +368,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
 		auto tex = m_Textures->LookupResource(h);
@@ -379,7 +382,6 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetPushConstants(const void* data, const uint32 size)
 	{
-		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(data && size);
 		m_GraphicsCommandList->SetPushConstants(data, size);
 	}
@@ -388,14 +390,12 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetScissorRect(int4 rect)
 	{
-		VAST_PROFILE_FUNCTION();
 		const D3D12_RECT r = { (LONG)rect.x, (LONG)rect.y, (LONG)rect.z, (LONG)rect.w };
 		m_GraphicsCommandList->SetScissorRect(r);
 	}
 
 	void DX12GraphicsContext::SetBlendFactor(float4 blend)
 	{
-		VAST_PROFILE_FUNCTION();
 		m_GraphicsCommandList->GetCommandList()->OMSetBlendFactor((float*)&blend);;
 	}
 
@@ -415,19 +415,19 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation/* = 0 */, uint32 instStartLocation /* = 0 */)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Draw Instanced");
 		m_GraphicsCommandList->GetCommandList()->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
 	}
 
 	void DX12GraphicsContext::DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Draw Indexed Instanced");
 		m_GraphicsCommandList->GetCommandList()->DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
 	}
 
 	void DX12GraphicsContext::DrawFullscreenTriangle()
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Draw Fullscreen Triangle");
 		m_GraphicsCommandList->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		m_GraphicsCommandList->GetCommandList()->IASetIndexBuffer(nullptr);
 		DrawInstanced(3, 1);
@@ -439,7 +439,7 @@ namespace vast::gfx
 
 	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Create Buffer");
 		VAST_ASSERT(m_Device);
 		auto [h, buf] = m_Buffers->AcquireResource();
 		m_Device->CreateBuffer(desc, buf);
@@ -459,7 +459,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::UpdateBuffer(const BufferHandle h, void* srcMem, const size_t srcSize)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Update Buffer");
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		// TODO: Check buffer does not have UAV
@@ -471,7 +471,7 @@ namespace vast::gfx
 	
 	void DX12GraphicsContext::UpdatePipeline(const PipelineHandle h)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Update Pipeline");
 		VAST_ASSERT(h.IsValid());
 		auto pipeline = m_Pipelines->LookupResource(h);
 
@@ -493,6 +493,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::UploadBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Upload Buffer Data");
 		VAST_ASSERT(buf);
 		VAST_ASSERT(srcMem && srcSize);
 
@@ -507,7 +508,7 @@ namespace vast::gfx
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Create Texture");
 		VAST_ASSERT(m_Device);
 		auto [h, tex] = m_Textures->AcquireResource();
 		m_Device->CreateTexture(desc, tex);
@@ -552,15 +553,14 @@ namespace vast::gfx
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& file, bool sRGB /* = true */)
 	{
-		VAST_PROFILE_FUNCTION();
 		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(file);
-
 		if (!FileExists(wpath))
 		{
 			VAST_ASSERTF(0, "Texture file path does not exist.");
 			return TextureHandle();
 		}
 
+		VAST_PROFILE_BEGIN("gfx", "Load Texture File");
 		const std::wstring wext = GetFileExtension(wpath);
 		DirectX::ScratchImage image;
 		if (wext.compare(L"DDS") == 0 || wext.compare(L"dds") == 0)
@@ -579,6 +579,7 @@ namespace vast::gfx
 			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, tempImage));
 			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
 		}
+		VAST_PROFILE_END("gfx", "Load Texture File");
 
 		const DirectX::TexMetadata& metaData = image.GetMetadata();
 		DXGI_FORMAT format = metaData.format;
@@ -604,6 +605,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::UploadTextureData(DX12Texture* tex, void* srcMem)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Upload Texture");
 		VAST_ASSERT(tex);
 		VAST_ASSERT(srcMem);
 
@@ -654,7 +656,7 @@ namespace vast::gfx
 
 	PipelineHandle DX12GraphicsContext::CreatePipeline(const PipelineDesc& desc)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Create Pipeline");
 		VAST_ASSERT(m_Device);
 		auto [h, pipeline] = m_Pipelines->AcquireResource();
 		m_Device->CreatePipeline(desc, pipeline);
@@ -728,7 +730,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::ProcessDestructions(uint32 frameId)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Process Destructions");
 		VAST_ASSERT(m_Device);
 
 		for (auto& h : m_BuffersMarkedForDestruction[frameId])
@@ -764,8 +766,6 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::OnWindowResizeEvent(const WindowResizeEvent& event)
 	{
-		VAST_PROFILE_FUNCTION();
-
 		const uint2 scSize = m_SwapChain->GetSize();
 
 		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
@@ -786,7 +786,8 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::RenderOutputToBackBuffer()
 	{
-		VAST_PROFILE_SCOPE("DX12GraphicsContext", "RenderOutputToBackBuffer");
+		VAST_PROFILE_SCOPE("gfx", "Render Output to BackBuffer");
+		VAST_PROFILE_BEGIN("gfx", "Render Pass");
 		BeginRenderPassToBackBuffer_Internal(m_OutputToBackBufferPSO.get());
 		{
 			VAST_ASSERT(m_OutputRT && m_OutputRT->descriptorHeapIdx != kInvalidHeapIdx);
@@ -820,6 +821,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::CreateOutputPassResources()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Create Output Pass Resources");
 		VAST_ASSERT(!m_OutputToBackBufferPSO);
 		m_OutputToBackBufferPSO = MakePtr<DX12Pipeline>();
 		m_Device->CreatePipeline(PipelineDesc{
@@ -840,6 +842,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::DestroyOutputPassResources()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Destroy Output Pass Resources");
 		VAST_ASSERT(m_OutputToBackBufferPSO);
 		m_Device->DestroyPipeline(m_OutputToBackBufferPSO.get());
 		m_OutputToBackBufferPSO->Reset();
@@ -861,7 +864,6 @@ namespace vast::gfx
 
 	BufferView DX12GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
 	{
-		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(size);
 		VAST_ASSERT(m_TempFrameAllocators[m_FrameId].size);
 
@@ -889,6 +891,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::CreateTempFrameAllocators()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Create Temp Frame Allocators");
 		uint32 tempFrameBufferSize = 1024 * 1024;
 
 		BufferDesc tempFrameBufferDesc =

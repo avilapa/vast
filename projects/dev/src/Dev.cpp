@@ -18,6 +18,9 @@
 //		- req: Camera Object
 //	> GFX Deferred Rendering.
 //	> GFX Line Rendering.
+//  > GFX Per Frame Resources
+//  > GFX Per Pass Resources
+//  > GFX Pipeline State Caching
 //
 //	> Object Loading from file (.obj).
 //	> Scene Loading (.gltf, .usd?).
@@ -165,7 +168,7 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 		.renderPassLayout = 
 		{ 
 			.rtFormats = { ctx.GetOutputRenderTargetFormat() },
-			.dsFormat = { TexFormat::D32_FLOAT }, // ctx.GetTextureFormat(m_DepthRT); // TODO: Currently returns typeless
+			.dsFormat = { ctx.GetTextureFormat(m_DepthRT) },
 		},
 	};
 	m_MeshPso = ctx.CreatePipeline(meshPipelineDesc);

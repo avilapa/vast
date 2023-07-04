@@ -20,6 +20,7 @@ namespace vast::gfx
 		, m_DxcCompiler(nullptr)
 		, m_DxcIncludeHandler(nullptr)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Create Shader Manager");
 		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils));
 		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler));
 		m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler);
@@ -41,6 +42,7 @@ namespace vast::gfx
 
 	DX12ShaderManager::~DX12ShaderManager()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Destroy Shader Manager");
 		for (auto shader : m_Shaders)
 		{
 			DX12SafeRelease(shader.first->blob);
@@ -73,7 +75,7 @@ namespace vast::gfx
 
 	Ref<DX12Shader> DX12ShaderManager::LoadShader(const ShaderDesc& desc)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Load Shader");
 		Ref<DX12Shader> shaderRef;
  		auto key = MakeShaderKey(desc.shaderName, desc.entryPoint);
 		if (IsShaderRegistered(key))
@@ -105,7 +107,7 @@ namespace vast::gfx
 
 	bool DX12ShaderManager::ReloadShader(Ref<DX12Shader> shader)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Reload Shader");
 		VAST_ASSERTF(IsShaderRegistered(shader->key), "Attempted to reload invalid shader.");
 		auto desc = m_Shaders[m_ShaderKeys[shader->key]].second;
 		VAST_ASSERT(shader->key.compare(MakeShaderKey(desc.shaderName, desc.entryPoint)) == 0);
@@ -147,7 +149,7 @@ namespace vast::gfx
 
 	bool DX12ShaderManager::CompileShader(const ShaderDesc& desc, DX12Shader* outShader)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Compile Shader");
 		std::wstring shaderName(desc.shaderName.begin(), desc.shaderName.end());
 		std::wstring entryPoint(desc.entryPoint.begin(), desc.entryPoint.end());
 
@@ -255,7 +257,7 @@ namespace vast::gfx
 
 	ID3DBlob* DX12ShaderManager::CreateRootSignatureFromReflection(DX12Pipeline* pipeline) const
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Reflect Root Signature");
 		DX12Shader* shaders[] = { pipeline->vs.get(), pipeline->ps.get() };
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
 		Vector<D3D12_DESCRIPTOR_RANGE1> descriptorRanges;
@@ -367,7 +369,6 @@ namespace vast::gfx
 	
 	Vector<D3D12_SIGNATURE_PARAMETER_DESC> DX12ShaderManager::GetInputParametersFromReflection(ID3D12ShaderReflection* reflection) const
 	{
-		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(reflection);
 
 		D3D12_SHADER_DESC shaderDesc{};

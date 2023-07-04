@@ -15,8 +15,6 @@ namespace vast::gfx
 		, m_NumQueuedBarriers(0)
 		, m_CurrentSRVDescriptorHeap(nullptr)
 	{
-		VAST_PROFILE_FUNCTION();
-
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			DX12Check(m_Device.GetDevice()->CreateCommandAllocator(m_CommandType, IID_PPV_ARGS(&m_CommandAllocators[i])));
@@ -47,8 +45,7 @@ namespace vast::gfx
 
 	void DX12CommandList::Reset(uint32 frameId)
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("gfx", "Reset Command List");
 		m_CommandAllocators[frameId]->Reset();
 		m_CommandList->Reset(m_CommandAllocators[frameId], nullptr);
 		
@@ -60,8 +57,6 @@ namespace vast::gfx
 
 	void DX12CommandList::AddBarrier(DX12Resource& resource, D3D12_RESOURCE_STATES newState)
 	{
-		VAST_PROFILE_SCOPE("DX12CommandList", "AddBarrier");
-
 		if (m_NumQueuedBarriers >= MAX_QUEUED_BARRIERS)
 		{
 			FlushBarriers();
@@ -105,8 +100,6 @@ namespace vast::gfx
 		if (m_NumQueuedBarriers == 0)
 			return;
 
-		VAST_PROFILE_SCOPE("DX12CommandList", "FlushBarriers");
-
 		// TODO: Optimize barriers
 // 		Array<D3D12_RESOURCE_BARRIER, MAX_QUEUED_BARRIERS> optimizedResourceBarrierQueue;
 // 		for (uint32 i = 0; i < m_NumQueuedBarriers; ++i)
@@ -114,6 +107,7 @@ namespace vast::gfx
 // 
 // 		}
 
+		VAST_PROFILE_SCOPE("gfx", "Flush Barriers");
 #if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
 		VAST_TRACE("[barrier] Flushing {} cached barrier transitions...", m_NumQueuedBarriers);
 #endif
@@ -152,8 +146,7 @@ namespace vast::gfx
 
 	void DX12CommandList::BindDescriptorHeaps(uint32 frameId)
 	{
-		VAST_PROFILE_FUNCTION();
-
+		VAST_PROFILE_SCOPE("gfx", "Bind Descriptor Heaps");
 		m_CurrentSRVDescriptorHeap = &m_Device.GetSRVDescriptorHeap(frameId);
 		m_CurrentSRVDescriptorHeap->Reset();
 
@@ -172,11 +165,17 @@ namespace vast::gfx
 		: DX12CommandList(device, D3D12_COMMAND_LIST_TYPE_DIRECT)
 		, m_CurrentPipeline(nullptr)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Create Graphics Command List");
+	}
+
+	DX12GraphicsCommandList::~DX12GraphicsCommandList()
+	{
+		VAST_PROFILE_SCOPE("gfx", "Destroy Graphics Command List");
 	}
 
 	void DX12GraphicsCommandList::BeginRenderPass(const DX12RenderPassData& rpd)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Begin Render Pass");
 		m_CommandList->BeginRenderPass(
 			rpd.rtCount, 
 			rpd.rtDesc, 
@@ -187,7 +186,7 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::EndRenderPass()
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "End Render Pass");
 		m_CommandList->EndRenderPass();
 	}
 
@@ -195,7 +194,7 @@ namespace vast::gfx
 	{
 		if (pipeline)
 		{
-			VAST_PROFILE_FUNCTION();
+			VAST_PROFILE_SCOPE("gfx", "Set Pipeline State and Root Signature");
 			m_CommandList->SetPipelineState(pipeline->pipelineState);
 			m_CommandList->SetGraphicsRootSignature(pipeline->desc.pRootSignature);
 		}
@@ -204,7 +203,6 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetVertexBuffer(const DX12Buffer& buf, uint32 offset, uint32 stride)
 	{
-		VAST_PROFILE_FUNCTION();
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind vertex shader before setting a render pipeline.");
 
 		auto rscDesc = buf.resource->GetDesc();
@@ -219,7 +217,6 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetIndexBuffer(const DX12Buffer& buf, uint32 offset, DXGI_FORMAT format)
 	{
-		VAST_PROFILE_FUNCTION();
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind index shader before setting a render pipeline.");
 
 		auto rscDesc = buf.resource->GetDesc();
@@ -234,21 +231,20 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetConstantBuffer(const DX12Buffer& buf, uint32 offset, uint32 slotIndex)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Set Constant Buffer");
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind constant buffer before setting a render pipeline."); // TODO: What about global/per frame resources
 		m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, buf.gpuAddress + offset);
 	}
 
 	void DX12GraphicsCommandList::SetDescriptorTable(const D3D12_GPU_DESCRIPTOR_HANDLE& gpuHandle)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Set Descriptor Table");
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind descriptor table before setting a render pipeline."); // TODO: What about global/per frame resources
 		m_CommandList->SetGraphicsRootDescriptorTable(m_CurrentPipeline->descriptorTableIndex, gpuHandle);
 	}
 
 	void DX12GraphicsCommandList::SetPushConstants(const void* data, const uint32 size)
 	{
-		VAST_PROFILE_FUNCTION();
 		VAST_ASSERT(data && size);
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind push constant before setting a render pipeline.");
 		VAST_ASSERTF(m_CurrentPipeline->pushConstantIndex != UINT8_MAX, "Currently set pipeline does not expect push constant.");
@@ -257,7 +253,6 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)
 	{
-		VAST_PROFILE_FUNCTION();
 		D3D12_VIEWPORT viewport;
 		viewport.Width = static_cast<float>(windowSize.x);
 		viewport.Height = static_cast<float>(windowSize.y);
@@ -279,7 +274,6 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetScissorRect(const D3D12_RECT& rect)
 	{
-		VAST_PROFILE_FUNCTION();
 		// TODO: Support setting multiple rects
 		m_CommandList->RSSetScissorRects(1, &rect);
 	}
@@ -289,6 +283,7 @@ namespace vast::gfx
 	DX12UploadCommandList::DX12UploadCommandList(DX12Device& device)
 		: DX12CommandList(device, D3D12_COMMAND_LIST_TYPE_COPY)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Create Upload Command List");
 		BufferDesc uploadBufferDesc;
 		uploadBufferDesc.size = 10 * 1024 * 1024;
 		uploadBufferDesc.cpuAccess = BufCpuAccess::WRITE;
@@ -306,6 +301,7 @@ namespace vast::gfx
 
 	DX12UploadCommandList::~DX12UploadCommandList()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Destroy Upload Command List");
 		VAST_ASSERT(m_BufferUploadHeap);
 		m_Device.DestroyBuffer(m_BufferUploadHeap.get());
 		m_BufferUploadHeap = nullptr;
@@ -329,6 +325,7 @@ namespace vast::gfx
 
 	void DX12UploadCommandList::ProcessUploads()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Process Uploads");
 		const uint32 numBufferUploads = static_cast<uint32>(m_BufferUploads.size());
 		uint32 numBuffersProcessed = 0;
 		size_t bufferUploadHeapOffset = 0;

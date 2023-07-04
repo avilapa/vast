@@ -49,6 +49,7 @@ namespace vast::gfx
 	{
 	public:
 		DX12GraphicsCommandList(DX12Device& device);
+		~DX12GraphicsCommandList();
 
 		void BeginRenderPass(const DX12RenderPassData& rpd);
 		void EndRenderPass();

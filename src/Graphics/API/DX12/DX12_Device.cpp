@@ -27,12 +27,12 @@ namespace vast::gfx
 		, m_SRVRenderPassDescriptorHeaps({ nullptr })
 		, m_SamplerRenderPassDescriptorHeap(nullptr)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Create Graphics Device");
 		VAST_INFO("[gfx] [dx12] Starting graphics device creation.");
 
 #ifdef VAST_DEBUG
 		{
-			VAST_PROFILE_SCOPE("Device", "EnableDebugLayer");
+			VAST_PROFILE_SCOPE("Device", "Enable Debug Layer");
 			ID3D12Debug* debugController;
 			if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 			{
@@ -44,7 +44,7 @@ namespace vast::gfx
 #endif // VAST_DEBUG
 
 		{
-			VAST_PROFILE_SCOPE("Device", "CreateDXGIFactory");
+			VAST_PROFILE_SCOPE("Device", "Create DXGI Factory");
 			VAST_INFO("[gfx] [dx12] Creating DXGI factory.");
 			UINT createFactoryFlags = 0;
 #ifdef VAST_DEBUG
@@ -83,13 +83,13 @@ namespace vast::gfx
 		}
 
 		{
-			VAST_PROFILE_SCOPE("Device", "D3D12CreateDevice");
+			VAST_PROFILE_SCOPE("Device", "Create Device");
 			VAST_INFO("[gfx] [dx12] Creating device.");
 			DX12Check(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_Device)));
 		}
 
 		{
-			VAST_PROFILE_SCOPE("Device", "D3D12MA::CreateAllocator");
+			VAST_PROFILE_SCOPE("Device", "Create Memory Allocator");
 			VAST_INFO("[gfx] [dx12] Creating allocator.");
 			D3D12MA::ALLOCATOR_DESC desc = {};
 			desc.Flags = D3D12MA::ALLOCATOR_FLAG_NONE;
@@ -158,7 +158,7 @@ namespace vast::gfx
 
 	DX12Device::~DX12Device()
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Destroy Graphics Device");
 		VAST_INFO("[gfx] [dx12] Starting graphics device destruction.");
 
 		m_RTVStagingDescriptorHeap = nullptr;
@@ -179,6 +179,7 @@ namespace vast::gfx
 
 	void DX12Device::CreateSamplers()
 	{
+		VAST_PROFILE_SCOPE("gfx", "Create Samplers");
 		D3D12_SAMPLER_DESC samplerDescs[IDX(SamplerState::COUNT)]{};
 		{
 			D3D12_SAMPLER_DESC& desc = samplerDescs[IDX(SamplerState::LINEAR_WRAP)];
@@ -237,7 +238,7 @@ namespace vast::gfx
 
 	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* outBuf)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Device Create Buffer");
 		VAST_ASSERT(outBuf);
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
@@ -340,7 +341,7 @@ namespace vast::gfx
 
 	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* outTex)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Device Create Texture");
 		VAST_ASSERT(outTex);
 		VAST_ASSERTF(desc.width > 0 && desc.height > 0 && desc.depthOrArraySize > 0, "Invalid texture size.");
 		VAST_ASSERTF(desc.mipCount <= MipLevelCount(desc.width, desc.height, desc.depthOrArraySize), "Invalid mip count.");
@@ -507,7 +508,7 @@ namespace vast::gfx
 
 	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* outPipeline)
 	{
-		VAST_PROFILE_FUNCTION();
+		VAST_PROFILE_SCOPE("gfx", "Device Create Pipeline");
 		VAST_ASSERT(outPipeline);
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
@@ -516,7 +517,7 @@ namespace vast::gfx
 		{
 			outPipeline->vs = m_ShaderManager->LoadShader(desc.vs);
 			psDesc.VS.pShaderBytecode = outPipeline->vs->blob->GetBufferPointer();
-			psDesc.VS.BytecodeLength  = outPipeline->vs->blob->GetBufferSize();
+			psDesc.VS.BytecodeLength = outPipeline->vs->blob->GetBufferSize();
 
 			auto paramsDesc = m_ShaderManager->GetInputParametersFromReflection(outPipeline->vs->reflection);
 			D3D12_INPUT_ELEMENT_DESC* inputElementDescs = new D3D12_INPUT_ELEMENT_DESC[paramsDesc.size()]{};
@@ -543,7 +544,7 @@ namespace vast::gfx
 		{
 			outPipeline->ps = m_ShaderManager->LoadShader(desc.ps);
 			psDesc.PS.pShaderBytecode = outPipeline->ps->blob->GetBufferPointer();
-			psDesc.PS.BytecodeLength  = outPipeline->ps->blob->GetBufferSize();
+			psDesc.PS.BytecodeLength = outPipeline->ps->blob->GetBufferSize();
 			shaderName = desc.ps.shaderName;
 		}
 
@@ -558,42 +559,42 @@ namespace vast::gfx
 		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
 		{
 			D3D12_RENDER_TARGET_BLEND_DESC* rtBlendDesc = &psDesc.BlendState.RenderTarget[i];
-			rtBlendDesc->BlendEnable			= desc.blendStates[i].blendEnable;
-			rtBlendDesc->LogicOpEnable			= false;
-			rtBlendDesc->SrcBlend				= TranslateToDX12(desc.blendStates[i].srcBlend);
-			rtBlendDesc->DestBlend				= TranslateToDX12(desc.blendStates[i].dstBlend);
-			rtBlendDesc->BlendOp				= TranslateToDX12(desc.blendStates[i].blendOp);
-			rtBlendDesc->SrcBlendAlpha			= TranslateToDX12(desc.blendStates[i].srcBlendAlpha);
-			rtBlendDesc->DestBlendAlpha			= TranslateToDX12(desc.blendStates[i].dstBlendAlpha);
-			rtBlendDesc->BlendOpAlpha			= TranslateToDX12(desc.blendStates[i].blendOpAlpha);
-			rtBlendDesc->LogicOp				= D3D12_LOGIC_OP_NOOP;
-			rtBlendDesc->RenderTargetWriteMask	= TranslateToDX12(desc.blendStates[i].writeMask);
+			rtBlendDesc->BlendEnable = desc.blendStates[i].blendEnable;
+			rtBlendDesc->LogicOpEnable = false;
+			rtBlendDesc->SrcBlend = TranslateToDX12(desc.blendStates[i].srcBlend);
+			rtBlendDesc->DestBlend = TranslateToDX12(desc.blendStates[i].dstBlend);
+			rtBlendDesc->BlendOp = TranslateToDX12(desc.blendStates[i].blendOp);
+			rtBlendDesc->SrcBlendAlpha = TranslateToDX12(desc.blendStates[i].srcBlendAlpha);
+			rtBlendDesc->DestBlendAlpha = TranslateToDX12(desc.blendStates[i].dstBlendAlpha);
+			rtBlendDesc->BlendOpAlpha = TranslateToDX12(desc.blendStates[i].blendOpAlpha);
+			rtBlendDesc->LogicOp = D3D12_LOGIC_OP_NOOP;
+			rtBlendDesc->RenderTargetWriteMask = TranslateToDX12(desc.blendStates[i].writeMask);
 		}
 
 		psDesc.SampleMask = 0xFFFFFFFF;
 
-		psDesc.RasterizerState.FillMode					= TranslateToDX12(desc.rasterizerState.fillMode);
-		psDesc.RasterizerState.CullMode					= TranslateToDX12(desc.rasterizerState.cullMode);
-		psDesc.RasterizerState.FrontCounterClockwise	= false;
-		psDesc.RasterizerState.DepthBias				= D3D12_DEFAULT_DEPTH_BIAS;
-		psDesc.RasterizerState.DepthBiasClamp			= D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-		psDesc.RasterizerState.SlopeScaledDepthBias		= D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		psDesc.RasterizerState.DepthClipEnable			= true;
-		psDesc.RasterizerState.MultisampleEnable		= false;
-		psDesc.RasterizerState.AntialiasedLineEnable	= false;
-		psDesc.RasterizerState.ForcedSampleCount		= 0;
-		psDesc.RasterizerState.ConservativeRaster		= D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+		psDesc.RasterizerState.FillMode = TranslateToDX12(desc.rasterizerState.fillMode);
+		psDesc.RasterizerState.CullMode = TranslateToDX12(desc.rasterizerState.cullMode);
+		psDesc.RasterizerState.FrontCounterClockwise = false;
+		psDesc.RasterizerState.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+		psDesc.RasterizerState.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+		psDesc.RasterizerState.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+		psDesc.RasterizerState.DepthClipEnable = true;
+		psDesc.RasterizerState.MultisampleEnable = false;
+		psDesc.RasterizerState.AntialiasedLineEnable = false;
+		psDesc.RasterizerState.ForcedSampleCount = 0;
+		psDesc.RasterizerState.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
 		D3D12_DEPTH_STENCILOP_DESC stencilOpDesc = {};
 		stencilOpDesc.StencilFailOp = stencilOpDesc.StencilDepthFailOp = stencilOpDesc.StencilPassOp = D3D12_STENCIL_OP_KEEP;
 		stencilOpDesc.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 
-		psDesc.DepthStencilState.DepthEnable	= desc.depthStencilState.depthEnable;
-		psDesc.DepthStencilState.DepthWriteMask	= desc.depthStencilState.depthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
-		psDesc.DepthStencilState.DepthFunc		= TranslateToDX12(desc.depthStencilState.depthFunc);
-		psDesc.DepthStencilState.StencilEnable	= false;
-		psDesc.DepthStencilState.FrontFace		= stencilOpDesc;
-		psDesc.DepthStencilState.BackFace		= stencilOpDesc;
+		psDesc.DepthStencilState.DepthEnable = desc.depthStencilState.depthEnable;
+		psDesc.DepthStencilState.DepthWriteMask = desc.depthStencilState.depthWrite ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
+		psDesc.DepthStencilState.DepthFunc = TranslateToDX12(desc.depthStencilState.depthFunc);
+		psDesc.DepthStencilState.StencilEnable = false;
+		psDesc.DepthStencilState.FrontFace = stencilOpDesc;
+		psDesc.DepthStencilState.BackFace = stencilOpDesc;
 
 		psDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
@@ -615,7 +616,10 @@ namespace vast::gfx
 		psDesc.NodeMask = 0;
 
 		outPipeline->desc = psDesc;
-		DX12Check(m_Device->CreateGraphicsPipelineState(&outPipeline->desc, IID_PPV_ARGS(&outPipeline->pipelineState)));
+		{
+			VAST_PROFILE_SCOPE("gfx", "Device Create PSO");
+			DX12Check(m_Device->CreateGraphicsPipelineState(&outPipeline->desc, IID_PPV_ARGS(&outPipeline->pipelineState)));
+		}
 	}
 
 	void DX12Device::UpdatePipeline(DX12Pipeline* pipeline)
@@ -646,6 +650,7 @@ namespace vast::gfx
 
 	void DX12Device::DestroyBuffer(DX12Buffer* buf)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Device Destroy Buffer");
 		VAST_ASSERTF(buf, "Attempted to destroy an empty buffer.");
 
 		if (buf->cbv.IsValid())
@@ -675,6 +680,7 @@ namespace vast::gfx
 
 	void DX12Device::DestroyTexture(DX12Texture* tex)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Device Destroy Texture");
 		VAST_ASSERTF(tex, "Attempted to destroy an empty texture.");
 
 		if (tex->rtv.IsValid())
@@ -704,6 +710,7 @@ namespace vast::gfx
 	
 	void DX12Device::DestroyPipeline(DX12Pipeline* pipeline)
 	{
+		VAST_PROFILE_SCOPE("gfx", "Device Destroy Pipeline");
 		VAST_ASSERTF(pipeline, "Attempted to destroy an empty pipeline.");
 		pipeline->vs = nullptr;
 		pipeline->ps = nullptr;
