@@ -1,12 +1,10 @@
 #include "vastpch.h"
-#include "Graphics/Platform/x64/Win32_Window.h"
-
+#include "Core/Platform/x64/Win32_Window.h"
 #include "Core/EventTypes.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
 
 #include "imgui/backends/imgui_impl_win32.h" // TODO: USE_IMGUI_STOCK_IMPL_WIN32
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace vast
@@ -106,10 +104,13 @@ namespace vast
 		VAST_ASSERTF(newSize.x != 0 && newSize.y != 0, "Attempted to set innvalid window size.");
 		uint2 windowSize = GetFullWindowSize(newSize);
 	
-		::SetWindowPos(m_Handle, 0, 0, 0, windowSize.x, windowSize.y, SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
-		// TODO: We cannot yet maximize the window from code. For now, set not-maximized window style on resize.
-		ShowWindow(m_Handle, SW_RESTORE);
+		// Remove WS_MAXIMIZE style
+		LONG_PTR style = GetWindowLongPtr(m_Handle, GWL_STYLE);
+		style &= ~WS_MAXIMIZE;
+		SetWindowLongPtr(m_Handle, GWL_STYLE, style);
 
+		::SetWindowPos(m_Handle, 0, 0, 0, windowSize.x, windowSize.y, SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+		
 		OnWindowResize();
 	}
 

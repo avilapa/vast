@@ -2,10 +2,10 @@
 #include "Core/App.h"
 
 #include "Core/EventTypes.h"
+#include "Core/Window.h"
 
-#include "Graphics/Window.h"
 #include "Graphics/GraphicsContext.h"
-#include "Graphics/ImguiRenderer.h"
+#include "Rendering/ImguiRenderer.h"
 
 namespace vast
 {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Core.h"
-#include "Core/Types.h"
 #include "Core/Handles.h"
 #include "Graphics/Resources.h"
 #include "Graphics/ShaderResourceProxy.h"

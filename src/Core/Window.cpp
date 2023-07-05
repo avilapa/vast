@@ -1,8 +1,8 @@
 #include "vastpch.h"
-#include "Graphics/Window.h"
+#include "Core/Window.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
-#include "Graphics/Platform/x64/Win32_Window.h"
+#include "Core/Platform/x64/Win32_Window.h"
 #else
 #error "Invalid Platform: Unknown Platform"
 #endif

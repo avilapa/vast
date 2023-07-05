@@ -1,5 +1,5 @@
 #include "vastpch.h"
-#include "Graphics/ImguiRenderer.h"
+#include "Rendering/ImguiRenderer.h"
 
 #include "imgui/imgui.h"
 
