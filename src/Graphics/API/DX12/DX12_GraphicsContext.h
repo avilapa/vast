@@ -52,8 +52,11 @@ namespace vast::gfx
 		void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) override;
 		void DrawFullscreenTriangle() override;
 
-		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) override;
-		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
+		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0, const std::string& debugName = "Unnamed Buffer") override;
+		BufferHandle CreateBuffer(const BufferDesc& desc, const std::string& debugName) override;
+		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr, const std::string& debugName = "Unnamed Texture") override;
+		TextureHandle CreateTexture(const TextureDesc& desc, const std::string& debugName) override;
+		TextureHandle CreateTexture(const std::string& filePath, const std::string& debugName, bool sRGB = true) override;
 		TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) override;
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
@@ -88,6 +91,9 @@ namespace vast::gfx
 		void ProcessDestructions(uint32 frameId);
 
 	private:
+		bool m_bHasRenderPassBegun;
+		bool m_bHasBackBufferBeenRenderedToThisFrame;
+
 		DX12RenderPassData SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets);
 		DX12RenderPassData SetupBackBufferRenderPassBarrierTransitions();
 		void BeginRenderPass_Internal(const DX12RenderPassData& rpd);

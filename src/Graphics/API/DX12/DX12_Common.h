@@ -70,6 +70,30 @@ namespace vast::gfx
 			isReady = false;
 			usage = ResourceUsage::STATIC;
 		}
+
+		void SetName(const std::string& name)
+		{
+#ifdef VAST_DEBUG
+			resource->SetName(std::wstring(name.begin(), name.end()).c_str());
+#else
+			(void)name;
+#endif
+		}
+
+		std::string GetName()
+		{
+#ifdef VAST_DEBUG
+			wchar_t wname[128] = {};
+			UINT size = sizeof(wname);
+			resource->GetPrivateData(WKPDID_D3DDebugObjectNameW, &size, wname);
+			char name[128] = {};
+			char DefChar = 'X';
+			WideCharToMultiByte(CP_ACP, 0, wname, -1, name, 128, &DefChar, NULL);
+			return std::string(name);
+#else
+			return std::string("Unnamed");
+#endif
+		}
 	};
 
 	struct DX12Buffer : public Buffer, public DX12Resource
@@ -356,12 +380,43 @@ namespace vast::gfx
 	{
 		switch (v)
 		{
-		case ResourceState::NONE:				return D3D12_RESOURCE_STATE_COMMON;
-		case ResourceState::SHADER_RESOURCE:	return D3D12_RESOURCE_STATE_GENERIC_READ;
-		case ResourceState::RENDER_TARGET:		return D3D12_RESOURCE_STATE_RENDER_TARGET;
-		case ResourceState::DEPTH_WRITE:		return D3D12_RESOURCE_STATE_DEPTH_WRITE;
-		case ResourceState::DEPTH_READ:			return D3D12_RESOURCE_STATE_DEPTH_READ;
-		default: VAST_ASSERTF(0, "ResourceState not supported on this platform."); return D3D12_RESOURCE_STATE_COMMON;
+		case ResourceState::NONE:						return D3D12_RESOURCE_STATE_COMMON;
+		case ResourceState::PIXEL_SHADER_RESOURCE:		return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		case ResourceState::NON_PIXEL_SHADER_RESOURCE:	return D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		case ResourceState::UNORDERED_ACCESS:			return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+		case ResourceState::RENDER_TARGET:				return D3D12_RESOURCE_STATE_RENDER_TARGET;
+		case ResourceState::DEPTH_WRITE:				return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		case ResourceState::DEPTH_READ:					return D3D12_RESOURCE_STATE_DEPTH_READ;
+
+		case ResourceState::VERTEX_BUFFER:				return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		case ResourceState::INDEX_BUFFER:				return D3D12_RESOURCE_STATE_INDEX_BUFFER;
+		case ResourceState::CONSTANT_BUFFER:			return D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+		default:
+		{
+			D3D12_RESOURCE_STATES ret = {};
+			if ((v & ResourceState::PIXEL_SHADER_RESOURCE) == ResourceState::PIXEL_SHADER_RESOURCE)
+				ret |= D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			if ((v & ResourceState::NON_PIXEL_SHADER_RESOURCE) == ResourceState::NON_PIXEL_SHADER_RESOURCE)
+				ret |= D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+			if ((v & ResourceState::UNORDERED_ACCESS) == ResourceState::UNORDERED_ACCESS)
+				ret |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+
+			if ((v & ResourceState::RENDER_TARGET) == ResourceState::RENDER_TARGET)
+				ret |= D3D12_RESOURCE_STATE_RENDER_TARGET;
+			if ((v & ResourceState::DEPTH_WRITE) == ResourceState::DEPTH_WRITE)
+				ret |= D3D12_RESOURCE_STATE_DEPTH_WRITE;
+			if ((v & ResourceState::DEPTH_READ) == ResourceState::DEPTH_READ)
+				ret |= D3D12_RESOURCE_STATE_DEPTH_READ;
+
+			if ((v & ResourceState::VERTEX_BUFFER) == ResourceState::VERTEX_BUFFER)
+				ret |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+			if ((v & ResourceState::INDEX_BUFFER) == ResourceState::INDEX_BUFFER)
+				ret |= D3D12_RESOURCE_STATE_INDEX_BUFFER;
+			if ((v & ResourceState::CONSTANT_BUFFER) == ResourceState::CONSTANT_BUFFER)
+				ret |= D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+			return ret;
+		}
 		}
 	}
 
@@ -369,12 +424,40 @@ namespace vast::gfx
 	{
 		switch (v)
 		{
-		case D3D12_RESOURCE_STATE_COMMON:			return ResourceState::NONE;
-		case D3D12_RESOURCE_STATE_GENERIC_READ:		return ResourceState::SHADER_RESOURCE;
-		case D3D12_RESOURCE_STATE_RENDER_TARGET:	return ResourceState::RENDER_TARGET;
-		case D3D12_RESOURCE_STATE_DEPTH_WRITE:		return ResourceState::DEPTH_WRITE;
-		case D3D12_RESOURCE_STATE_DEPTH_READ:		return ResourceState::DEPTH_READ;
-		default: VAST_ASSERTF(0, "ResourceState not supported on this platform."); return ResourceState::NONE;
+		case D3D12_RESOURCE_STATE_COMMON:						return ResourceState::NONE;
+		case D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE:		return ResourceState::PIXEL_SHADER_RESOURCE;
+		case D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE:	return ResourceState::NON_PIXEL_SHADER_RESOURCE;
+		case D3D12_RESOURCE_STATE_UNORDERED_ACCESS:				return ResourceState::UNORDERED_ACCESS;
+		case D3D12_RESOURCE_STATE_RENDER_TARGET:				return ResourceState::RENDER_TARGET;
+		case D3D12_RESOURCE_STATE_DEPTH_WRITE:					return ResourceState::DEPTH_WRITE;
+		case D3D12_RESOURCE_STATE_DEPTH_READ:					return ResourceState::DEPTH_READ;
+		case D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER:	return ResourceState::VERTEX_BUFFER | ResourceState::CONSTANT_BUFFER;
+		case D3D12_RESOURCE_STATE_INDEX_BUFFER:					return ResourceState::INDEX_BUFFER;
+		default:
+		{
+			ResourceState ret = {};
+			if ((v & D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+				ret = ret | ResourceState::PIXEL_SHADER_RESOURCE;
+			if ((v & D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) == D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+				ret = ret | ResourceState::NON_PIXEL_SHADER_RESOURCE;
+			if ((v & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) == D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+				ret = ret | ResourceState::UNORDERED_ACCESS;
+
+			if ((v & D3D12_RESOURCE_STATE_RENDER_TARGET) == D3D12_RESOURCE_STATE_RENDER_TARGET)
+				ret = ret | ResourceState::RENDER_TARGET;
+			if ((v & D3D12_RESOURCE_STATE_DEPTH_WRITE) == D3D12_RESOURCE_STATE_DEPTH_WRITE)
+				ret = ret | ResourceState::DEPTH_WRITE;
+			if ((v & D3D12_RESOURCE_STATE_DEPTH_READ) == D3D12_RESOURCE_STATE_DEPTH_READ)
+				ret = ret | ResourceState::DEPTH_READ;
+
+			if ((v & D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER) == D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
+				ret = ret | ResourceState::VERTEX_BUFFER;
+			if ((v & D3D12_RESOURCE_STATE_INDEX_BUFFER) == D3D12_RESOURCE_STATE_INDEX_BUFFER)
+				ret = ret | ResourceState::INDEX_BUFFER;
+			if ((v & D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER) == D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
+				ret = ret | ResourceState::CONSTANT_BUFFER;
+			return ret;
+		}
 		}
 	}
 

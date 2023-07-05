@@ -105,15 +105,12 @@ namespace vast::gfx
 		{
 			ID3D12Resource* backBuffer = nullptr;
 			DX12Check(m_SwapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
-#if VAST_DEBUG
-			// TODO: Figure out what we're doing with debug names
-			std::string backBufferName = std::string("Back Buffer ") + std::to_string(i);
-			backBuffer->SetName(std::wstring(backBufferName.begin(), backBufferName.end()).c_str());
-#endif
+
 			// Specialized initialization to fit specific BackBuffer needs.
 			m_BackBuffers[i]->resource = backBuffer;
 			m_BackBuffers[i]->state = D3D12_RESOURCE_STATE_PRESENT;
 			m_BackBuffers[i]->rtv = m_Device.CreateBackBufferRTV(backBuffer, TranslateToDX12(m_BackBufferFormat));
+			m_BackBuffers[i]->SetName(std::string("Back Buffer ") + std::to_string(i));
 		}
 	}
 

@@ -56,8 +56,11 @@ namespace vast::gfx
 		virtual void DrawFullscreenTriangle() = 0;
 
 		// Resource Creation/Destruction/Update
-		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) = 0;
-		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) = 0;
+		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0, const std::string& debugName = "Unnamed Buffer") = 0;
+		virtual BufferHandle CreateBuffer(const BufferDesc& desc, const std::string& debugName) = 0;
+		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr, const std::string& debugName = "Unnamed Texture") = 0;
+		virtual TextureHandle CreateTexture(const TextureDesc& desc, const std::string& debugName) = 0;
+		virtual TextureHandle CreateTexture(const std::string& filePath, const std::string& debugName, bool sRGB = true) = 0;
 		virtual TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) = 0;
 		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
 

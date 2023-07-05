@@ -313,7 +313,7 @@ void Dev::Render()
 
 	// Render triangle to color color target. Clear target, since it's the first usage of it in the frame.
 	RenderPassTargets trianglePassTargets;
-	trianglePassTargets.rt[0] = { ctx.GetOutputRenderTarget(), LoadOp::CLEAR, StoreOp::STORE, ResourceState::NONE };
+	trianglePassTargets.rt[0] = {.h = ctx.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
 
 	ctx.BeginRenderPass(m_TrianglePso, trianglePassTargets);
 	{
@@ -324,8 +324,8 @@ void Dev::Render()
 
 	// Render cube to output color target + depth buffers. Clear depth buffer, since  it's the first usage of it in the frame.
 	RenderPassTargets meshPassTargets;
-	meshPassTargets.rt[0] = { ctx.GetOutputRenderTarget(), LoadOp::LOAD, StoreOp::STORE, ResourceState::SHADER_RESOURCE };
-	meshPassTargets.ds = { m_DepthRT, LoadOp::CLEAR, StoreOp::STORE, ResourceState::NONE };
+	meshPassTargets.rt[0] = {.h = ctx.GetOutputRenderTarget(), .nextUsage = ResourceState::PIXEL_SHADER_RESOURCE };
+	meshPassTargets.ds = {.h = m_DepthRT, .loadOp = LoadOp::CLEAR, .storeOp = StoreOp::DISCARD };
 
 	ctx.BeginRenderPass(m_MeshPso, meshPassTargets);
 	{

@@ -71,7 +71,7 @@ public:
 	void Draw() override
 	{
 		const RenderTargetDesc outputTargetDesc = {.h = m_GraphicsContext.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
-		m_GraphicsContext.BeginRenderPass(m_TrianglePso, RenderPassTargets{ .rt = { outputTargetDesc } });
+		m_GraphicsContext.BeginRenderPass(m_TrianglePso, RenderPassTargets{.rt = { outputTargetDesc } });
 		{
 			m_GraphicsContext.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
 			m_GraphicsContext.Draw(3);

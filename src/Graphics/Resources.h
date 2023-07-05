@@ -124,7 +124,7 @@ namespace vast::gfx
 		TextureHandle h;
 		LoadOp loadOp = LoadOp::LOAD;
 		StoreOp storeOp = StoreOp::STORE;
-		ResourceState nextUsage = ResourceState::SHADER_RESOURCE;
+		ResourceState nextUsage = ResourceState::NONE;
 	};
 
 	struct RenderPassTargets

@@ -179,24 +179,40 @@ namespace vast::gfx
 		DISCARD
 	};
 
-	// TODO: These should be flags, and could be more specific, but they should cover the basics for now
 	enum class ResourceState
 	{
+		// Common resource states
 		NONE,
-		SHADER_RESOURCE,
-		RENDER_TARGET,
-		DEPTH_WRITE,
-		DEPTH_READ,
+		PIXEL_SHADER_RESOURCE		= BIT(0),
+		NON_PIXEL_SHADER_RESOURCE	= BIT(1),
+		UNORDERED_ACCESS			= BIT(2),
+		// TODO: Copy src/dst states
+		// Texture specific states
+		RENDER_TARGET				= BIT(3),
+		DEPTH_WRITE					= BIT(4),
+		DEPTH_READ					= BIT(5),
+		// Buffer specific states
+		VERTEX_BUFFER				= BIT(6),
+		INDEX_BUFFER				= BIT(7),
+		CONSTANT_BUFFER				= BIT(8),
 	};
+	ENUM_CLASS_ALLOW_FLAGS(ResourceState);
 	static const char* g_ResourceStateNames[]
 	{
 		"None/Present",
-		"Shader Resource",
+		"Pixel Shader Resource",
+		"Non Pixel Shader Resource",
+		"Unordered Access",
+
 		"Render Target",
 		"Depth Write",
 		"Depth Read",
+
+		"Vertex Buffer",
+		"Index Buffer",
+		"Constant Buffer",
 	};
-	static_assert(NELEM(g_ResourceStateNames) == (IDX(ResourceState::DEPTH_READ) + 1));
+	static_assert(NELEM(g_ResourceStateNames) == (CountBits(IDX(ResourceState::CONSTANT_BUFFER)) + 1));
 
 	// TODO: Update Frequency?
 	enum class ResourceUsage

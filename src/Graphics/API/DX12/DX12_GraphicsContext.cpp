@@ -20,9 +20,6 @@ static const wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 namespace vast::gfx
 {
 
-	static bool s_bHasBackBufferBeenCleared = false;
-	static bool s_bIsInRenderPass = false;
-
 	DX12GraphicsContext::DX12GraphicsContext(const GraphicsParams& params)
 		: m_Device(nullptr)
 		, m_SwapChain(nullptr)
@@ -41,6 +38,8 @@ namespace vast::gfx
 		, m_OutputToBackBufferPSO(nullptr)
 		, m_TempFrameAllocators({})
 		, m_FrameId(0)
+		, m_bHasRenderPassBegun(false)
+		, m_bHasBackBufferBeenRenderedToThisFrame(false)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Graphics Context");
 		m_Buffers   = MakePtr<HandlePool<DX12Buffer,   Buffer,   NUM_BUFFERS>>();
@@ -136,7 +135,7 @@ namespace vast::gfx
 
 		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
-		s_bHasBackBufferBeenCleared = false;
+		m_bHasBackBufferBeenRenderedToThisFrame = false;
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
@@ -197,19 +196,20 @@ namespace vast::gfx
 		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
 		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		// No need for an end barrier since we only present once at the end of the frame.
+		// Note: No need for an end barrier since we only present once at the end of the frame.
 		DX12RenderPassData rdp;
 		rdp.rtCount = 1;
 		rdp.rtDesc[0].cpuDescriptor = backBuffer.rtv.cpuHandle;
-		if (s_bHasBackBufferBeenCleared)
+		if (!m_bHasBackBufferBeenRenderedToThisFrame)
 		{
-			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
+			// Note: We can discard instead of clear the contents of the BackBuffer as long as the
+			// first time we draw to the target every frame we do a full-screen pass.
+			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
+			m_bHasBackBufferBeenRenderedToThisFrame = true;
 		}
 		else
 		{
-			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-			rdp.rtDesc[0].BeginningAccess.Clear.ClearValue = backBuffer.clearValue;
-			s_bHasBackBufferBeenCleared = true;
+			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
 		}
 		rdp.rtDesc[0].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 
@@ -272,9 +272,9 @@ namespace vast::gfx
 	{
 		m_GraphicsCommandList->FlushBarriers();
 
-		VAST_ASSERTF(!s_bIsInRenderPass, "BeginRenderPass called before previous EndRenderPass call.");
+		VAST_ASSERTF(!m_bHasRenderPassBegun, "BeginRenderPass called before previous EndRenderPass call.");
 		m_GraphicsCommandList->BeginRenderPass(rpd);
-		s_bIsInRenderPass = true;
+		m_bHasRenderPassBegun = true;
 
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
 	}
@@ -324,9 +324,9 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndRenderPass()
 	{
-		VAST_ASSERTF(s_bIsInRenderPass, "EndRenderPass called without matching BeginRenderPass call.");
+		VAST_ASSERTF(m_bHasRenderPassBegun, "EndRenderPass called without matching BeginRenderPass call.");
 		m_GraphicsCommandList->EndRenderPass();
-		s_bIsInRenderPass = false;
+		m_bHasRenderPassBegun = false;
 
 		for (auto i : m_RenderPassEndBarriers)
 		{
@@ -441,12 +441,13 @@ namespace vast::gfx
 	// Resource Creation/Destruction/Update
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
+	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/, const std::string& debugName /* = "Unnamed Buffer" */)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Buffer");
 		VAST_ASSERT(m_Device);
 		auto [h, buf] = m_Buffers->AcquireResource();
 		m_Device->CreateBuffer(desc, buf);
+		buf->SetName(debugName);
 		if (initialData != nullptr)
 		{
 			if (desc.cpuAccess == BufCpuAccess::WRITE)
@@ -459,6 +460,11 @@ namespace vast::gfx
 			}
 		}
 		return h;
+	}
+
+	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, const std::string& debugName)
+	{
+		return CreateBuffer(desc, nullptr, 0, debugName);
 	}
 
 	void DX12GraphicsContext::UpdateBuffer(const BufferHandle h, void* srcMem, const size_t srcSize)
@@ -510,17 +516,23 @@ namespace vast::gfx
 		m_UploadCommandLists[m_FrameId]->UploadBuffer(std::move(upload));
 	}
 
-	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
+	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/, const std::string& debugName /* = "Unnamed Texture" */)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Texture");
 		VAST_ASSERT(m_Device);
 		auto [h, tex] = m_Textures->AcquireResource();
 		m_Device->CreateTexture(desc, tex);
+		tex->SetName(debugName);
 		if (initialData != nullptr)
 		{
 			UploadTextureData(tex, initialData);
 		}
 		return h;
+	}
+
+	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, const std::string& debugName)
+	{
+		return CreateTexture(desc, nullptr, debugName);
 	}
 
 	static bool FileExists(const std::wstring& filePath)
@@ -555,9 +567,9 @@ namespace vast::gfx
 		return buf;
 	}
 
-	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& file, bool sRGB /* = true */)
+	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& filePath, const std::string& debugName, bool sRGB /* = true */)
 	{
-		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(file);
+		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(filePath);
 		if (!FileExists(wpath))
 		{
 			VAST_ASSERTF(0, "Texture file path does not exist.");
@@ -604,7 +616,12 @@ namespace vast::gfx
 			.mipCount = static_cast<uint32>(metaData.mipLevels),
 			.viewFlags = TexViewFlags::SRV, // TODO: Provide option to add more flags when needed
 		};
-		return CreateTexture(texDesc, image.GetPixels());
+		return CreateTexture(texDesc, image.GetPixels(), debugName);
+	}
+
+	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& filePath, bool sRGB /* = true */)
+	{
+		return CreateTexture(filePath, filePath, sRGB);
 	}
 
 	void DX12GraphicsContext::UploadTextureData(DX12Texture* tex, void* srcMem)
@@ -841,6 +858,7 @@ namespace vast::gfx
 		VAST_ASSERT(!m_OutputRTHandle.IsValid() && !m_OutputRT);
 		auto [h, tex] = m_Textures->AcquireResource();
 		m_Device->CreateTexture(AllocRenderTargetDesc(m_SwapChain->GetBackBufferFormat(), m_SwapChain->GetSize()), tex);
+		tex->SetName("Output RT");
 
 		// We need the handle to allow the user to render to this target.
 		m_OutputRTHandle = h;

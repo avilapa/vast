@@ -139,10 +139,10 @@ public:
 	{
 		m_GraphicsContext.UpdateBuffer(m_MeshCbvBuf, &m_MeshCB, sizeof(MeshCB));
 
-		const RenderTargetDesc outputTargetDesc = { .h = m_GraphicsContext.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
-		const RenderTargetDesc depthTargetDesc = { .h = m_DepthRT, .loadOp = LoadOp::CLEAR, .nextUsage = ResourceState::NONE };
+		const RenderTargetDesc outputTargetDesc = {.h = m_GraphicsContext.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
+		const RenderTargetDesc depthTargetDesc = {.h = m_DepthRT, .loadOp = LoadOp::CLEAR, .storeOp = StoreOp::DISCARD };
 
-		m_GraphicsContext.BeginRenderPass(m_MeshPso, RenderPassTargets{ .rt = { outputTargetDesc }, .ds = depthTargetDesc });
+		m_GraphicsContext.BeginRenderPass(m_MeshPso, RenderPassTargets{.rt = { outputTargetDesc }, .ds = depthTargetDesc });
 		{
 			if (m_GraphicsContext.GetIsReady(m_MeshVtxBuf) && m_GraphicsContext.GetIsReady(m_MeshColorTex))
 			{

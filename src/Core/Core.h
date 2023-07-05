@@ -22,6 +22,9 @@
 
 #define BIT(x) (1 << x)
 
+// Compile time count bits for powers of two
+constexpr unsigned int CountBits(unsigned int x) { return (x < 2) ? x : 1 + CountBits(x >> 1); }
+
 #define PI 3.14159265358979323846264338327950288
 
 // - Platform ---------------------------------------------------------------------------------- //

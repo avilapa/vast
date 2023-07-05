@@ -78,6 +78,19 @@ namespace vast::gfx
 			desc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
 			resource.state = newState;
+
+#if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
+			// TODO: Vertex Buffer state will print as Constant Buffer since they share the state after cross translation.
+			VAST_TRACE("[barrier] Added new barrier transition for resource '{}' ({} -> {})",
+				resource.GetName(),
+				std::string(g_ResourceStateNames[CountBits(IDX(TranslateFromDX12(oldState)))]),
+				std::string(g_ResourceStateNames[CountBits(IDX(TranslateFromDX12(newState)))]));
+
+			if (newState == D3D12_RESOURCE_STATE_GENERIC_READ)
+			{
+				VAST_WARNING("[barrier] [dx12] 'D3D12_RESOURCE_STATE_GENERIC_READ' state should be avoided where possible.");
+			}
+#endif
 		}
 		else if (newState == D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
 		{
@@ -86,18 +99,9 @@ namespace vast::gfx
 			desc.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 			desc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 			desc.UAV.pResource = resource.resource;
-		}
 
-#if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
-		VAST_TRACE("[barrier] Added new resource barrier transition ({} -> {})", 
-			std::string(g_ResourceStateNames[IDX(TranslateFromDX12(oldState))]), 
-			std::string(g_ResourceStateNames[IDX(TranslateFromDX12(newState))]));
-
-		if (newState == D3D12_RESOURCE_STATE_GENERIC_READ)
-		{
-			VAST_WARNING("[barrier] [dx12] 'D3D12_RESOURCE_STATE_GENERIC_READ' state should be avoided where possible.");
+			// TODO: Logging for UAV barriers
 		}
-#endif
 	}
 
 	void DX12CommandList::FlushBarriers()
