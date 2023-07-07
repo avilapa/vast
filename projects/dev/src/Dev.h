@@ -17,7 +17,6 @@ private:
 	void OnGUI();
 	void OnWindowResizeEvent(const WindowResizeEvent& event);
 
-
 	void CreateTriangleResources();
 	void CreateCubeResources();
 	void CreateSphereResources();

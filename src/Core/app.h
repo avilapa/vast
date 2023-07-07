@@ -1,5 +1,35 @@
 #pragma once
 
+#define VAST_DEFINE_MAIN(function)				\
+int main(int argc, char** argv)					\
+{												\
+	function(argc, argv);						\
+	return 0;									\
+}
+
+#define VAST_DEFINE_APP_MAIN(className)			\
+void RunApp(int argc, char** argv)				\
+{												\
+	VAST_PROFILE_INIT("vast-profile.json");		\
+	className* app = new className(argc, argv);	\
+	app->Run();									\
+	delete app;									\
+	VAST_PROFILE_STOP();						\
+}												\
+VAST_DEFINE_MAIN(RunApp);
+
+
+namespace vast
+{
+	class Window;
+}
+
+namespace vast::gfx
+{
+	class GraphicsContext;
+	class ImguiRenderer;
+}
+
 namespace vast
 {
 	class IApp
@@ -9,14 +39,6 @@ namespace vast
 		virtual ~IApp() = default;
 		virtual void Run() = 0;
 	};
-
-	class Window;
-
-	namespace gfx
-	{
-		class GraphicsContext;
-		class ImguiRenderer;
-	}
 
 	class WindowedApp : public IApp
 	{
@@ -41,21 +63,3 @@ namespace vast
 		Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
 	};
 }
-
-#define VAST_DEFINE_MAIN(function)				\
-int main(int argc, char** argv)					\
-{												\
-	function(argc, argv);						\
-	return 0;									\
-}
-
-#define VAST_DEFINE_APP_MAIN(className)			\
-void RunApp(int argc, char** argv)				\
-{												\
-	VAST_PROFILE_INIT("vast-profile.json");		\
-	className* app = new className(argc, argv);	\
-	app->Run();									\
-	delete app;									\
-	VAST_PROFILE_STOP();						\
-}												\
-VAST_DEFINE_MAIN(RunApp);

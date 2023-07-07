@@ -50,25 +50,27 @@ namespace vast
 
 		while (m_bRunning)
 		{
-			VAST_PROFILE_BEGIN("app", "Begin Frame");
-			m_GraphicsContext->BeginFrame();
-			m_ImguiRenderer->BeginFrame();
-			VAST_PROFILE_END("app", "Begin Frame");
-
-			VAST_PROFILE_BEGIN("app", "Update");
-			m_Window->Update();
-			Update();
-			VAST_PROFILE_END("app", "Update");
-
-			VAST_PROFILE_BEGIN("app", "Render");
-			Render();
-			VAST_PROFILE_END("app", "Render");
-			
-			VAST_PROFILE_BEGIN("App", "End Frame");
-			m_GraphicsContext->RenderOutputToBackBuffer();
-			m_ImguiRenderer->EndFrame();
-			m_GraphicsContext->EndFrame();
-			VAST_PROFILE_END("app", "End Frame");
+			VAST_PROFILE_SCOPE("app", "Frame");
+			{
+				VAST_PROFILE_SCOPE("app", "Begin Frame");
+				m_GraphicsContext->BeginFrame();
+				m_ImguiRenderer->BeginFrame();
+			}
+			{
+				VAST_PROFILE_SCOPE("app", "Update");
+				m_Window->Update();
+				Update();
+			}
+			{
+				VAST_PROFILE_SCOPE("app", "Render");
+				Render();
+				m_GraphicsContext->RenderOutputToBackBuffer();
+			}
+			{
+				VAST_PROFILE_SCOPE("app", "End Frame");
+				m_ImguiRenderer->EndFrame();
+				m_GraphicsContext->EndFrame();
+			}
 		}
 
 		VAST_PROFILE_END("app", "App Loop");
