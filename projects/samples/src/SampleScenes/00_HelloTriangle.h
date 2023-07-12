@@ -1,11 +1,23 @@
 #pragma once
 
-#include "SampleBase.h"
+#include "ISample.h"
 #include "imgui/imgui.h"
 
 using namespace vast::gfx;
 
-class HelloTriangle final : public SampleBase
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Hello Triangle 
+ * --------------
+ * This sample implements the classic multi-color triangle as an introduction to the main gfx
+ * members in vast, with the only addition of the triangle vertex buffer being dynamic to showcase
+ * a simple user interface alongside it.
+ * 
+ * All code for this sample is contained within this file plus a simple 'triangle.hlsl' shader file.
+ * 
+ * Topics: render to back buffer, bindless dynamic CPU buffer, user interface
+ * 
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+class HelloTriangle final : public ISample
 {
 private:
 	PipelineHandle m_TrianglePso;
@@ -28,18 +40,21 @@ private:
 	bool m_UpdateTriangle = false;
 
 public:
-	HelloTriangle(GraphicsContext& ctx) : SampleBase(ctx)
+	HelloTriangle(GraphicsContext& ctx_) : ISample(ctx_)
 	{
-		// TODO: Move triangle.hlsl to a project local shaders folder?
+		// Create triangle pipeline state object and prepare it to render to the back buffer.
 		PipelineDesc trianglePipelineDesc =
 		{
+			// TODO: Move triangle.hlsl to a project local shaders folder?
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "triangle.hlsl", .entryPoint = "VS_Main"},
 			.ps = {.type = ShaderType::PIXEL,  .shaderName = "triangle.hlsl", .entryPoint = "PS_Main"},
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
-			.renderPassLayout = { .rtFormats = { m_GraphicsContext.GetOutputRenderTargetFormat() },	},
+			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() }, },
 		};
-		m_TrianglePso = m_GraphicsContext.CreatePipeline(trianglePipelineDesc);
+		m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
 
+		// Create the triangle vertex buffer as a dynamic buffer resident in CPU memory, as well as
+		// an SRV to be able to access it bindlessly from the shader.
 		BufferDesc vtxBufDesc =
 		{
 			.size	= sizeof(m_TriangleVertexData),
@@ -49,34 +64,49 @@ public:
 			.usage = ResourceUsage::DYNAMIC,
 			.isRawAccess = true,
 		};
-		m_TriangleVtxBuf = m_GraphicsContext.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
-		m_TriangleVtxBufIdx = m_GraphicsContext.GetBindlessIndex(m_TriangleVtxBuf);
+		m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
+		// Query the bindless descriptor index for the vertex buffer.
+		m_TriangleVtxBufIdx = ctx.GetBindlessIndex(m_TriangleVtxBuf);
 	}
 
 	~HelloTriangle()
 	{
-		m_GraphicsContext.DestroyPipeline(m_TrianglePso);
-		m_GraphicsContext.DestroyBuffer(m_TriangleVtxBuf);
+		// Clean up GPU resources created for this sample.
+		ctx.DestroyPipeline(m_TrianglePso);
+		ctx.DestroyBuffer(m_TriangleVtxBuf);
 	}
 
-	void Update() override
+	void BeginFrame() override
 	{
+		// Synchronize with GPU and begin a new render frame.
+		ctx.BeginFrame();
+	}
+
+	void Render() override
+	{
+		// Copy the updated vertex data to the GPU if necessary
 		if (m_UpdateTriangle)
 		{
 			m_UpdateTriangle = false;
-			m_GraphicsContext.UpdateBuffer(m_TriangleVtxBuf, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
+			ctx.UpdateBuffer(m_TriangleVtxBuf, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		}
+
+		// Transition necessary resource barriers to begin a render pass onto the back buffer and 
+		// clear it.
+		ctx.BeginRenderPassToBackBuffer(m_TrianglePso, LoadOp::CLEAR);
+		{
+			// Set the bindless vertex buffer index as a push constant for the shader to read and 
+			// draw our vertices.
+			ctx.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
+			ctx.Draw(3);
+		}
+		ctx.EndRenderPass();
 	}
 
-	void Draw() override
+	void EndFrame() override
 	{
-		const RenderTargetDesc outputTargetDesc = {.h = m_GraphicsContext.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
-		m_GraphicsContext.BeginRenderPass(m_TrianglePso, RenderPassTargets{.rt = { outputTargetDesc } });
-		{
-			m_GraphicsContext.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
-			m_GraphicsContext.Draw(3);
-		}
-		m_GraphicsContext.EndRenderPass();
+		// Execute our baked command lists on the GPU and present the back buffer to the screen.
+		ctx.EndFrame();
 	}
 
 	void OnGUI() override

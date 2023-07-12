@@ -25,15 +25,15 @@ namespace vast::gfx
 
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
-		// Dump Output RT to BackBuffer to allow UI elements to blend on top before EndFrame is called.
-		virtual void RenderOutputToBackBuffer() = 0;
+		virtual bool IsInFrame() const = 0;
 		// Waits for all active GPU work to finish as well as any queued resource destructions.
 		virtual void FlushGPU() = 0;
 
-		// Render Passes
-		virtual void BeginRenderPassToBackBuffer(const PipelineHandle h) = 0;
+		// Renders to the back buffer as the only target
+		virtual void BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) = 0;
 		virtual void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) = 0;
 		virtual void EndRenderPass() = 0;
+		virtual bool IsInRenderPass() const = 0;
 
 		// Resource Binding
 		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
@@ -75,15 +75,14 @@ namespace vast::gfx
 		virtual BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) = 0;
 
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
-
-		virtual TextureHandle GetOutputRenderTarget() const = 0;
-		virtual TexFormat GetOutputRenderTargetFormat() const = 0;
-		virtual uint2 GetOutputRenderTargetSize() const = 0;
-
+		
+		virtual uint2 GetBackBufferSize() const = 0;
+		virtual TexFormat GetBackBufferFormat() const = 0;
 		virtual TexFormat GetTextureFormat(const TextureHandle h) = 0;
 
 		virtual uint32 GetBindlessIndex(const BufferHandle h) = 0;
 		virtual uint32 GetBindlessIndex(const TextureHandle h) = 0;
+
 		virtual bool GetIsReady(const BufferHandle h) = 0;
 		virtual bool GetIsReady(const TextureHandle h) = 0;
 	};

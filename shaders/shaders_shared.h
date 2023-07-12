@@ -14,6 +14,7 @@ using namespace vast;
 #endif
 
 #define PerObjectSpace space0 // TODO: Implement spaces!
+#define PerFrameSpace space1 // TODO: Implement spaces!
 
 struct Vtx3fPos3fNormal2fUv
 {
@@ -22,16 +23,19 @@ struct Vtx3fPos3fNormal2fUv
 	s_float2 uv;
 };
 
-struct MeshCB
+struct MeshCB // TODO: Default values
 {
 	float4x4 model;
-	float4x4 view;
-	float4x4 proj;
-	s_float3 cameraPos;
 
 	uint32 vtxBufIdx;
 	uint32 colorTexIdx;
 	uint32 colorSamplerIdx;
+};
+
+struct SimpleRenderer_PerFrame
+{
+	float4x4 viewProjMatrix;
+	s_float3 cameraPos;
 };
 
 #endif

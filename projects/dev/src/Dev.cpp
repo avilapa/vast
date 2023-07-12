@@ -147,15 +147,135 @@ void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCo
 	}
 }
 
-Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
+//
+
+class SimpleRenderer
 {
-	VAST_SUBSCRIBE_TO_EVENT("dev", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Dev::OnWindowResizeEvent, WindowResizeEvent));
+public:
+	SimpleRenderer(gfx::GraphicsContext& ctx_)
+		: ctx(ctx_)
+		, m_ImguiRenderer(nullptr)
+	{
+		VAST_SUBSCRIBE_TO_EVENT("simplerenderer", WindowResizeEvent, VAST_EVENT_HANDLER_CB(SimpleRenderer::OnWindowResizeEvent, WindowResizeEvent));
+
+		m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(ctx);
+
+		uint2 backBufferSize = ctx.GetBackBufferSize();
+		float4 clearColor = float4(0.1f, 0.2f, 0.4f, 1.0f);
+		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
+
+		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.depthStencilState = DepthStencilState::Preset::kDisabled,
+			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
+			});
+
+		m_FrameCB.cameraPos = { -3.0f, 3.0f, -8.0f };
+		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix(ctx, { -3.0f, 3.0f, -8.0f });
+
+		BufferDesc cbvBufDesc = AllocCbvBufferDesc(sizeof(SimpleRenderer_PerFrame));
+		m_FrameCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_FrameCB, sizeof(SimpleRenderer_PerFrame));
+	}
+
+	~SimpleRenderer()
+	{
+		ctx.DestroyPipeline(m_FullscreenPso);
+		ctx.DestroyTexture(m_ColorRT);
+		ctx.DestroyTexture(m_DepthRT);
+		ctx.DestroyBuffer(m_FrameCbvBuf);
+	}
+
+	void BeginFrame()
+	{
+		m_ImguiRenderer->BeginCommandRecording();
+
+		ctx.BeginFrame();
+		ctx.UpdateBuffer(m_FrameCbvBuf, &m_FrameCB, sizeof(SimpleRenderer_PerFrame));
+	}
+
+	void EndFrame()
+	{
+		// Note: We can discard instead of clear the contents of the back buffer as long as the
+		// first time we draw to the target every frame we do a full-screen pass.
+		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
+		{
+			uint32 srvIndex = ctx.GetBindlessIndex(m_ColorRT);
+			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
+			ctx.DrawFullscreenTriangle();
+		}
+		ctx.EndRenderPass();
+
+		m_ImguiRenderer->EndCommandRecording();
+		m_ImguiRenderer->Render();
+		ctx.EndFrame();
+	}
+
+	TextureHandle GetColorRT() const { return m_ColorRT; }
+	TextureHandle GetDepthRT() const { return m_DepthRT; }
+	BufferHandle GetFrameCBV() const { return m_FrameCbvBuf; }
+	SimpleRenderer_PerFrame& GetPerFrameConstantBuffer() { return m_FrameCB; }
+
+private:
+	void OnWindowResizeEvent(const WindowResizeEvent& event)
+	{
+		ctx.FlushGPU();
+		ctx.DestroyTexture(m_ColorRT);
+		ctx.DestroyTexture(m_DepthRT);
+		float4 clearColor = float4(0.1f, 0.2f, 0.4f, 1.0f);
+		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+
+		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix(ctx, { -3.0f, 3.0f, -8.0f });
+	}
+
+	float4x4 ComputeViewProjectionMatrix(GraphicsContext& ctx, float3 cameraPos)
+	{
+		float4x4 viewMatrix = float4x4::look_at(cameraPos, float3(0), float3(0, 1, 0));
+
+		const uint2 screenSize = ctx.GetBackBufferSize();
+		const float fieldOfView = float(PI) / 4.0f;
+		const float aspectRatio = (float)screenSize.x / (float)screenSize.y;
+		const float zNear = 0.001f;
+		const float zFar = 1000.0f;
+		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, zNear, zFar);
+		float4x4 projMatrix = float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero));
+
+		return hlslpp::mul(viewMatrix, projMatrix);
+	}
+
+	gfx::GraphicsContext& ctx;
+	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
+
+	TextureHandle m_ColorRT;
+	TextureHandle m_DepthRT;
+
+	PipelineHandle m_FullscreenPso;
+
+	gfx::BufferHandle m_FrameCbvBuf;
+	SimpleRenderer_PerFrame m_FrameCB;
+};
+
+//
+
+Dev::Dev(int argc, char** argv) 
+	: WindowedApp(argc, argv)
+	, m_GraphicsContext(nullptr)
+{
 	VAST_SUBSCRIBE_TO_EVENT("dev", DebugActionEvent, VAST_EVENT_HANDLER_EXP(GetWindow().SetSize(uint2(700, 650))));
 
-	GraphicsContext& ctx = GetGraphicsContext();
+	auto windowSize = GetWindow().GetSize();
 
-	// Create intermediate depth buffer
-	m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, GetWindow().GetSize()));
+	gfx::GraphicsParams params;
+	params.swapChainSize = windowSize;
+	params.swapChainFormat = gfx::TexFormat::RGBA8_UNORM;
+	params.backBufferFormat = gfx::TexFormat::RGBA8_UNORM;
+
+	m_GraphicsContext = gfx::GraphicsContext::Create(params);
+
+	GraphicsContext& ctx = *m_GraphicsContext;
+	m_Renderer = MakePtr<SimpleRenderer>(ctx);
 
 	// Create triangle PSO and vertex buffer (to be bound bindlessly via push constants).
 	CreateTriangleResources();
@@ -167,12 +287,13 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 		.ps = {.type = ShaderType::PIXEL,  .shaderName = "mesh.hlsl", .entryPoint = "PS_Main"},
 		.renderPassLayout = 
 		{ 
-			.rtFormats = { ctx.GetOutputRenderTargetFormat() },
-			.dsFormat = { ctx.GetTextureFormat(m_DepthRT) },
+			.rtFormats = { ctx.GetTextureFormat(m_Renderer->GetColorRT())  },
+			.dsFormat = { ctx.GetTextureFormat(m_Renderer->GetDepthRT()) },
 		},
 	};
 	m_MeshPso = ctx.CreatePipeline(meshPipelineDesc);
-	m_MeshCbvBufProxy = ctx.LookupShaderResource(m_MeshPso, "CB");
+	m_FrameCbvBufProxy = ctx.LookupShaderResource(m_MeshPso, "FrameConstantBuffer");
+	m_MeshCbvBufProxy = ctx.LookupShaderResource(m_MeshPso, "ObjectConstantBuffer");
 
 	CreateCubeResources();
 	CreateSphereResources();
@@ -180,14 +301,14 @@ Dev::Dev(int argc, char** argv) : WindowedApp(argc, argv)
 
 void Dev::CreateTriangleResources()
 {
-	GraphicsContext& ctx = GetGraphicsContext();
+	GraphicsContext& ctx = *m_GraphicsContext;
 
 	PipelineDesc trianglePipelineDesc =
 	{
 		.vs = {.type = ShaderType::VERTEX, .shaderName = "triangle.hlsl", .entryPoint = "VS_Main"},
 		.ps = {.type = ShaderType::PIXEL,  .shaderName = "triangle.hlsl", .entryPoint = "PS_Main"},
 		.depthStencilState = DepthStencilState::Preset::kDisabled,
-		.renderPassLayout = { .rtFormats = { ctx.GetOutputRenderTargetFormat() } },
+		.renderPassLayout = { .rtFormats = { ctx.GetTextureFormat(m_Renderer->GetColorRT()) } },
 	};
 	m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
 
@@ -198,22 +319,15 @@ void Dev::CreateTriangleResources()
 
 void Dev::CreateCubeResources()
 {
-	GraphicsContext& ctx = GetGraphicsContext();
+	GraphicsContext& ctx = *m_GraphicsContext;
 
 	BufferDesc vtxBufDesc = AllocVertexBufferDesc(sizeof(s_CubeVertexData), sizeof(s_CubeVertexData[0]));
 	m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
 
 	m_CubeColorTex = ctx.CreateTexture("image.tga");
-
-	auto windowSize = GetWindow().GetSize();
-	float fieldOfView = float(PI) / 4.0f;
-	float aspectRatio = (float)windowSize.x / (float)windowSize.y;
 	m_CubeCB =
 	{
 		.model = float4x4(),
-		.view = float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
-		.proj = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
-		.cameraPos = { -3.0f, 3.0f, -8.0f },
 		.vtxBufIdx = ctx.GetBindlessIndex(m_CubeVtxBuf),
 		.colorTexIdx = ctx.GetBindlessIndex(m_CubeColorTex),
 		.colorSamplerIdx = IDX(SamplerState::POINT_CLAMP),
@@ -225,7 +339,7 @@ void Dev::CreateCubeResources()
 
 void Dev::CreateSphereResources()
 {
-	GraphicsContext& ctx = GetGraphicsContext();
+	GraphicsContext& ctx = *m_GraphicsContext;
 
 	ConstructUVSphere(1.2f, 18, 36, s_SphereVertexData, s_SphereIndexData);
 
@@ -237,16 +351,9 @@ void Dev::CreateSphereResources()
 	m_SphereIdxBuf = ctx.CreateBuffer(idxBufDesc, s_SphereIndexData.data(), s_SphereIndexData.size() * sizeof(uint16));
 
 	m_SphereColorTex = ctx.CreateTexture("2k_earth_daymap.jpg");
-
-	auto windowSize = GetWindow().GetSize();
-	float fieldOfView = float(PI) / 4.0f;
-	float aspectRatio = (float)windowSize.x / (float)windowSize.y;
 	m_SphereCB =
 	{
 		.model =float4x4(),
-		.view = float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
-		.proj = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
-		.cameraPos = { -3.0f, 3.0f, -8.0f },
 		.vtxBufIdx = ctx.GetBindlessIndex(m_SphereVtxBuf),
 		.colorTexIdx = ctx.GetBindlessIndex(m_SphereColorTex),
 		.colorSamplerIdx = IDX(SamplerState::LINEAR_CLAMP),
@@ -258,11 +365,10 @@ void Dev::CreateSphereResources()
 
 Dev::~Dev()
 {
-	GraphicsContext& ctx = GetGraphicsContext();
+	GraphicsContext& ctx = *m_GraphicsContext;
 
 	ctx.DestroyPipeline(m_TrianglePso);
 	ctx.DestroyPipeline(m_MeshPso);
-	ctx.DestroyTexture(m_DepthRT);
 	ctx.DestroyTexture(m_CubeColorTex);
 	ctx.DestroyTexture(m_SphereColorTex);
 	ctx.DestroyBuffer(m_TriangleVtxBuf);
@@ -271,6 +377,9 @@ Dev::~Dev()
 	ctx.DestroyBuffer(m_SphereVtxBuf);
 	ctx.DestroyBuffer(m_SphereIdxBuf);
 	ctx.DestroyBuffer(m_SphereCbvBuf);
+
+	m_Renderer = nullptr;
+	m_GraphicsContext = nullptr;
 }
 
 void Dev::Update()
@@ -281,13 +390,14 @@ void Dev::Update()
 	float4x4 rotationMatrix = float4x4::rotation_y(rotation);
 	m_CubeCB.model = mul(rotationMatrix, float4x4::translation(2.0f, -0.5f, 0.0f));
 	m_SphereCB.model = mul(rotationMatrix, float4x4::translation(-2.0f, 0.0f, 0.0f));
-
-	OnGUI();
 }
 
-void Dev::Render()
+void Dev::Draw()
 {
-	GraphicsContext& ctx = GetGraphicsContext();
+	GraphicsContext& ctx = *m_GraphicsContext;
+
+	m_Renderer->BeginFrame();
+	OnGUI();
 
 	if (s_ReloadTriangle)
 	{
@@ -307,13 +417,11 @@ void Dev::Render()
 		ctx.UpdateBuffer(m_TriangleVtxBuf, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
 	}
 
-	// Update Constant Buffers
-	ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(MeshCB));
-	ctx.UpdateBuffer(m_SphereCbvBuf, &m_SphereCB, sizeof(MeshCB));
+ 	ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(MeshCB));
+ 	ctx.UpdateBuffer(m_SphereCbvBuf, &m_SphereCB, sizeof(MeshCB));
 
-	// Render triangle to color color target. Clear target, since it's the first usage of it in the frame.
 	RenderPassTargets trianglePassTargets;
-	trianglePassTargets.rt[0] = {.h = ctx.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
+	trianglePassTargets.rt[0] = {.h = m_Renderer->GetColorRT(), .loadOp = LoadOp::CLEAR };
 
 	ctx.BeginRenderPass(m_TrianglePso, trianglePassTargets);
 	{
@@ -322,13 +430,14 @@ void Dev::Render()
 	}
 	ctx.EndRenderPass();
 
-	// Render cube to output color target + depth buffers. Clear depth buffer, since  it's the first usage of it in the frame.
 	RenderPassTargets meshPassTargets;
-	meshPassTargets.rt[0] = {.h = ctx.GetOutputRenderTarget(), .nextUsage = ResourceState::PIXEL_SHADER_RESOURCE };
-	meshPassTargets.ds = {.h = m_DepthRT, .loadOp = LoadOp::CLEAR, .storeOp = StoreOp::DISCARD };
+	meshPassTargets.rt[0] = {.h = m_Renderer->GetColorRT(), .nextUsage = ResourceState::PIXEL_SHADER_RESOURCE };
+	meshPassTargets.ds = {.h = m_Renderer->GetDepthRT(), .loadOp = LoadOp::CLEAR, .storeOp = StoreOp::DISCARD };
 
 	ctx.BeginRenderPass(m_MeshPso, meshPassTargets);
 	{
+		ctx.SetShaderResource(m_Renderer->GetFrameCBV(), m_FrameCbvBufProxy);
+
 		if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeColorTex))
 		{
 			ctx.SetShaderResource(m_CubeCbvBuf, m_MeshCbvBufProxy);
@@ -343,6 +452,8 @@ void Dev::Render()
 		}
 	}
 	ctx.EndRenderPass();
+
+	m_Renderer->EndFrame();
 }
 
 void Dev::OnGUI()
@@ -373,18 +484,4 @@ void Dev::OnGUI()
 		}
 	}
 	ImGui::End();
-}
-
-void Dev::OnWindowResizeEvent(const WindowResizeEvent& event)
-{
-	GraphicsContext& ctx = GetGraphicsContext();
-
-	ctx.FlushGPU();
-	ctx.DestroyTexture(m_DepthRT);
-	m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
-
-	float fieldOfView = float(PI) / 4.0f;
-	float aspectRatio = (float)event.m_WindowSize.x / (float)event.m_WindowSize.y;
-	float4x4 projMatrix = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero));
-	m_CubeCB.proj = m_SphereCB.proj = projMatrix;
 }

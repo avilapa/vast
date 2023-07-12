@@ -1,9 +1,11 @@
 #pragma once
 
 #include "vast.h"
+#include "Rendering/ImguiRenderer.h"
 #include "shaders_shared.h"
 
 using namespace vast;
+using namespace vast::gfx;
 
 class Dev : public WindowedApp
 {
@@ -13,21 +15,22 @@ public:
 
 private:
 	void Update() override;
-	void Render() override;
+	void Draw() override;
 	void OnGUI();
-	void OnWindowResizeEvent(const WindowResizeEvent& event);
 
 	void CreateTriangleResources();
 	void CreateCubeResources();
 	void CreateSphereResources();
 
-	gfx::TextureHandle m_DepthRT;
+	Ptr<gfx::GraphicsContext> m_GraphicsContext;
+	Ptr<class SimpleRenderer> m_Renderer;
 
 	gfx::PipelineHandle m_TrianglePso;
 	gfx::BufferHandle m_TriangleVtxBuf;
 	uint32 m_TriangleVtxBufIdx;
 
 	gfx::PipelineHandle m_MeshPso;
+	gfx::ShaderResourceProxy m_FrameCbvBufProxy;
 	gfx::ShaderResourceProxy m_MeshCbvBufProxy;
 
 	gfx::BufferHandle m_CubeVtxBuf;

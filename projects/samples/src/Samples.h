@@ -2,11 +2,14 @@
 
 #include "vast.h"
 
+namespace vast::gfx
+{
+	class ImguiRenderer;
+}
+
 using namespace vast;
 
-class SampleBase;
-
-class SamplesApp : public WindowedApp
+class SamplesApp final : public WindowedApp
 {
 public:
 	SamplesApp(int argc, char** argv);
@@ -14,10 +17,13 @@ public:
 
 private:
 	void Update() override;
-	void Render() override;
-	void OnGUI();
+	void Draw() override;
 
-	Ptr<SampleBase> m_CurrentSample;
+	void DrawSamplesEditorUI();
+
+	Ptr<gfx::GraphicsContext> m_GraphicsContext;
+	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
+	Ptr<class ISample> m_CurrentSample;
 	uint32 m_CurrentSampleIdx;
 	bool m_SampleInitialized;
 };

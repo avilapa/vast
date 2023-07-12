@@ -1,9 +1,10 @@
 #include "Samples.h"
 
-#include "SampleBase.h"
+#include "ISample.h"
 #include "SampleScenes/00_HelloTriangle.h"
 #include "SampleScenes/01_Hello3D.h"
 
+#include "Rendering/ImguiRenderer.h"
 #include "imgui/imgui.h"
 
 VAST_DEFINE_APP_MAIN(SamplesApp)
@@ -23,37 +24,45 @@ static_assert(NELEM(s_SampleSceneNames) == IDX(SampleScenes::COUNT));
 
 SamplesApp::SamplesApp(int argc, char** argv) 
 	: WindowedApp(argc, argv)
+	, m_GraphicsContext(nullptr)
 	, m_CurrentSample(nullptr)
 	, m_CurrentSampleIdx(0)
 	, m_SampleInitialized(false)
 {
+	gfx::GraphicsParams params;
+	params.swapChainSize = GetWindow().GetSize();
+	params.swapChainFormat = gfx::TexFormat::RGBA8_UNORM;
+	params.backBufferFormat = gfx::TexFormat::RGBA8_UNORM;
+
+	m_GraphicsContext = gfx::GraphicsContext::Create(params);
+	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
 }
 
 SamplesApp::~SamplesApp()
 {
 	m_CurrentSample = nullptr;
+	m_ImguiRenderer = nullptr;
+	m_GraphicsContext = nullptr;
 }
 
 void SamplesApp::Update()
 {
 	if (!m_SampleInitialized)
 	{
-		gfx::GraphicsContext& ctx = GetGraphicsContext();
-
 		if (m_CurrentSample)
 		{
 			m_CurrentSample = nullptr;
-			// Flushing the GPU is not strictly necessary, but it ensures all resources used in the 
+			// Note: Flushing the GPU is not strictly necessary, but it ensures all resources used in the
 			// current scene are destroyed before loading a new scene.
-			ctx.FlushGPU();
+			m_GraphicsContext->FlushGPU();
 		}
 
 		VAST_WARNING("[Samples] Loading sample scene '{}'", s_SampleSceneNames[m_CurrentSampleIdx]);
 
 		switch (m_CurrentSampleIdx)
 		{
-		case IDX(SampleScenes::HELLO_TRIANGLE): m_CurrentSample = MakePtr<HelloTriangle>(ctx); break;
-		case IDX(SampleScenes::HELLO_3D): m_CurrentSample = MakePtr<Hello3D>(ctx); break;
+		case IDX(SampleScenes::HELLO_TRIANGLE): m_CurrentSample = MakePtr<HelloTriangle>(*m_GraphicsContext); break;
+		case IDX(SampleScenes::HELLO_3D):		m_CurrentSample = MakePtr<Hello3D>(*m_GraphicsContext); break;
 		default: return;
 		}
 
@@ -63,16 +72,22 @@ void SamplesApp::Update()
 	m_CurrentSample->Update();
 }
 
-void SamplesApp::Render()
+void SamplesApp::Draw()
 {
 	VAST_ASSERT(m_SampleInitialized && m_CurrentSample);
 
-	m_CurrentSample->Draw();
+	m_ImguiRenderer->BeginCommandRecording();
 	m_CurrentSample->OnGUI();
-	OnGUI();
+	DrawSamplesEditorUI();
+	m_ImguiRenderer->EndCommandRecording();
+
+	m_CurrentSample->BeginFrame();
+	m_CurrentSample->Render();
+	m_ImguiRenderer->Render();
+	m_CurrentSample->EndFrame();
 }
 
-void SamplesApp::OnGUI()
+void SamplesApp::DrawSamplesEditorUI()
 {
 	if (ImGui::BeginMainMenuBar())
 	{

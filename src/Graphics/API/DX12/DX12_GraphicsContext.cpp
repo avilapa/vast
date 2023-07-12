@@ -33,11 +33,9 @@ namespace vast::gfx
 		, m_BuffersMarkedForDestruction({})
 		, m_TexturesMarkedForDestruction({})
 		, m_PipelinesMarkedForDestruction({})
-		, m_OutputRTHandle()
-		, m_OutputRT(nullptr)
-		, m_OutputToBackBufferPSO(nullptr)
 		, m_TempFrameAllocators({})
 		, m_FrameId(0)
+		, m_bHasFrameBegun(false)
 		, m_bHasRenderPassBegun(false)
 		, m_bHasBackBufferBeenRenderedToThisFrame(false)
 	{
@@ -63,7 +61,6 @@ namespace vast::gfx
 		}
 
 		CreateTempFrameAllocators();
-		CreateOutputPassResources();
 
 		VAST_SUBSCRIBE_TO_EVENT("gfxctx", WindowResizeEvent, VAST_EVENT_HANDLER_CB(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
 	}
@@ -74,7 +71,6 @@ namespace vast::gfx
 		WaitForIdle();
 		
 		DestroyTempFrameAllocators();
-		DestroyOutputPassResources();
 
 		m_GraphicsCommandList = nullptr;
 
@@ -105,6 +101,9 @@ namespace vast::gfx
 	void DX12GraphicsContext::BeginFrame()
 	{
 		VAST_PROFILE_SCOPE("gfx", "Begin Frame (GFX)");
+		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
+		m_bHasFrameBegun = true;
+
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
 
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
@@ -125,6 +124,8 @@ namespace vast::gfx
 	void DX12GraphicsContext::EndFrame()
 	{
 		VAST_PROFILE_SCOPE("gfx", "End Frame (GFX)");
+		VAST_ASSERTF(m_bHasFrameBegun, "No frame is currently running.");
+
 		m_UploadCommandLists[m_FrameId]->ProcessUploads();
 		SubmitCommandList(*m_UploadCommandLists[m_FrameId]);
 		SignalEndOfFrame(QueueType::UPLOAD);
@@ -137,6 +138,12 @@ namespace vast::gfx
 		m_SwapChain->Present();
 		m_bHasBackBufferBeenRenderedToThisFrame = false;
 		SignalEndOfFrame(QueueType::GRAPHICS);
+		m_bHasFrameBegun = false;
+	}
+
+	bool DX12GraphicsContext::IsInFrame() const
+	{
+		return m_bHasFrameBegun;
 	}
 
 	void DX12GraphicsContext::FlushGPU()
@@ -191,29 +198,20 @@ namespace vast::gfx
 	// Render Passes
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	DX12RenderPassData DX12GraphicsContext::SetupBackBufferRenderPassBarrierTransitions()
+	DX12RenderPassData DX12GraphicsContext::SetupBackBufferRenderPassBarrierTransitions(LoadOp loadOp, StoreOp storeOp)
 	{
 		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
 		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		// Note: No need for an end barrier since we only present once at the end of the frame.
-		DX12RenderPassData rdp;
-		rdp.rtCount = 1;
-		rdp.rtDesc[0].cpuDescriptor = backBuffer.rtv.cpuHandle;
-		if (!m_bHasBackBufferBeenRenderedToThisFrame)
-		{
-			// Note: We can discard instead of clear the contents of the BackBuffer as long as the
-			// first time we draw to the target every frame we do a full-screen pass.
-			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD;
-			m_bHasBackBufferBeenRenderedToThisFrame = true;
-		}
-		else
-		{
-			rdp.rtDesc[0].BeginningAccess.Type = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE;
-		}
-		rdp.rtDesc[0].EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
+		DX12RenderPassData rpd;
+		rpd.rtCount = 1;
+		rpd.rtDesc[0].cpuDescriptor = backBuffer.rtv.cpuHandle;
+		rpd.rtDesc[0].BeginningAccess.Type = TranslateToDX12(loadOp);
+		rpd.rtDesc[0].BeginningAccess.Clear.ClearValue = backBuffer.clearValue;
+		rpd.rtDesc[0].EndingAccess.Type = TranslateToDX12(storeOp);
 
-		return rdp;
+		return rpd;
 	}
 
 	DX12RenderPassData DX12GraphicsContext::SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets)
@@ -272,27 +270,27 @@ namespace vast::gfx
 	{
 		m_GraphicsCommandList->FlushBarriers();
 
-		VAST_ASSERTF(!m_bHasRenderPassBegun, "BeginRenderPass called before previous EndRenderPass call.");
+		VAST_ASSERTF(!m_bHasRenderPassBegun, "A render pass is already running.");
 		m_GraphicsCommandList->BeginRenderPass(rpd);
 		m_bHasRenderPassBegun = true;
 
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
 	}
 
-	void DX12GraphicsContext::BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline)
+	void DX12GraphicsContext::BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline, LoadOp loadOp, StoreOp storeOp)
 	{
 		VAST_ASSERT(pipeline);
 		m_GraphicsCommandList->SetPipeline(pipeline);
 
-		DX12RenderPassData rdp = SetupBackBufferRenderPassBarrierTransitions();
+		DX12RenderPassData rdp = SetupBackBufferRenderPassBarrierTransitions(loadOp, storeOp);
 		BeginRenderPass_Internal(rdp);
 	}
 
-	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h)
+	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
 	{
 		VAST_PROFILE_BEGIN("gfx", "Render Pass");
 		VAST_ASSERT(m_Pipelines && h.IsValid());
-		BeginRenderPassToBackBuffer_Internal(m_Pipelines->LookupResource(h));
+		BeginRenderPassToBackBuffer_Internal(m_Pipelines->LookupResource(h), loadOp, storeOp);
 	}
 
 	void DX12GraphicsContext::ValidateRenderPassTargets(DX12Pipeline* pipeline, RenderPassTargets targets) const
@@ -324,7 +322,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndRenderPass()
 	{
-		VAST_ASSERTF(m_bHasRenderPassBegun, "EndRenderPass called without matching BeginRenderPass call.");
+		VAST_ASSERTF(m_bHasRenderPassBegun, "No render pass is currently running.");
 		m_GraphicsCommandList->EndRenderPass();
 		m_bHasRenderPassBegun = false;
 
@@ -336,6 +334,11 @@ namespace vast::gfx
 
 		m_GraphicsCommandList->SetPipeline(nullptr);
 		VAST_PROFILE_END("gfx", "Render Pass");
+	}
+
+	bool DX12GraphicsContext::IsInRenderPass() const
+	{
+		return m_bHasRenderPassBegun;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -715,6 +718,27 @@ namespace vast::gfx
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
 
+	uint2 DX12GraphicsContext::GetBackBufferSize() const
+	{
+		VAST_ASSERT(m_SwapChain);
+		return m_SwapChain->GetSize();
+	}
+
+	TexFormat DX12GraphicsContext::GetBackBufferFormat() const
+	{
+		VAST_ASSERT(m_SwapChain);
+		return m_SwapChain->GetBackBufferFormat();
+	}
+
+	TexFormat DX12GraphicsContext::GetTextureFormat(const TextureHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		// Note: Clear Value stores the format given on resource creation, while the format stored
+		// in the descriptor is modified for depth/stencil targets to store a TYPELESS equivalent.
+		// We could translate back to the original format, but since we have this...
+		return TranslateFromDX12(m_Textures->LookupResource(h)->clearValue.Format);
+	}
+
 	uint32 DX12GraphicsContext::GetBindlessIndex(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
@@ -729,15 +753,6 @@ namespace vast::gfx
 		auto tex = m_Textures->LookupResource(h);
 		VAST_ASSERT(tex && tex->descriptorHeapIdx != kInvalidHeapIdx);
 		return tex->descriptorHeapIdx;
-	}
-	
-	TexFormat DX12GraphicsContext::GetTextureFormat(const TextureHandle h)
-	{
-		VAST_ASSERT(h.IsValid());
-		// Note: Clear Value stores the format given on resource creation, while the format stored
-		// in the descriptor is modified for depth/stencil targets to store a TYPELESS equivalent.
-		// We could translate back to the original format, but since we have this...
-		return TranslateFromDX12(m_Textures->LookupResource(h)->clearValue.Format);
 	}
 
 	bool DX12GraphicsContext::GetIsReady(const BufferHandle h)
@@ -800,89 +815,9 @@ namespace vast::gfx
 			// this appears to cause issues (would need to reset some buffered members), and also
 			// it doesn't even make sense since they will lose sync after the first loop.
 			m_SwapChain->Resize(event.m_WindowSize);
-			ResizeOutputRenderTarget();
 		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////////////////
-	// OutputRT -> BackBuffer
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	void DX12GraphicsContext::RenderOutputToBackBuffer()
-	{
-		VAST_PROFILE_SCOPE("gfx", "Render Output to BackBuffer");
-		VAST_PROFILE_BEGIN("gfx", "Render Pass");
-		BeginRenderPassToBackBuffer_Internal(m_OutputToBackBufferPSO.get());
-		{
-			VAST_ASSERT(m_OutputRT && m_OutputRT->descriptorHeapIdx != kInvalidHeapIdx);
-			SetPushConstants(&m_OutputRT->descriptorHeapIdx, sizeof(uint32));
-			DrawFullscreenTriangle();
-		}
-		EndRenderPass();
-	}
-
-	TextureHandle DX12GraphicsContext::GetOutputRenderTarget() const
-	{
-		VAST_ASSERT(m_OutputRTHandle.IsValid());
-		return m_OutputRTHandle;
-	}
-
-	TexFormat DX12GraphicsContext::GetOutputRenderTargetFormat() const
-	{
-		VAST_ASSERT(m_OutputRT && m_OutputRT->resource);
-		TexFormat format = TranslateFromDX12(m_OutputRT->resource->GetDesc().Format);
-		VAST_ASSERT(m_SwapChain && m_SwapChain->GetFormat() == format);
-		return format;
-	}
-
-	uint2 DX12GraphicsContext::GetOutputRenderTargetSize() const
-	{
-		VAST_ASSERT(m_OutputRT && m_OutputRT->resource);
-		uint2 size = uint2(m_OutputRT->resource->GetDesc().Width, m_OutputRT->resource->GetDesc().Height);
-		VAST_ASSERT(m_SwapChain && m_SwapChain->GetSize().x == size.x && m_SwapChain->GetSize().y == size.y);
-		return size;
-	}
-
-	void DX12GraphicsContext::CreateOutputPassResources()
-	{
-		VAST_PROFILE_SCOPE("gfx", "Create Output Pass Resources");
-		VAST_ASSERT(!m_OutputToBackBufferPSO);
-		m_OutputToBackBufferPSO = MakePtr<DX12Pipeline>();
-		m_Device->CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
-			.depthStencilState = DepthStencilState::Preset::kDisabled,
-			.renderPassLayout = {.rtFormats = { m_SwapChain->GetFormat() } },
-		}, m_OutputToBackBufferPSO.get());
-
-		VAST_ASSERT(!m_OutputRTHandle.IsValid() && !m_OutputRT);
-		auto [h, tex] = m_Textures->AcquireResource();
-		m_Device->CreateTexture(AllocRenderTargetDesc(m_SwapChain->GetBackBufferFormat(), m_SwapChain->GetSize()), tex);
-		tex->SetName("Output RT");
-
-		// We need the handle to allow the user to render to this target.
-		m_OutputRTHandle = h;
-		m_OutputRT = tex;
-	}
-
-	void DX12GraphicsContext::DestroyOutputPassResources()
-	{
-		VAST_PROFILE_SCOPE("gfx", "Destroy Output Pass Resources");
-		VAST_ASSERT(m_OutputToBackBufferPSO);
-		m_Device->DestroyPipeline(m_OutputToBackBufferPSO.get());
-		m_OutputToBackBufferPSO->Reset();
-
-		DestroyTexture(m_OutputRTHandle);
-	}
-
-	void DX12GraphicsContext::ResizeOutputRenderTarget()
-	{
-		// GPU must be flushed so that we can recreate the target in place.
-		m_Device->DestroyTexture(m_OutputRT);
-		m_OutputRT->Reset();
-		m_Device->CreateTexture(AllocRenderTargetDesc(m_SwapChain->GetBackBufferFormat(), m_SwapChain->GetSize()), m_OutputRT);
-	}
-	
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	// Temp Frame Allocator
 	///////////////////////////////////////////////////////////////////////////////////////////////

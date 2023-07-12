@@ -1,8 +1,7 @@
-#include "shaders_shared.h"
 
 cbuffer PushConstants : register(PushConstantRegister)
 {
-    uint32 TriangleVtxBufIdx;
+    uint TriangleVtxBufIdx;
 };
 
 struct VertexInput

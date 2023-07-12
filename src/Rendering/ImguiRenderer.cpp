@@ -12,8 +12,8 @@
 namespace vast::gfx
 {
 
-	ImguiRenderer::ImguiRenderer(gfx::GraphicsContext& context, HWND windowHandle /*= ::GetActiveWindow()*/)
-		: ctx(context)
+	ImguiRenderer::ImguiRenderer(gfx::GraphicsContext& ctx_, HWND windowHandle /*= ::GetActiveWindow()*/)
+		: ctx(ctx_)
 	{
 		VAST_PROFILE_SCOPE("ui", "Create Imgui Renderer");
 		IMGUI_CHECKVERSION();
@@ -33,7 +33,7 @@ namespace vast::gfx
 				.ps = {.type = ShaderType::PIXEL,  .shaderName = "imgui.hlsl", .entryPoint = "PS_Main"},
 				.blendStates = { bs },
 				.depthStencilState = DepthStencilState::Preset::kDisabled,
-				.renderPassLayout = { .rtFormats = { ctx.GetOutputRenderTargetFormat() } },
+				.renderPassLayout = { .rtFormats = { ctx.GetBackBufferFormat() } },
 			};
 			m_Pipeline = ctx.CreatePipeline(pipelineDesc);
 		}
@@ -68,16 +68,19 @@ namespace vast::gfx
 #endif
 	}
 
-	void ImguiRenderer::BeginFrame()
+	void ImguiRenderer::BeginCommandRecording()
 	{
-		VAST_PROFILE_SCOPE("ui", "Begin Frame (UI)");
+		VAST_PROFILE_SCOPE("ui", "Begin Command Recording (UI)");
 #if USE_IMGUI_STOCK_IMPL_WIN32
 		ImGui_ImplWin32_NewFrame();
 #endif
-		{
-			VAST_PROFILE_SCOPE("ui", "Imgui New Frame");
-			ImGui::NewFrame();
-		}
+		ImGui::NewFrame();
+	}
+
+	void ImguiRenderer::EndCommandRecording()
+	{
+		VAST_PROFILE_SCOPE("ui", "End Command Recording (UI)");
+		ImGui::Render();
 	}
 
 	static const float4x4 ComputeProjectionMatrix(ImDrawData* data)
@@ -94,13 +97,10 @@ namespace vast::gfx
 		);
 	}
 
-	void ImguiRenderer::EndFrame()
+	void ImguiRenderer::Render()
 	{
-		VAST_PROFILE_SCOPE("ui", "End Frame (UI)");
-		{
-			VAST_PROFILE_SCOPE("ui", "Imgui Render");
-			ImGui::Render();
-		}
+		VAST_PROFILE_SCOPE("ui", "Render (UI)");
+		VAST_ASSERTF(ctx.IsInFrame() && !ctx.IsInRenderPass(), "This function must be invoked within Graphics Context frame bounds and out of a Render Pass.");
 
 		ImDrawData* drawData = ImGui::GetDrawData();
 
@@ -134,7 +134,7 @@ namespace vast::gfx
 		}
 		VAST_PROFILE_END("ui", "Merge Buffers");
 
-		ctx.BeginRenderPassToBackBuffer(m_Pipeline);
+		ctx.BeginRenderPassToBackBuffer(m_Pipeline, LoadOp::LOAD, StoreOp::STORE);
 		{
 			ctx.SetVertexBuffer(vtxView.buffer, vtxView.offset, sizeof(ImDrawVert));
 			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, IndexBufFormat::R16_UINT);

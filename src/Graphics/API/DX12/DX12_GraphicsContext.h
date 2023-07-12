@@ -29,13 +29,14 @@ namespace vast::gfx
 
 		void BeginFrame() override;
 		void EndFrame() override;
-		void RenderOutputToBackBuffer() override;
+		bool IsInFrame() const override;
 
 		void FlushGPU() override;
 
-		void BeginRenderPassToBackBuffer(const PipelineHandle h) override;
+		void BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) override;
 		void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) override;
 		void EndRenderPass() override;
+		bool IsInRenderPass() const override;
 
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
 		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) override;
@@ -72,14 +73,13 @@ namespace vast::gfx
 
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
-		TextureHandle GetOutputRenderTarget() const override;
-		TexFormat GetOutputRenderTargetFormat() const override;
-		uint2 GetOutputRenderTargetSize() const override;
-
+		uint2 GetBackBufferSize() const override;
+		TexFormat GetBackBufferFormat() const override;
 		TexFormat GetTextureFormat(const TextureHandle h) override;
 
 		uint32 GetBindlessIndex(const BufferHandle h) override;
 		uint32 GetBindlessIndex(const TextureHandle h) override;
+
 		bool GetIsReady(const BufferHandle h) override;
 		bool GetIsReady(const TextureHandle h) override;
 
@@ -90,14 +90,15 @@ namespace vast::gfx
 
 		void ProcessDestructions(uint32 frameId);
 
-	private:
+
+		bool m_bHasFrameBegun;
 		bool m_bHasRenderPassBegun;
 		bool m_bHasBackBufferBeenRenderedToThisFrame;
 
 		DX12RenderPassData SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets);
-		DX12RenderPassData SetupBackBufferRenderPassBarrierTransitions();
+		DX12RenderPassData SetupBackBufferRenderPassBarrierTransitions(LoadOp loadOp, StoreOp storeOp);
 		void BeginRenderPass_Internal(const DX12RenderPassData& rpd);
-		void BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline);
+		void BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline, LoadOp loadOp, StoreOp storeOp);
 		void ValidateRenderPassTargets(DX12Pipeline* pipeline, RenderPassTargets targets) const;
 
 		void OnWindowResizeEvent(const WindowResizeEvent& event);
@@ -128,16 +129,6 @@ namespace vast::gfx
 
 		uint32 m_FrameId;
 		
-	private:
-		TextureHandle m_OutputRTHandle;
-		DX12Texture* m_OutputRT;
-		Ptr<DX12Pipeline> m_OutputToBackBufferPSO;
-
-		void CreateOutputPassResources();
-		void DestroyOutputPassResources();
-		void ResizeOutputRenderTarget();
-
-	private:
 		struct TempAllocator
 		{
 			BufferHandle buffer;

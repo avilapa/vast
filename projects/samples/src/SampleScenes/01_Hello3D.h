@@ -1,40 +1,82 @@
 #pragma once
 
-#include "shaders_shared.h"
+#include "ISample.h"
 
 using namespace vast::gfx;
 
-class Hello3D final : public SampleBase
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Hello 3D
+ * --------
+ * This sample renders a rotating textured cube onto the screen. The cube vertex buffer is static
+ * this time around and resident in VRAM instead of in the CPU. We render the cube to intermediate
+ * color and depth targets and then gamma correct the color target when rendering it to the back
+ * buffer. The cube has a color texture loaded from the assets folder. This sample also show how to
+ * handle events such as a window resize event.
+ *
+ * All code for this sample is contained within this file plus a simple 'cube.hlsl' shader file,
+ * containing code for both render passes.
+ *
+ * Topics: full-screen triangle, render and depth target, texture loading, perspective camera
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+class Hello3D final : public ISample
 {
 private:
+	TextureHandle m_ColorRT;
 	TextureHandle m_DepthRT;
 
-	PipelineHandle m_MeshPso;
-	ShaderResourceProxy m_MeshCbvBufProxy;
+	PipelineHandle m_FullscreenPso;
+	PipelineHandle m_CubePso;
+	ShaderResourceProxy m_CubeCbvBufProxy;
 
-	BufferHandle m_MeshVtxBuf;
-	BufferHandle m_MeshCbvBuf;
-	TextureHandle m_MeshColorTex;
-	MeshCB m_MeshCB;
+	BufferHandle m_CubeVtxBuf;
+	TextureHandle m_CubeColorTex;
+
+	BufferHandle m_CubeCbvBuf;
+	struct CubeCB
+	{
+		float4x4 viewProjMatrix;
+		float4x4 modelMatrix;
+		uint32 vtxBufIdx;
+		uint32 colTexIdx;
+	} m_CubeCB;
+
+	struct Vtx3fPos3fNormal2fUv
+	{
+		s_float3 pos;
+		s_float3 normal;
+		s_float2 uv;
+	};
 
 public:
-	Hello3D(GraphicsContext& ctx) : SampleBase(ctx)
+	Hello3D(GraphicsContext& ctx_) : ISample(ctx_)
 	{
-		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		VAST_SUBSCRIBE_TO_EVENT("hello3d", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
+		// Create full-screen color and depth intermediate buffers to render our cube to.
+		uint2 backBufferSize = ctx.GetBackBufferSize();
+		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
+		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
 
-		auto windowSize = m_GraphicsContext.GetOutputRenderTargetSize();
-		m_DepthRT = m_GraphicsContext.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, windowSize));
-
-		m_MeshPso = m_GraphicsContext.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "mesh.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "mesh.hlsl", .entryPoint = "PS_Main"},
-			.renderPassLayout = {
-				.rtFormats = { m_GraphicsContext.GetOutputRenderTargetFormat() },
+		// Create cube PSO
+		m_CubePso = ctx.CreatePipeline(PipelineDesc{
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "cube.hlsl", .entryPoint = "VS_Cube"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "cube.hlsl", .entryPoint = "PS_Cube"},
+			.renderPassLayout = 
+			{
+				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },
 				.dsFormat = { ctx.GetTextureFormat(m_DepthRT) },
 			},
 		});
-		m_MeshCbvBufProxy = m_GraphicsContext.LookupShaderResource(m_MeshPso, "CB");
+		// Locate the constant buffer slot in the shader to bind our CBVs
+		m_CubeCbvBufProxy = ctx.LookupShaderResource(m_CubePso, "ObjectConstantBuffer");
+
+		// Create full-screen pass PSO
+		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "cube.hlsl", .entryPoint = "VS_Fullscreen"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "cube.hlsl", .entryPoint = "PS_Fullscreen"},
+			.depthStencilState = DepthStencilState::Preset::kDisabled,
+			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
+		});
 
 		Array<Vtx3fPos3fNormal2fUv, 36> cubeVertexData =
 		{ {
@@ -82,86 +124,115 @@ public:
 			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 0.0f }},
 		} };
 
-		BufferDesc vtxBufDesc =
-		{
-			.size	= sizeof(cubeVertexData),
-			.stride = sizeof(cubeVertexData[0]),
-			.viewFlags = BufViewFlags::SRV,
-			.cpuAccess = BufCpuAccess::NONE,
-			.isRawAccess = true,
-		};
-		m_MeshVtxBuf = m_GraphicsContext.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
+		// Create the cube vertex buffer with bindless access.
+		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(cubeVertexData), sizeof(cubeVertexData[0]), false, true);
+		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
 
-		m_MeshColorTex = m_GraphicsContext.CreateTexture("image.tga");
+		// Load a texture from file to be used on the cube
+		m_CubeColorTex = ctx.CreateTexture("image.tga");
 
-		float fieldOfView = float(PI) / 4.0f;
-		float aspectRatio = (float)windowSize.x / (float)windowSize.y;
-		m_MeshCB =
-		{
-			.model = float4x4(),
-			.view = float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0)),
-			.proj = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero)),
-			.cameraPos = { -3.0f, 3.0f, -8.0f },
-			.vtxBufIdx = ctx.GetBindlessIndex(m_MeshVtxBuf),
-			.colorTexIdx = ctx.GetBindlessIndex(m_MeshColorTex),
-			.colorSamplerIdx = IDX(SamplerState::POINT_CLAMP),
-		};
+		// Create a constant buffer and fill it with the necessary data for rendering the cube.
+		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
+		m_CubeCB.modelMatrix = float4x4();
+		m_CubeCB.vtxBufIdx = ctx.GetBindlessIndex(m_CubeVtxBuf);
+		m_CubeCB.colTexIdx = ctx.GetBindlessIndex(m_CubeColorTex);
 
-		BufferDesc cbvBufDesc =
-		{
-			.size = sizeof(MeshCB),
-			.viewFlags = BufViewFlags::CBV,
-			.cpuAccess = BufCpuAccess::WRITE,
-			.usage = ResourceUsage::DYNAMIC,
-		};
-		m_MeshCbvBuf = m_GraphicsContext.CreateBuffer(cbvBufDesc, &m_MeshCB, sizeof(MeshCB));
+		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
+		
+		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
+		VAST_SUBSCRIBE_TO_EVENT("hello3d", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
 	}
 
 	~Hello3D()
 	{
-		VAST_UNSUBSCRIBE_FROM_EVENT("hello3d", WindowResizeEvent);
+		// Clean up GPU resources created for this sample.
+		ctx.DestroyTexture(m_ColorRT);
+		ctx.DestroyTexture(m_DepthRT);
+		ctx.DestroyPipeline(m_CubePso);
+		ctx.DestroyBuffer(m_CubeVtxBuf);
+		ctx.DestroyBuffer(m_CubeCbvBuf);
+		ctx.DestroyTexture(m_CubeColorTex);
 
-		m_GraphicsContext.DestroyTexture(m_DepthRT);
-		m_GraphicsContext.DestroyPipeline(m_MeshPso);
-		m_GraphicsContext.DestroyBuffer(m_MeshVtxBuf);
-		m_GraphicsContext.DestroyBuffer(m_MeshCbvBuf);
-		m_GraphicsContext.DestroyTexture(m_MeshColorTex);
+		VAST_UNSUBSCRIBE_FROM_EVENT("hello3d", WindowResizeEvent);
 	}
 
 	void Update() override
 	{
+		// Rotate the cube model matrix slowly.
 		static float rotation = 0.0f;
 		rotation += 0.001f;
-		m_MeshCB.model = float4x4::rotation_y(rotation);
+		m_CubeCB.modelMatrix = float4x4::rotation_y(rotation);
 	}
 
-	void Draw() override
+	void BeginFrame() override
 	{
-		m_GraphicsContext.UpdateBuffer(m_MeshCbvBuf, &m_MeshCB, sizeof(MeshCB));
+		// Synchronize with GPU and begin a new render frame.
+		ctx.BeginFrame();
+	}
 
-		const RenderTargetDesc outputTargetDesc = {.h = m_GraphicsContext.GetOutputRenderTarget(), .loadOp = LoadOp::CLEAR };
+	void Render() override
+	{
+		// Upload the rotated model matrix to render this frame.
+		ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(CubeCB));
+
+		const RenderTargetDesc colorTargetDesc = {.h = m_ColorRT, .loadOp = LoadOp::CLEAR };
 		const RenderTargetDesc depthTargetDesc = {.h = m_DepthRT, .loadOp = LoadOp::CLEAR, .storeOp = StoreOp::DISCARD };
-
-		m_GraphicsContext.BeginRenderPass(m_MeshPso, RenderPassTargets{.rt = { outputTargetDesc }, .ds = depthTargetDesc });
+		// Transition and clear our intermediate color and depth targets and set the pipeline state
+		// to render the cube.
+		ctx.BeginRenderPass(m_CubePso, RenderPassTargets{.rt = { colorTargetDesc }, .ds = depthTargetDesc });
 		{
-			if (m_GraphicsContext.GetIsReady(m_MeshVtxBuf) && m_GraphicsContext.GetIsReady(m_MeshColorTex))
+			if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeColorTex))
 			{
-				m_GraphicsContext.SetShaderResource(m_MeshCbvBuf, m_MeshCbvBufProxy);
-				m_GraphicsContext.Draw(36);
+				// Bind our constant buffer containing the bindless indices to the vertex buffer
+				// and the color texture.
+				ctx.SetShaderResource(m_CubeCbvBuf, m_CubeCbvBufProxy);
+				ctx.Draw(36);
 			}
 		}
-		m_GraphicsContext.EndRenderPass();
+		ctx.EndRenderPass();
+
+		// Render our color target to the back buffer and gamma correct it.
+		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
+		{
+			uint32 srvIndex = ctx.GetBindlessIndex(m_ColorRT);
+			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
+			ctx.DrawFullscreenTriangle();
+		}
+		ctx.EndRenderPass();
+	}
+
+	void EndFrame() override
+	{
+		// Execute our baked command lists on the GPU and present the back buffer to the screen.
+		ctx.EndFrame();
 	}
 
 	void OnWindowResizeEvent(const WindowResizeEvent& event) override
 	{
-		m_GraphicsContext.FlushGPU();
-		m_GraphicsContext.DestroyTexture(m_DepthRT);
-		m_DepthRT = m_GraphicsContext.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+		// If the window is resized we need to update the size of the render targets, as well as our camera aspect ratio.
+		ctx.FlushGPU();
+		ctx.DestroyTexture(m_ColorRT);
+		ctx.DestroyTexture(m_DepthRT);
+		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
+		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 
+		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
+	}
 
-		float fieldOfView = float(PI) / 4.0f;
-		float aspectRatio = (float)event.m_WindowSize.x / (float)event.m_WindowSize.y;
-		m_MeshCB.proj = float4x4::perspective(hlslpp::projection(hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, 0.001f, 1000.0f), hlslpp::zclip::t::zero));
+	float4x4 ComputeViewProjectionMatrix()
+	{
+		const float3 cameraPos = float3(-3.0f, 3.0f, -8.0f);
+		float4x4 viewMatrix = float4x4::look_at(cameraPos, float3(0), float3(0, 1, 0));
+
+		const uint2 screenSize = ctx.GetBackBufferSize();
+		const float fieldOfView = float(PI) / 4.0f;
+		const float aspectRatio = (float)screenSize.x / (float)screenSize.y;
+		const float zNear = 0.001f;
+		const float zFar = 10.0f;
+		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, zNear, zFar);
+		float4x4 projMatrix = float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero));
+		
+		return hlslpp::mul(viewMatrix, projMatrix);
 	}
 };
