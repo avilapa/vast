@@ -53,11 +53,8 @@ namespace vast::gfx
 		void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) override;
 		void DrawFullscreenTriangle() override;
 
-		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0, const std::string& debugName = "Unnamed Buffer") override;
-		BufferHandle CreateBuffer(const BufferDesc& desc, const std::string& debugName) override;
-		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr, const std::string& debugName = "Unnamed Texture") override;
-		TextureHandle CreateTexture(const TextureDesc& desc, const std::string& debugName) override;
-		TextureHandle CreateTexture(const std::string& filePath, const std::string& debugName, bool sRGB = true) override;
+		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) override;
+		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
 		TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) override;
 		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
 
@@ -82,6 +79,9 @@ namespace vast::gfx
 
 		bool GetIsReady(const BufferHandle h) override;
 		bool GetIsReady(const TextureHandle h) override;
+
+		void SetDebugName(BufferHandle h, const std::string& name);
+		void SetDebugName(TextureHandle h, const std::string& name);
 
 	private:
 		void SubmitCommandList(DX12CommandList& ctx);

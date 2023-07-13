@@ -173,7 +173,7 @@ public:
 			});
 
 		m_FrameCB.cameraPos = { -3.0f, 3.0f, -8.0f };
-		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix(ctx, { -3.0f, 3.0f, -8.0f });
+		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix();
 
 		BufferDesc cbvBufDesc = AllocCbvBufferDesc(sizeof(SimpleRenderer_PerFrame));
 		m_FrameCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_FrameCB, sizeof(SimpleRenderer_PerFrame));
@@ -227,12 +227,12 @@ private:
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
 		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 
-		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix(ctx, { -3.0f, 3.0f, -8.0f });
+		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix();
 	}
 
-	float4x4 ComputeViewProjectionMatrix(GraphicsContext& ctx, float3 cameraPos)
+	float4x4 ComputeViewProjectionMatrix()
 	{
-		float4x4 viewMatrix = float4x4::look_at(cameraPos, float3(0), float3(0, 1, 0));
+		float4x4 viewMatrix = float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0));
 
 		const uint2 screenSize = ctx.GetBackBufferSize();
 		const float fieldOfView = float(PI) / 4.0f;

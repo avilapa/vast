@@ -100,7 +100,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginFrame()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Begin Frame (GFX)");
+		VAST_PROFILE_SCOPE("gfx", "Begin Frame");
 		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
 		m_bHasFrameBegun = true;
 
@@ -123,7 +123,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndFrame()
 	{
-		VAST_PROFILE_SCOPE("gfx", "End Frame (GFX)");
+		VAST_PROFILE_SCOPE("gfx", "End Frame");
 		VAST_ASSERTF(m_bHasFrameBegun, "No frame is currently running.");
 
 		m_UploadCommandLists[m_FrameId]->ProcessUploads();
@@ -444,13 +444,13 @@ namespace vast::gfx
 	// Resource Creation/Destruction/Update
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/, const std::string& debugName /* = "Unnamed Buffer" */)
+	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Buffer");
 		VAST_ASSERT(m_Device);
 		auto [h, buf] = m_Buffers->AcquireResource();
 		m_Device->CreateBuffer(desc, buf);
-		buf->SetName(debugName);
+		buf->SetName("Unnamed Buffer");
 		if (initialData != nullptr)
 		{
 			if (desc.cpuAccess == BufCpuAccess::WRITE)
@@ -463,11 +463,6 @@ namespace vast::gfx
 			}
 		}
 		return h;
-	}
-
-	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, const std::string& debugName)
-	{
-		return CreateBuffer(desc, nullptr, 0, debugName);
 	}
 
 	void DX12GraphicsContext::UpdateBuffer(const BufferHandle h, void* srcMem, const size_t srcSize)
@@ -519,23 +514,18 @@ namespace vast::gfx
 		m_UploadCommandLists[m_FrameId]->UploadBuffer(std::move(upload));
 	}
 
-	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/, const std::string& debugName /* = "Unnamed Texture" */)
+	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Texture");
 		VAST_ASSERT(m_Device);
 		auto [h, tex] = m_Textures->AcquireResource();
 		m_Device->CreateTexture(desc, tex);
-		tex->SetName(debugName);
+		tex->SetName("Unnamed Texture");
 		if (initialData != nullptr)
 		{
 			UploadTextureData(tex, initialData);
 		}
 		return h;
-	}
-
-	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, const std::string& debugName)
-	{
-		return CreateTexture(desc, nullptr, debugName);
 	}
 
 	static bool FileExists(const std::wstring& filePath)
@@ -570,7 +560,7 @@ namespace vast::gfx
 		return buf;
 	}
 
-	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& filePath, const std::string& debugName, bool sRGB /* = true */)
+	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& filePath, bool sRGB /* = true */)
 	{
 		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(filePath);
 		if (!FileExists(wpath))
@@ -619,12 +609,7 @@ namespace vast::gfx
 			.mipCount = static_cast<uint32>(metaData.mipLevels),
 			.viewFlags = TexViewFlags::SRV, // TODO: Provide option to add more flags when needed
 		};
-		return CreateTexture(texDesc, image.GetPixels(), debugName);
-	}
-
-	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& filePath, bool sRGB /* = true */)
-	{
-		return CreateTexture(filePath, filePath, sRGB);
+		return CreateTexture(texDesc, image.GetPixels());
 	}
 
 	void DX12GraphicsContext::UploadTextureData(DX12Texture* tex, void* srcMem)
@@ -765,6 +750,22 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		return m_Textures->LookupResource(h)->isReady;
+	}
+
+	void DX12GraphicsContext::SetDebugName(BufferHandle h, const std::string& name)
+	{
+		VAST_ASSERT(h.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		buf->SetName(name);
+	}
+
+	void DX12GraphicsContext::SetDebugName(TextureHandle h, const std::string& name)
+	{
+		VAST_ASSERT(h.IsValid());
+		auto tex = m_Textures->LookupResource(h);
+		VAST_ASSERT(tex);
+		tex->SetName(name);
 	}
 
 	void DX12GraphicsContext::ProcessDestructions(uint32 frameId)

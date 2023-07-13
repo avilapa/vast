@@ -41,7 +41,7 @@ namespace vast
 				Update();
 			}
 			{
-				VAST_PROFILE_SCOPE("app", "Render");
+				VAST_PROFILE_SCOPE("app", "Draw");
 				Draw();
 			}
 		}
