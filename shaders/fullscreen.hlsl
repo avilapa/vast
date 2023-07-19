@@ -1,8 +1,6 @@
-#include "shaders_shared.h"
-
-cbuffer PushConstants : register(PushConstantRegister, PerObjectSpace)
+cbuffer PushConstants : register(PushConstantRegister)
 {
-	uint32 ColorTexIdx;
+	uint RenderTargetIdx;
 };
 
 struct VertexOutput
@@ -40,10 +38,10 @@ float3 sRGBtoLinear(float3 col)
 
 float4 PS_Main(VertexOutput IN) : SV_TARGET
 {
-    Texture2D<float4> colorTex = ResourceDescriptorHeap[ColorTexIdx];
-    SamplerState colorTexSampler = SamplerDescriptorHeap[PointClampSampler]; 
+    Texture2D<float4> rt = ResourceDescriptorHeap[RenderTargetIdx];
+    SamplerState rtSampler = SamplerDescriptorHeap[PointClampSampler]; 
 
-    float3 color = colorTex.Sample(colorTexSampler, IN.uv).rgb;
+    float3 color = rt.Sample(rtSampler, IN.uv).rgb;
 
     return float4(sRGBtoLinear(color), 1);
 }

@@ -13,8 +13,9 @@ using namespace vast::gfx;
  * buffer. The cube has a color texture loaded from the assets folder. This sample also show how to
  * handle events such as a window resize event.
  *
- * All code for this sample is contained within this file plus a simple 'cube.hlsl' shader file,
- * containing code for both render passes.
+ * All code for this sample is contained within this file plus the shader files 'cube.hlsl' and
+ * 'fullscreen.hlsl' containing code for rendering the cube and gamma correcting the color result
+ * to the back buffer respectively.
  *
  * Topics: full-screen triangle, render and depth target, texture loading, perspective camera
  *
@@ -41,10 +42,9 @@ private:
 		uint32 colTexIdx;
 	} m_CubeCB;
 
-	struct Vtx3fPos3fNormal2fUv
+	struct Vtx3fPos2fUv
 	{
 		s_float3 pos;
-		s_float3 normal;
 		s_float2 uv;
 	};
 
@@ -72,56 +72,56 @@ public:
 
 		// Create full-screen pass PSO
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "cube.hlsl", .entryPoint = "VS_Fullscreen"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "cube.hlsl", .entryPoint = "PS_Fullscreen"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 		});
 
-		Array<Vtx3fPos3fNormal2fUv, 36> cubeVertexData =
+		Array<Vtx3fPos2fUv, 36> cubeVertexData =
 		{ {
 			// Top
-			{{ 1.0f,-1.0f, 1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f, 1.0f }, { 0.0f,-1.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{-1.0f,-1.0f, 1.0f }, { 0.0f,-1.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f,-1.0f }, { 0.0f,-1.0f, 0.0f }, { 0.0f, 0.0f }},
+			{{ 1.0f,-1.0f, 1.0f }, { 1.0f, 1.0f }},
+			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
+			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
+			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f }},
 			// Bottom
-			{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},
+			{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 1.0f }},
+			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f }},
+			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f }},
+			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }},
 			// Left
-			{{-1.0f,-1.0f,-1.0f }, {-1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},
-			{{-1.0f, 1.0f,-1.0f }, {-1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f, 1.0f }, {-1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{-1.0f,-1.0f, 1.0f }, {-1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{-1.0f, 1.0f,-1.0f }, {-1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f, 1.0f }, {-1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
+			{{-1.0f,-1.0f,-1.0f }, { 1.0f, 1.0f }},
+			{{-1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
+			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
+			{{-1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }},
 			// Front
-			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }},
-			{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }},
+			{{-1.0f,-1.0f, 1.0f }, { 1.0f, 1.0f }},
+			{{-1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
+			{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
+			{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
+			{{-1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
+			{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }},
 			// Right
-			{{ 1.0f,-1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
+			{{ 1.0f,-1.0f, 1.0f }, { 1.0f, 1.0f }},
+			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
+			{{ 1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
+			{{ 1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
+			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
+			{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f }},
 			// Back
-			{{ 1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 0.0f }},
+			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 1.0f }},
+			{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
+			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
+			{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
+			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f }},
 		} };
 
 		// Create the cube vertex buffer with bindless access.
