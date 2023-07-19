@@ -9,24 +9,24 @@ struct CubeCB
 
 ConstantBuffer<CubeCB> ObjectConstantBuffer : register(b0);
 
-struct CubeVertexInput
+struct Vtx3fPos2fUv
 {
     float3 pos;
     float2 uv;
 };
 
-struct CubeVertexOutput
+struct VertexOutput
 {
-    float4 pos	: SV_POSITION;
-    float2 uv	: TEXCOORD0;
+    float4 pos	: SV_Position;
+    float2 uv	: TexCoord0;
 };
 
-CubeVertexOutput VS_Cube(uint vtxId : SV_VertexID)
+VertexOutput VS_Cube(uint vtxId : SV_VertexID)
 {
     ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[ObjectConstantBuffer.vtxBufIdx];
-	CubeVertexInput vtx = vtxBuf.Load<CubeVertexInput>(vtxId * sizeof(CubeVertexInput));
+	Vtx3fPos2fUv vtx = vtxBuf.Load<Vtx3fPos2fUv>(vtxId * sizeof(Vtx3fPos2fUv));
 
-	CubeVertexOutput OUT;
+    VertexOutput OUT;
     float3 worldPos = mul(ObjectConstantBuffer.modelMatrix, float4(vtx.pos, 1)).xyz;
 	OUT.pos = mul(ObjectConstantBuffer.viewProjMatrix, float4(worldPos, 1));
 	OUT.uv = vtx.uv;
@@ -34,7 +34,7 @@ CubeVertexOutput VS_Cube(uint vtxId : SV_VertexID)
     return OUT;
 }
 
-float4 PS_Cube(CubeVertexOutput IN) : SV_TARGET
+float4 PS_Cube(VertexOutput IN) : SV_Target
 {
     Texture2D<float4> colorTex = ResourceDescriptorHeap[ObjectConstantBuffer.colTexIdx];
 	SamplerState colorSampler = SamplerDescriptorHeap[PointClampSampler];

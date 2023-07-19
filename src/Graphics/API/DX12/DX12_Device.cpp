@@ -540,6 +540,7 @@ namespace vast::gfx
 				element.Format = ConvertToDXGIFormat(paramsDesc[i].ComponentType, paramsDesc[i].Mask);
 				element.InputSlot = 0;
 				element.AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+				// TODO: There doesn't seem to be a good way to automate instanced data.
 				element.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 				element.InstanceDataStepRate = (element.InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA) ? 1 : 0;
 			}
