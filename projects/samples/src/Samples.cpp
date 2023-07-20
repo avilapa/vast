@@ -61,6 +61,7 @@ void SamplesApp::Update()
 		}
 
 		VAST_WARNING("[Samples] Loading sample scene '{}'", s_SampleSceneNames[m_CurrentSampleIdx]);
+		GetWindow().SetName("vast - Samples : " + std::string(s_SampleSceneNames[m_CurrentSampleIdx]));
 
 		switch (m_CurrentSampleIdx)
 		{

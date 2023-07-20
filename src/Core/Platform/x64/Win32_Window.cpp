@@ -119,6 +119,29 @@ namespace vast
 		return m_WindowSize;
 	}
 
+	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
+	static std::wstring StringToWString(const std::string& s, bool bIsUTF8 = true)
+	{
+		int32 slength = (int32)s.length() + 1;
+		int32 len = MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, 0, 0);
+		std::wstring buf;
+		buf.resize(len);
+		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
+		return buf;
+	}
+
+	void WindowImpl_Win32::SetName(const std::string& name)
+	{
+		SetWindowText(m_Handle, name.c_str());
+	}
+
+	std::string WindowImpl_Win32::GetName() const
+	{
+		std::string name = std::string(GetWindowTextLength(m_Handle) + 1, '\0');
+		GetWindowText(m_Handle, name.data(), static_cast<int>(name.size()));
+		return name;
+	}
+
 	void WindowImpl_Win32::Register(HINSTANCE hInst, const wchar_t* windowClassName)
 	{
 		VAST_PROFILE_SCOPE("window", "Register Window");

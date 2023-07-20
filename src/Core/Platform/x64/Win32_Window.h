@@ -22,6 +22,9 @@ namespace vast
 		void SetSize(uint2 newSize) override;
 		uint2 GetSize() const override;
 
+		void SetName(const std::string& name) override;
+		std::string GetName() const override;
+
 	private:
 		static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam);
 
