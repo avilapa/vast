@@ -21,6 +21,7 @@ namespace vast
 
 		void SetSize(uint2 newSize) override;
 		uint2 GetSize() const override;
+		float GetAspectRatio() const override;
 
 		void SetName(const std::string& name) override;
 		std::string GetName() const override;

@@ -119,15 +119,9 @@ namespace vast
 		return m_WindowSize;
 	}
 
-	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
-	static std::wstring StringToWString(const std::string& s, bool bIsUTF8 = true)
+	float WindowImpl_Win32::GetAspectRatio() const
 	{
-		int32 slength = (int32)s.length() + 1;
-		int32 len = MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, 0, 0);
-		std::wstring buf;
-		buf.resize(len);
-		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
-		return buf;
+		return float(m_WindowSize.x) / float(m_WindowSize.y);
 	}
 
 	void WindowImpl_Win32::SetName(const std::string& name)

@@ -90,10 +90,10 @@ namespace vast::gfx
 		float T = data->DisplayPos.y;
 		float B = data->DisplayPos.y + data->DisplaySize.y;
 		return float4x4(
-			float4(2.0f / (R - L), 0.0f, 0.0f, 0.0f),
-			float4(0.0f, 2.0f / (T - B), 0.0f, 0.0f),
-			float4(0.0f, 0.0f, 0.5f, 0.0f),
-			float4((R + L) / (L - R), (T + B) / (B - T), 0.5f, 1.0f)
+			float4(2.0f / (R - L),		0.0f,				0.0f,				0.0f),
+			float4(0.0f,				2.0f / (T - B),		0.0f,				0.0f),
+			float4(0.0f,				0.0f,				0.5f,				0.0f),
+			float4((R + L) / (L - R),	(T + B) / (B - T),	0.5f,				1.0f)
 		);
 	}
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ISample.h"
+#include "Rendering/Camera.h"
 
 #include <cstdlib>
 
@@ -260,28 +261,12 @@ public:
 
 	float4x4 ComputeViewProjectionMatrix()
 	{
- 		const float3 cameraPos = float3(0.0f, 30.0f, -20.0f);
- 		const float3 lookAt = float3(0.0f, 0.0f, 100.0f);
-		float4x4 viewMatrix = float4x4::look_at(cameraPos, lookAt, float3(0, 1, 0));
+		const float3 cameraPos = float3(0.0f, 30.0f, -20.0f);
+		const float3 lookAt = float3(0.0f, 0.0f, 100.0f);
 
-		const uint2 screenSize = ctx.GetBackBufferSize();
-		const float fieldOfView = float(PI) / 2.0f;
-		const float aspectRatio = (float)screenSize.x / (float)screenSize.y;
-		
-		// To use reverse-z we need to swap the near and far planes of the camera.
-		float zNear = 0.001f;
-		float zFar = 10000.0f;
-		if (m_bDepthUseReverseZ)
-		{
-			float temp = zNear;
-			zNear = zFar;
-			zFar = temp;
-		}
-
-		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, zNear, zFar);
-		float4x4 projMatrix = float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero));
-	
-		return hlslpp::mul(viewMatrix, projMatrix);
+		float4x4 viewMatrix = Camera::ComputeViewMatrix(cameraPos, lookAt, float3(0, 1, 0));
+		float4x4 projMatrix = Camera::ComputeProjectionMatrix(DEG_TO_RAD(45.0f), ctx.GetBackBufferAspectRatio(), 0.001f, 10000.0f, m_bDepthUseReverseZ);
+		return Camera::ComputeViewProjectionMatrix(viewMatrix, projMatrix);
 	}
 
 	void OnGUI() override

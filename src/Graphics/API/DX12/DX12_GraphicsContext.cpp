@@ -725,6 +725,12 @@ namespace vast::gfx
 		return m_SwapChain->GetSize();
 	}
 
+	float DX12GraphicsContext::GetBackBufferAspectRatio() const
+	{
+		auto size = GetBackBufferSize();
+		return float(size.x) / float(size.y);
+	}
+
 	TexFormat DX12GraphicsContext::GetBackBufferFormat() const
 	{
 		VAST_ASSERT(m_SwapChain);

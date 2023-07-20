@@ -1,5 +1,7 @@
 #include "Dev.h"
 
+#include "Rendering/Camera.h"
+
 #include "imgui/imgui.h"
 
 // ---------------------------------------- TODO LIST ------------------------------------------ //
@@ -232,17 +234,9 @@ private:
 
 	float4x4 ComputeViewProjectionMatrix()
 	{
-		float4x4 viewMatrix = float4x4::look_at({ -3.0f, 3.0f, -8.0f }, float3(0), float3(0, 1, 0));
-
-		const uint2 screenSize = ctx.GetBackBufferSize();
-		const float fieldOfView = float(PI) / 4.0f;
-		const float aspectRatio = (float)screenSize.x / (float)screenSize.y;
-		const float zNear = 0.001f;
-		const float zFar = 1000.0f;
-		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, zFar, zNear);
-		float4x4 projMatrix = float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero));
-
-		return hlslpp::mul(viewMatrix, projMatrix);
+		float4x4 viewMatrix = Camera::ComputeViewMatrix(float3(-3.0f, 3.0f, -8.0f), float3(0, 0, 0), float3(0, 1, 0));
+		float4x4 projMatrix = Camera::ComputeProjectionMatrix(DEG_TO_RAD(30.0f), ctx.GetBackBufferAspectRatio(), 0.001f, 1000.0f);
+		return Camera::ComputeViewProjectionMatrix(viewMatrix, projMatrix);
 	}
 
 	gfx::GraphicsContext& ctx;

@@ -75,6 +75,7 @@ namespace vast::gfx
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
 		
 		virtual uint2 GetBackBufferSize() const = 0;
+		virtual float GetBackBufferAspectRatio() const = 0;
 		virtual TexFormat GetBackBufferFormat() const = 0;
 		virtual TexFormat GetTextureFormat(const TextureHandle h) = 0;
 

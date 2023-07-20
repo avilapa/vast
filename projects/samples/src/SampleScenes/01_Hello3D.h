@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ISample.h"
+#include "Rendering/Camera.h"
 
 using namespace vast::gfx;
 
@@ -169,7 +170,7 @@ public:
 
 	void Render() override
 	{
-		// Upload the rotated model matrix to render this frame.
+		// Upload the rotated model matrix and updated camera settings to render this frame.
 		ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(CubeCB));
 
 		const RenderTargetDesc colorTargetDesc = {.h = m_ColorRT, .loadOp = LoadOp::CLEAR };
@@ -207,23 +208,13 @@ public:
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
 		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize, ClearDepthStencil { CLEAR_DEPTH_VALUE_STANDARD }));
-
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
 	}
 
 	float4x4 ComputeViewProjectionMatrix()
 	{
-		const float3 cameraPos = float3(-3.0f, 3.0f, -8.0f);
-		float4x4 viewMatrix = float4x4::look_at(cameraPos, float3(0), float3(0, 1, 0));
-
-		const uint2 screenSize = ctx.GetBackBufferSize();
-		const float fieldOfView = float(PI) / 4.0f;
-		const float aspectRatio = (float)screenSize.x / (float)screenSize.y;
-		const float zNear = 0.001f;
-		const float zFar = 10.0f;
-		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, zNear, zFar);
-		float4x4 projMatrix = float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero));
-		
-		return hlslpp::mul(viewMatrix, projMatrix);
+		float4x4 viewMatrix = Camera::ComputeViewMatrix(float3(-3.0f, 3.0f, -8.0f), float3(0, 0, 0), float3(0, 1, 0));
+		float4x4 projMatrix = Camera::ComputeProjectionMatrix(DEG_TO_RAD(30.0f), ctx.GetBackBufferAspectRatio(), 0.001f, 10.0f, false);
+		return Camera::ComputeViewProjectionMatrix(viewMatrix, projMatrix);
 	}
 };
