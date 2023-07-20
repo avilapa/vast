@@ -64,7 +64,7 @@ public:
 		uint2 backBufferSize = ctx.GetBackBufferSize();
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
-		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize, ClearDepthStencil{ CLEAR_DEPTH_VALUE_STANDARD }));
 
 		// Create cube PSO with depth testing enabled.
 		m_CubePso = ctx.CreatePipeline(PipelineDesc{
@@ -206,7 +206,7 @@ public:
 		ctx.DestroyTexture(m_DepthRT);
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
-		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize, ClearDepthStencil { CLEAR_DEPTH_VALUE_STANDARD }));
 
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
 	}

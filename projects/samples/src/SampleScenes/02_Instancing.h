@@ -14,8 +14,8 @@ using namespace vast::gfx;
  * vertex buffer bindless index and the camera matrix, while a structured buffer holds per instance
  * data such as the model matrix and a random color for each cube. This scene showcases precision
  * problems typical of a standard depth buffer implementation, which are easily fixed by using a
- * reverse-z depth buffer. We implement both methods and and a simple user interface allows us to
- * switch between the two methods to observe the differences.
+ * reverse-z depth buffer. We implement both methods and a simple user interface allows us to allow
+ * switching between the two methods to observe the differences.
  * 
  * All code for this sample is contained within this file plus the shader files 'instancing.hlsl'
  * and 'fullscreen.hlsl' containing code for rendering the cube and gamma correcting the color
