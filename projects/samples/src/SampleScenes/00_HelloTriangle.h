@@ -14,7 +14,7 @@ using namespace vast::gfx;
  * 
  * All code for this sample is contained within this file plus a simple 'triangle.hlsl' shader file.
  * 
- * Topics: render to back buffer, bindless dynamic CPU buffer, user interface
+ * Topics: render to back buffer, push constants, bindless dynamic CPU buffer, user interface
  * 
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 class HelloTriangle final : public ISample
@@ -37,7 +37,7 @@ private:
 		{{  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f }},
 	} };
 
-	bool m_UpdateTriangle = false;
+	bool m_bUpdateTriangle = false;
 
 public:
 	HelloTriangle(GraphicsContext& ctx_) : ISample(ctx_)
@@ -76,18 +76,12 @@ public:
 		ctx.DestroyBuffer(m_TriangleVtxBuf);
 	}
 
-	void BeginFrame() override
-	{
-		// Synchronize with GPU and begin a new render frame.
-		ctx.BeginFrame();
-	}
-
 	void Render() override
 	{
 		// Copy the updated vertex data to the GPU if necessary
-		if (m_UpdateTriangle)
+		if (m_bUpdateTriangle)
 		{
-			m_UpdateTriangle = false;
+			m_bUpdateTriangle = false;
 			ctx.UpdateBuffer(m_TriangleVtxBuf, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		}
 
@@ -103,25 +97,19 @@ public:
 		ctx.EndRenderPass();
 	}
 
-	void EndFrame() override
-	{
-		// Execute our baked command lists on the GPU and present the back buffer to the screen.
-		ctx.EndFrame();
-	}
-
 	void OnGUI() override
 	{
-		if (ImGui::Begin("vast UI", 0, ImGuiWindowFlags_AlwaysAutoResize))
+		if (ImGui::Begin("Hello Triangle UI", 0, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::PushItemWidth(300);
 			ImGui::Text("Triangle Vertex Positions");
-			if (ImGui::SliderFloat2("##1", (float*)&m_TriangleVertexData[0].pos, -1.0f, 1.0f)) m_UpdateTriangle = true;
-			if (ImGui::SliderFloat2("##2", (float*)&m_TriangleVertexData[1].pos, -1.0f, 1.0f)) m_UpdateTriangle = true;
-			if (ImGui::SliderFloat2("##3", (float*)&m_TriangleVertexData[2].pos, -1.0f, 1.0f)) m_UpdateTriangle = true;
+			if (ImGui::SliderFloat2("##1", (float*)&m_TriangleVertexData[0].pos, -1.0f, 1.0f)) m_bUpdateTriangle = true;
+			if (ImGui::SliderFloat2("##2", (float*)&m_TriangleVertexData[1].pos, -1.0f, 1.0f)) m_bUpdateTriangle = true;
+			if (ImGui::SliderFloat2("##3", (float*)&m_TriangleVertexData[2].pos, -1.0f, 1.0f)) m_bUpdateTriangle = true;
 			ImGui::Text("Triangle Vertex Colors");
-			if (ImGui::ColorEdit3("##1", (float*)&m_TriangleVertexData[0].col)) m_UpdateTriangle = true;
-			if (ImGui::ColorEdit3("##2", (float*)&m_TriangleVertexData[1].col)) m_UpdateTriangle = true;
-			if (ImGui::ColorEdit3("##3", (float*)&m_TriangleVertexData[2].col)) m_UpdateTriangle = true;
+			if (ImGui::ColorEdit3("##1", (float*)&m_TriangleVertexData[0].col)) m_bUpdateTriangle = true;
+			if (ImGui::ColorEdit3("##2", (float*)&m_TriangleVertexData[1].col)) m_bUpdateTriangle = true;
+			if (ImGui::ColorEdit3("##3", (float*)&m_TriangleVertexData[2].col)) m_bUpdateTriangle = true;
 			ImGui::PopItemWidth();
 		}
 		ImGui::End();

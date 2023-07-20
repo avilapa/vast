@@ -45,6 +45,19 @@ namespace vast::gfx
 			.isRawAccess = false,
 		};
 	}
+	
+	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, bool bCpuAccess /* = false */)
+	{
+		return BufferDesc
+		{
+			.size = size,
+			.stride = stride,
+			.viewFlags = BufViewFlags::SRV,
+			.cpuAccess = bCpuAccess ? BufCpuAccess::WRITE : BufCpuAccess::NONE,
+			.usage = bCpuAccess ? ResourceUsage::DYNAMIC : ResourceUsage::STATIC,
+			.isRawAccess = false,
+		};
+	}
 
 	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear /* = float4(0, 0, 0, 1) */)
 	{

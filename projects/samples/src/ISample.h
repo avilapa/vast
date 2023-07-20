@@ -10,11 +10,18 @@ public:
 	ISample(gfx::GraphicsContext& ctx_) : ctx(ctx_) {}
 	virtual ~ISample() {}
 
-	virtual void BeginFrame() = 0;
-	virtual void Render() = 0;
-	virtual void EndFrame() = 0;
+	virtual void BeginFrame() 
+	{ 
+		ctx.BeginFrame(); 
+	}
+
+	virtual void EndFrame() 
+	{
+		ctx.EndFrame();
+	}
 
 	virtual void Update() {}
+	virtual void Render() {}
 	virtual void OnGUI() {}
 	virtual void OnWindowResizeEvent(const WindowResizeEvent&) {}
 

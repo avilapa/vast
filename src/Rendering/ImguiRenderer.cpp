@@ -140,7 +140,7 @@ namespace vast::gfx
 			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, IndexBufFormat::R16_UINT);
 			const float4x4 mvp = ComputeProjectionMatrix(drawData);
 			ctx.SetPushConstants(&mvp, sizeof(float4x4));
-			ctx.SetShaderResource(m_FontTex, m_FontTexProxy);
+			ctx.SetShaderResourceView(m_FontTex, m_FontTexProxy);
 			ctx.SetBlendFactor(float4(0));
 			uint32 vtxOffset = 0, idxOffset = 0;
 			ImVec2 clipOff = drawData->DisplayPos;

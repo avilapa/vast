@@ -6,7 +6,6 @@ struct CubeCB
     uint vtxBufIdx;
     uint colTexIdx;
 };
-
 ConstantBuffer<CubeCB> ObjectConstantBuffer : register(b0);
 
 struct Vtx3fPos2fUv

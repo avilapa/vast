@@ -28,6 +28,7 @@ namespace vast::gfx
 	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, bool bCpuAccess = false, bool bBindless = true);
 	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format = IndexBufFormat::R16_UINT);
 	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess = true);
+	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, bool bCpuAccess = false);
 
 	struct BufferView
 	{
@@ -70,9 +71,11 @@ namespace vast::gfx
 
 	struct DepthStencilState::Preset
 	{
-		static constexpr DepthStencilState kDisabled{ false, false, CompareFunc::LESS_EQUAL };
-		static constexpr DepthStencilState kEnabled{ true, false, CompareFunc::LESS_EQUAL };
-		static constexpr DepthStencilState kEnabledWrite{ true, true, CompareFunc::LESS_EQUAL };
+		static constexpr DepthStencilState kDisabled		{ false, false,	CompareFunc::LESS_EQUAL		};
+		static constexpr DepthStencilState kEnabled			{ true,	 false,	CompareFunc::LESS_EQUAL		};
+		static constexpr DepthStencilState kReversed		{ true,	 false,	CompareFunc::GREATER_EQUAL	};
+		static constexpr DepthStencilState kEnabledWrite	{ true,	 true,	CompareFunc::LESS_EQUAL		};
+		static constexpr DepthStencilState kReversedWrite	{ true,	 true,	CompareFunc::GREATER_EQUAL	};
 	};
 
 	struct RasterizerState

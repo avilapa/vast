@@ -280,8 +280,11 @@ namespace vast::gfx
 
 				pipeline->resourceProxyTable->Register(sibDesc.Name, ShaderResourceProxy{ static_cast<uint32>(rootParameters.size()) });
 
-				if (sibDesc.Type == D3D_SIT_CBUFFER)
+				switch (sibDesc.Type)
 				{
+				case D3D_SIT_CBUFFER:
+				{
+					// CBV or PushConstants
 					ID3D12ShaderReflectionConstantBuffer* shaderReflectionCB = shader->reflection->GetConstantBufferByIndex(rscIdx);
 					D3D12_SHADER_BUFFER_DESC cbDesc{};
 					shaderReflectionCB->GetDesc(&cbDesc);
@@ -310,9 +313,12 @@ namespace vast::gfx
 					}
 
 					rootParameters.push_back(rootParameter);
+					break;
 				}
-				else if (sibDesc.Type == D3D_SIT_TEXTURE)
+				case D3D_SIT_STRUCTURED:
+				case D3D_SIT_TEXTURE:
 				{
+					// SRV
 					D3D12_DESCRIPTOR_RANGE1 descriptorRange = {};
 					descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 					descriptorRange.NumDescriptors = 1;
@@ -323,25 +329,27 @@ namespace vast::gfx
 					descriptorRange.OffsetInDescriptorsFromTableStart = static_cast<uint32>(descriptorRanges.size());
 
 					descriptorRanges.push_back(descriptorRange);
+					break;
 				}
-				else if (sibDesc.Type == D3D_SIT_SAMPLER)
-				{
-					continue;
+				case D3D_SIT_SAMPLER:
+					break; // TODO: Should we assert here? Test using one of these
+				default:
+					VAST_ASSERTF(0, "Shader Input type not currently supported.");
 				}
 			}
+		}
 
-			if (!descriptorRanges.empty())
-			{
-				D3D12_ROOT_PARAMETER1 descriptorTable = {};
-				descriptorTable.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-				descriptorTable.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-				descriptorTable.DescriptorTable.NumDescriptorRanges = static_cast<uint32>(descriptorRanges.size());
-				descriptorTable.DescriptorTable.pDescriptorRanges = descriptorRanges.data();
+		if (!descriptorRanges.empty())
+		{
+			D3D12_ROOT_PARAMETER1 descriptorTable = {};
+			descriptorTable.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			descriptorTable.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			descriptorTable.DescriptorTable.NumDescriptorRanges = static_cast<uint32>(descriptorRanges.size());
+			descriptorTable.DescriptorTable.pDescriptorRanges = descriptorRanges.data();
 
-				VAST_ASSERTF(pipeline->descriptorTableIndex == UINT8_MAX, "Multiple descriptor tables for a single pipeline not currently supported.");
-				pipeline->descriptorTableIndex = static_cast<uint8>(rootParameters.size());
-				rootParameters.push_back(descriptorTable);
-			}
+			VAST_ASSERTF(pipeline->descriptorTableIndex == UINT8_MAX, "Multiple descriptor tables for a single pipeline not currently supported.");
+			pipeline->descriptorTableIndex = static_cast<uint8>(rootParameters.size());
+			rootParameters.push_back(descriptorTable);
 		}
 
 		D3D12_ROOT_SIGNATURE_DESC1 rootSignatureDesc = {};

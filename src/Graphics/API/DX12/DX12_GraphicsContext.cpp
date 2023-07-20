@@ -363,7 +363,7 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetIndexBuffer(*buf, offset, TranslateToDX12(format));
 	}
 
-	void DX12GraphicsContext::SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
+	void DX12GraphicsContext::SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
@@ -373,7 +373,18 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetConstantBuffer(*buf, 0, shaderResourceProxy.idx);
 	}
 
-	void DX12GraphicsContext::SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
+	void DX12GraphicsContext::SetShaderResourceView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
+	{
+		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
+		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(shaderResourceProxy.IsValid());
+		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf);
+		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		SetShaderResourceView_Internal(buf->srv);
+	}
+
+	void DX12GraphicsContext::SetShaderResourceView(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
@@ -381,9 +392,14 @@ namespace vast::gfx
 		auto tex = m_Textures->LookupResource(h);
 		VAST_ASSERT(tex);
 		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		SetShaderResourceView_Internal(tex->srv);
+	}
+
+	void DX12GraphicsContext::SetShaderResourceView_Internal(const DX12Descriptor& srv)
+	{
 		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
 		DX12Descriptor blockStart = m_Device->GetSRVDescriptorHeap(m_FrameId).GetUserDescriptorBlockStart(1);
-		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, tex->srv.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, srv.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		m_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
 	}
 

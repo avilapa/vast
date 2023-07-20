@@ -436,17 +436,17 @@ void Dev::Draw()
 
 	ctx.BeginRenderPass(m_MeshPso, meshPassTargets);
 	{
-		ctx.SetShaderResource(m_Renderer->GetFrameCBV(), m_FrameCbvBufProxy);
+		ctx.SetConstantBufferView(m_Renderer->GetFrameCBV(), m_FrameCbvBufProxy);
 
 		if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeColorTex))
 		{
-			ctx.SetShaderResource(m_CubeCbvBuf, m_MeshCbvBufProxy);
+			ctx.SetConstantBufferView(m_CubeCbvBuf, m_MeshCbvBufProxy);
 			ctx.Draw(36);
 		}
 
 		if (ctx.GetIsReady(m_SphereVtxBuf) && ctx.GetIsReady(m_SphereIdxBuf) && ctx.GetIsReady(m_SphereColorTex))
 		{
-			ctx.SetShaderResource(m_SphereCbvBuf, m_MeshCbvBufProxy);
+			ctx.SetConstantBufferView(m_SphereCbvBuf, m_MeshCbvBufProxy);
 			ctx.SetIndexBuffer(m_SphereIdxBuf, 0, IndexBufFormat::R16_UINT);
 			ctx.DrawIndexed(static_cast<uint32>(s_SphereIndexData.size()));
 		}

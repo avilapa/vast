@@ -40,8 +40,9 @@ namespace vast::gfx
 
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
 		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) override;
-		void SetShaderResource(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
-		void SetShaderResource(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) override;
+		void SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
+		void SetShaderResourceView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
+		void SetShaderResourceView(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) override;
 		void SetPushConstants(const void* data, const uint32 size) override;
 
 		void SetScissorRect(int4 rect) override;
@@ -90,7 +91,6 @@ namespace vast::gfx
 
 		void ProcessDestructions(uint32 frameId);
 
-
 		bool m_bHasFrameBegun;
 		bool m_bHasRenderPassBegun;
 		bool m_bHasBackBufferBeenRenderedToThisFrame;
@@ -107,6 +107,8 @@ namespace vast::gfx
 
 		void UploadBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize);
 		void UploadTextureData(DX12Texture* tex, void* srcMem);
+
+		void SetShaderResourceView_Internal(const DX12Descriptor& srv);
 
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;

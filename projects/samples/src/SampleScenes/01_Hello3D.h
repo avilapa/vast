@@ -10,30 +10,31 @@ using namespace vast::gfx;
  * This sample renders a rotating textured cube onto the screen. The cube vertex buffer is static
  * this time around and resident in VRAM instead of in the CPU. We render the cube to intermediate
  * color and depth targets and then gamma correct the color target when rendering it to the back
- * buffer. The cube has a color texture loaded from the assets folder. This sample also show how to
- * handle events such as a window resize event.
+ * buffer on a second render pass. The cube has a color texture loaded from the assets folder. Both
+ * the vertex buffer and the texture are accessed bindlessly in the shader, with the necessary heap
+ * indices stored in a constant buffer alongside the model view and projection matrices used for 
+ * rendering. This sample also show how to handle events such as a window resize event.
  *
  * All code for this sample is contained within this file plus the shader files 'cube.hlsl' and
  * 'fullscreen.hlsl' containing code for rendering the cube and gamma correcting the color result
  * to the back buffer respectively.
  *
- * Topics: full-screen triangle, render and depth target, texture loading, perspective camera
+ * Topics: full-screen triangle, render targets and depth target, texture loading, constant buffer,
+ *         perspective camera, clear color
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 class Hello3D final : public ISample
 {
 private:
+	PipelineHandle m_FullscreenPso;
 	TextureHandle m_ColorRT;
 	TextureHandle m_DepthRT;
 
-	PipelineHandle m_FullscreenPso;
 	PipelineHandle m_CubePso;
-	ShaderResourceProxy m_CubeCbvBufProxy;
-
-	BufferHandle m_CubeVtxBuf;
 	TextureHandle m_CubeColorTex;
+	BufferHandle m_CubeVtxBuf;
+	BufferHandle m_CubeCbvBuf; ShaderResourceProxy m_CubeCbvBufProxy;
 
-	BufferHandle m_CubeCbvBuf;
 	struct CubeCB
 	{
 		float4x4 viewProjMatrix;
@@ -50,7 +51,15 @@ private:
 
 public:
 	Hello3D(GraphicsContext& ctx_) : ISample(ctx_)
-	{
+	{	
+		// Create full-screen pass PSO
+		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.depthStencilState = DepthStencilState::Preset::kDisabled,
+			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
+		});
+
 		// Create full-screen color and depth intermediate buffers to render our cube to.
 		uint2 backBufferSize = ctx.GetBackBufferSize();
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
@@ -69,14 +78,6 @@ public:
 		});
 		// Locate the constant buffer slot in the shader to bind our CBVs
 		m_CubeCbvBufProxy = ctx.LookupShaderResource(m_CubePso, "ObjectConstantBuffer");
-
-		// Create full-screen pass PSO
-		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
-			.depthStencilState = DepthStencilState::Preset::kDisabled,
-			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
-		});
 
 		Array<Vtx3fPos2fUv, 36> cubeVertexData =
 		{ {
@@ -133,7 +134,7 @@ public:
 
 		// Create a constant buffer and fill it with the necessary data for rendering the cube.
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
-		m_CubeCB.modelMatrix = float4x4();
+		m_CubeCB.modelMatrix = float4x4::identity();
 		m_CubeCB.vtxBufIdx = ctx.GetBindlessIndex(m_CubeVtxBuf);
 		m_CubeCB.colTexIdx = ctx.GetBindlessIndex(m_CubeColorTex);
 
@@ -146,12 +147,13 @@ public:
 	~Hello3D()
 	{
 		// Clean up GPU resources created for this sample.
+		ctx.DestroyPipeline(m_FullscreenPso);
+		ctx.DestroyPipeline(m_CubePso);
 		ctx.DestroyTexture(m_ColorRT);
 		ctx.DestroyTexture(m_DepthRT);
-		ctx.DestroyPipeline(m_CubePso);
+		ctx.DestroyTexture(m_CubeColorTex);
 		ctx.DestroyBuffer(m_CubeVtxBuf);
 		ctx.DestroyBuffer(m_CubeCbvBuf);
-		ctx.DestroyTexture(m_CubeColorTex);
 
 		VAST_UNSUBSCRIBE_FROM_EVENT("hello3d", WindowResizeEvent);
 	}
@@ -162,12 +164,6 @@ public:
 		static float rotation = 0.0f;
 		rotation += 0.001f;
 		m_CubeCB.modelMatrix = float4x4::rotation_y(rotation);
-	}
-
-	void BeginFrame() override
-	{
-		// Synchronize with GPU and begin a new render frame.
-		ctx.BeginFrame();
 	}
 
 	void Render() override
@@ -185,7 +181,7 @@ public:
 			{
 				// Bind our constant buffer containing the bindless indices to the vertex buffer
 				// and the color texture.
-				ctx.SetShaderResource(m_CubeCbvBuf, m_CubeCbvBufProxy);
+				ctx.SetConstantBufferView(m_CubeCbvBuf, m_CubeCbvBufProxy);
 				ctx.Draw(36);
 			}
 		}
@@ -199,12 +195,6 @@ public:
 			ctx.DrawFullscreenTriangle();
 		}
 		ctx.EndRenderPass();
-	}
-
-	void EndFrame() override
-	{
-		// Execute our baked command lists on the GPU and present the back buffer to the screen.
-		ctx.EndFrame();
 	}
 
 	void OnWindowResizeEvent(const WindowResizeEvent& event) override
