@@ -239,7 +239,7 @@ private:
 		const float aspectRatio = (float)screenSize.x / (float)screenSize.y;
 		const float zNear = 0.001f;
 		const float zFar = 1000.0f;
-		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, zNear, zFar);
+		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_x(fieldOfView, aspectRatio, zFar, zNear);
 		float4x4 projMatrix = float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero));
 
 		return hlslpp::mul(viewMatrix, projMatrix);

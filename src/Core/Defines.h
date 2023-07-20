@@ -31,6 +31,10 @@
 
 #define VAST_ENABLE_PROFILING 1
 
+// - Graphics ---------------------------------------------------------------------------------- //
+
+#define VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z 1
+
 // - Utility ----------------------------------------------------------------------------------- //
 
 // Macro expansion

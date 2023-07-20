@@ -237,15 +237,27 @@ namespace vast::gfx
 	};
 	static_assert(NELEM(g_SamplerNames) == IDX(SamplerState::COUNT));
 
+	// - Clear Value ------------------------------------------------------------------------------ //
+
+#define CLEAR_DEPTH_VALUE_STANDARD	1.0f
+#define CLEAR_DEPTH_VALUE_REVERSE_Z	0.0f
+#if VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z
+#define DEFAULT_CLEAR_DEPTH_VALUE	CLEAR_DEPTH_VALUE_REVERSE_Z
+#else
+#define DEFAULT_CLEAR_DEPTH_VALUE	CLEAR_DEPTH_VALUE_STANDARD
+#endif
+
+#define DEFAULT_CLEAR_COLOR_VALUE	float4(0.0f, 0.0f, 0.0f, 1.0f)
+
 	struct ClearDepthStencil
 	{
-		float depth = 1.0f;
+		float depth = DEFAULT_CLEAR_DEPTH_VALUE;
 		uint8 stencil = 0;
 	};
 
 	union ClearValue
 	{
-		float4 color = float4(0, 0, 0, 1);
+		float4 color = DEFAULT_CLEAR_COLOR_VALUE;
 		ClearDepthStencil ds;
 	};
 

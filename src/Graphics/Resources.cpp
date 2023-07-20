@@ -59,7 +59,7 @@ namespace vast::gfx
 		};
 	}
 
-	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear /* = float4(0, 0, 0, 1) */)
+	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear /* = DEFAULT_CLEAR_COLOR_VALUE */)
 	{
 #ifdef VAST_DEBUG
 		VAST_ASSERTF(!IsTexFormatDepth(format), "Attempted to create a RTV with a DSV format");
@@ -77,7 +77,7 @@ namespace vast::gfx
 		};
 	}
 
-	TextureDesc AllocDepthStencilTargetDesc(TexFormat format, uint2 dimensions, ClearDepthStencil clear /* = { 1.0f, 0 } */)
+	TextureDesc AllocDepthStencilTargetDesc(TexFormat format, uint2 dimensions, ClearDepthStencil clear /* = { DEFAULT_CLEAR_DEPTH_VALUE, 0 } */)
 	{
 #ifdef VAST_DEBUG
 		VAST_ASSERTF(IsTexFormatDepth(format), "Attempted to create a DSV with a RTV format");

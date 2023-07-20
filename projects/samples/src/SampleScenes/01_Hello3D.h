@@ -66,10 +66,11 @@ public:
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
 		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
 
-		// Create cube PSO
+		// Create cube PSO with depth testing enabled.
 		m_CubePso = ctx.CreatePipeline(PipelineDesc{
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "cube.hlsl", .entryPoint = "VS_Cube"},
 			.ps = {.type = ShaderType::PIXEL,  .shaderName = "cube.hlsl", .entryPoint = "PS_Cube"},
+			.depthStencilState = DepthStencilState::Preset::kEnabled,
 			.renderPassLayout = 
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },

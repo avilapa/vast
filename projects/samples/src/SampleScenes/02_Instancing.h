@@ -108,9 +108,9 @@ public:
 		// Create both standard and reverse-z depth buffers, the only difference being the inverted
 		// depth clear value.
 		auto dsDesc = AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize);
-		dsDesc.clear.ds.depth = 1.0f;
+		dsDesc.clear.ds.depth = CLEAR_DEPTH_VALUE_STANDARD;
 		m_DepthRT[DepthBufferMode::STANDARD] = ctx.CreateTexture(dsDesc);
-		dsDesc.clear.ds.depth = 0.0f;
+		dsDesc.clear.ds.depth = CLEAR_DEPTH_VALUE_REVERSE_Z;
 		m_DepthRT[DepthBufferMode::REVERSE_Z] = ctx.CreateTexture(dsDesc);
 
 		// Create both standard and reverse-z PSOs with different Depth Stencil States.
@@ -124,9 +124,9 @@ public:
 				.dsFormat = { ctx.GetTextureFormat(m_DepthRT[0]) },
 			},
 		};
-		psoDesc.depthStencilState = DepthStencilState::Preset::kEnabledWrite;
+		psoDesc.depthStencilState = DepthStencilState::Preset::kEnabled;
 		m_CubeInstPso[DepthBufferMode::STANDARD] = ctx.CreatePipeline(psoDesc);
-		psoDesc.depthStencilState = DepthStencilState::Preset::kReversedWrite;
+		psoDesc.depthStencilState = DepthStencilState::Preset::kReversed;
 		m_CubeInstPso[DepthBufferMode::REVERSE_Z] = ctx.CreatePipeline(psoDesc);
 
 		// Locate the instance buffer and constant buffer slots in the shader.

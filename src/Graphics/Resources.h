@@ -49,8 +49,8 @@ namespace vast::gfx
 		ClearValue clear = ClearValue(float4(1.0f, 1.0f, 1.0f, 1.0f));
 	};
 
-	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear = float4(0, 0, 0, 1));
-	TextureDesc AllocDepthStencilTargetDesc(TexFormat format, uint2 dimensions, ClearDepthStencil clear = { 1.0f, 0 });
+	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear = DEFAULT_CLEAR_COLOR_VALUE);
+	TextureDesc AllocDepthStencilTargetDesc(TexFormat format, uint2 dimensions, ClearDepthStencil clear = { DEFAULT_CLEAR_DEPTH_VALUE, 0 });
 
 	struct ShaderDesc
 	{
@@ -61,9 +61,9 @@ namespace vast::gfx
 
 	struct DepthStencilState
 	{
-		bool depthEnable = true;
-		bool depthWrite = true;
-		CompareFunc depthFunc = CompareFunc::LESS_EQUAL;
+		bool depthEnable = false;
+		bool depthWrite = false;
+		CompareFunc depthFunc = CompareFunc::NONE;
 		// TODO: Stencil state
 
 		struct Preset;
@@ -72,10 +72,16 @@ namespace vast::gfx
 	struct DepthStencilState::Preset
 	{
 		static constexpr DepthStencilState kDisabled		{ false, false,	CompareFunc::LESS_EQUAL		};
-		static constexpr DepthStencilState kEnabled			{ true,	 false,	CompareFunc::LESS_EQUAL		};
-		static constexpr DepthStencilState kReversed		{ true,	 false,	CompareFunc::GREATER_EQUAL	};
-		static constexpr DepthStencilState kEnabledWrite	{ true,	 true,	CompareFunc::LESS_EQUAL		};
-		static constexpr DepthStencilState kReversedWrite	{ true,	 true,	CompareFunc::GREATER_EQUAL	};
+		static constexpr DepthStencilState kEnabled			{ true,	 true,	CompareFunc::LESS_EQUAL		};
+		static constexpr DepthStencilState kReversed		{ true,	 true,	CompareFunc::GREATER_EQUAL	};
+		static constexpr DepthStencilState kEnabledReadOnly	{ true,	 false,	CompareFunc::LESS_EQUAL		};
+		static constexpr DepthStencilState kReversedReadOnly{ true,	 false,	CompareFunc::GREATER_EQUAL	};
+#if VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z
+		static constexpr DepthStencilState kEnabledDefault = kReversed;
+#else
+		static constexpr DepthStencilState kEnabledDefault = kEnabled;
+#endif
+
 	};
 
 	struct RasterizerState
@@ -117,7 +123,7 @@ namespace vast::gfx
 		ShaderDesc vs = {};
 		ShaderDesc ps = {};
 		Array<BlendState, MAX_RENDERTARGETS> blendStates = {};
-		DepthStencilState depthStencilState = {};
+		DepthStencilState depthStencilState = DepthStencilState::Preset::kEnabledDefault;
 		RasterizerState rasterizerState = {};
 		RenderPassLayout renderPassLayout = {};
 	};
