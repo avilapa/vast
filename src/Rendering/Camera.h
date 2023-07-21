@@ -25,6 +25,12 @@ namespace vast::gfx
 
 		void SetLookAt(const float3& eye, const float3& lookAt, const float3& up);
 
+		float GetNearClip() const;
+		float GetFarClip() const;
+
+		void SetNearClip(float zNear);
+		void SetFarClip(float zFar);
+
 	protected:
 		virtual void RegenerateProjection() = 0;
 
@@ -60,6 +66,12 @@ namespace vast::gfx
 			float aspectRatio = (16.0f / 9.0f), float fovY = DEG_TO_RAD(45), 
 			float zNear = 0.001f, float zFar = 1000.0f, 
 			bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
+
+		float GetAspectRatio() const;
+		float GetFieldOfView() const;
+
+		void SetAspectRatio(float aspectRatio);
+		void SetFieldOfView(float fovY);
 
 	protected:
 		void RegenerateProjection() override;

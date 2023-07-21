@@ -86,6 +86,30 @@ namespace vast::gfx
 		ViewChanged();
 	}
 
+	float Camera::GetNearClip() const
+	{
+		return m_ZNear;
+	}
+
+	float Camera::GetFarClip() const
+	{
+		return m_ZFar;
+	}
+
+	void Camera::SetNearClip(float zNear)
+	{
+		m_ZNear = zNear;
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
+	void Camera::SetFarClip(float zFar)
+	{
+		m_ZFar = zFar;
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
 	void Camera::ModelChanged()
 	{
 		m_ViewMatrix = hlslpp::inverse(m_ModelMatrix);
@@ -119,6 +143,30 @@ namespace vast::gfx
 		, m_AspectRatio(aspectRatio)
 		, m_FovY(fovY)
 	{
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
+	float PerspectiveCamera::GetAspectRatio() const
+	{
+		return m_AspectRatio;
+	}
+	
+	float PerspectiveCamera::GetFieldOfView() const
+	{
+		return m_FovY;
+	}
+
+	void PerspectiveCamera::SetAspectRatio(float aspectRatio)
+	{
+		m_AspectRatio = aspectRatio;
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+	
+	void PerspectiveCamera::SetFieldOfView(float fovY)
+	{
+		m_FovY = fovY;
 		RegenerateProjection();
 		ProjectionChanged();
 	}

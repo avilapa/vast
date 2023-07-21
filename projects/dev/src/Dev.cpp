@@ -17,7 +17,6 @@
 //	> GFX Multithreading.
 //		- req: GFX Display List
 //	> GFX Simple Raytracing.
-//		- req: Camera Object
 //	> GFX Deferred Rendering.
 //	> GFX Line Rendering.
 //  > GFX Per Frame Resources
@@ -27,7 +26,7 @@
 //	> Object Loading from file (.obj).
 //	> Scene Loading (.gltf, .usd?).
 //	> Delta Time.
-//	> Camera Object / Movement.
+//	> WASD/Mouse Movement.
 //
 // --------------------------------------------------------------------------------------------- //
 
@@ -154,13 +153,14 @@ void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCo
 class SimpleRenderer
 {
 public:
-	SimpleRenderer(gfx::GraphicsContext& ctx_)
+	SimpleRenderer(GraphicsContext& ctx_)
 		: ctx(ctx_)
 		, m_ImguiRenderer(nullptr)
 	{
 		VAST_SUBSCRIBE_TO_EVENT("simplerenderer", WindowResizeEvent, VAST_EVENT_HANDLER_CB(SimpleRenderer::OnWindowResizeEvent, WindowResizeEvent));
 
-		m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(ctx);
+		m_ImguiRenderer = MakePtr<ImguiRenderer>(ctx);
+		m_Camera = MakePtr<PerspectiveCamera>(float3(-3.0f, 3.0f, -8.0f), float3(0, 0, 0), float3(0, 1, 0), ctx.GetBackBufferAspectRatio(), DEG_TO_RAD(25.0f));
 
 		uint2 backBufferSize = ctx.GetBackBufferSize();
 		float4 clearColor = float4(0.1f, 0.2f, 0.4f, 1.0f);
@@ -175,7 +175,7 @@ public:
 			});
 
 		m_FrameCB.cameraPos = { -3.0f, 3.0f, -8.0f };
-		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix();
+		m_FrameCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 
 		BufferDesc cbvBufDesc = AllocCbvBufferDesc(sizeof(SimpleRenderer_PerFrame));
 		m_FrameCbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_FrameCB, sizeof(SimpleRenderer_PerFrame));
@@ -229,25 +229,20 @@ private:
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
 		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 
-		m_FrameCB.viewProjMatrix = ComputeViewProjectionMatrix();
+		m_Camera->SetAspectRatio(ctx.GetBackBufferAspectRatio());
+		m_FrameCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 	}
 
-	float4x4 ComputeViewProjectionMatrix()
-	{
-		float4x4 viewMatrix = Camera::ComputeViewMatrix(float3(-3.0f, 3.0f, -8.0f), float3(0, 0, 0), float3(0, 1, 0));
-		float4x4 projMatrix = Camera::ComputeProjectionMatrix(DEG_TO_RAD(30.0f), ctx.GetBackBufferAspectRatio(), 0.001f, 1000.0f);
-		return Camera::ComputeViewProjectionMatrix(viewMatrix, projMatrix);
-	}
-
-	gfx::GraphicsContext& ctx;
-	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
+	GraphicsContext& ctx;
+	Ptr<ImguiRenderer> m_ImguiRenderer;
+	Ptr<PerspectiveCamera> m_Camera;
 
 	TextureHandle m_ColorRT;
 	TextureHandle m_DepthRT;
 
 	PipelineHandle m_FullscreenPso;
 
-	gfx::BufferHandle m_FrameCbvBuf;
+	BufferHandle m_FrameCbvBuf;
 	SimpleRenderer_PerFrame m_FrameCB;
 };
 
@@ -261,12 +256,12 @@ Dev::Dev(int argc, char** argv)
 
 	auto windowSize = GetWindow().GetSize();
 
-	gfx::GraphicsParams params;
+	GraphicsParams params;
 	params.swapChainSize = windowSize;
-	params.swapChainFormat = gfx::TexFormat::RGBA8_UNORM;
-	params.backBufferFormat = gfx::TexFormat::RGBA8_UNORM;
+	params.swapChainFormat = TexFormat::RGBA8_UNORM;
+	params.backBufferFormat = TexFormat::RGBA8_UNORM;
 
-	m_GraphicsContext = gfx::GraphicsContext::Create(params);
+	m_GraphicsContext = GraphicsContext::Create(params);
 
 	GraphicsContext& ctx = *m_GraphicsContext;
 	m_Renderer = MakePtr<SimpleRenderer>(ctx);
