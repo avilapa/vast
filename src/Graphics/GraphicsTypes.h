@@ -111,6 +111,22 @@ namespace vast::gfx
 		ALWAYS
 	};
 
+	constexpr CompareFunc GetFixedCompareFunc(const CompareFunc c, bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z)
+	{
+		if (bReverseZ)
+		{
+			switch (c)
+			{
+			case CompareFunc::LESS:				return CompareFunc::GREATER;
+			case CompareFunc::LESS_EQUAL:		return CompareFunc::GREATER_EQUAL;
+			case CompareFunc::GREATER:			return CompareFunc::LESS;
+			case CompareFunc::GREATER_EQUAL:	return CompareFunc::LESS_EQUAL;
+			default: break;
+			}
+		}
+		return c;
+	}
+
 	enum class FillMode
 	{
 		SOLID,

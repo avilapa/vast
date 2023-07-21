@@ -125,9 +125,9 @@ public:
 				.dsFormat = { ctx.GetTextureFormat(m_DepthRT[0]) },
 			},
 		};
-		psoDesc.depthStencilState = DepthStencilState::Preset::kEnabled;
+		psoDesc.depthStencilState.depthFunc = CompareFunc::LESS_EQUAL;
 		m_CubeInstPso[DepthBufferMode::STANDARD] = ctx.CreatePipeline(psoDesc);
-		psoDesc.depthStencilState = DepthStencilState::Preset::kReversed;
+		psoDesc.depthStencilState.depthFunc = CompareFunc::GREATER_EQUAL;
 		m_CubeInstPso[DepthBufferMode::REVERSE_Z] = ctx.CreatePipeline(psoDesc);
 
 		// Locate the instance buffer and constant buffer slots in the shader.

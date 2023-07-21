@@ -65,13 +65,12 @@ public:
 		uint2 backBufferSize = ctx.GetBackBufferSize();
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
-		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize, ClearDepthStencil{ CLEAR_DEPTH_VALUE_STANDARD }));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
 
 		// Create cube PSO with depth testing enabled.
 		m_CubePso = ctx.CreatePipeline(PipelineDesc{
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "cube.hlsl", .entryPoint = "VS_Cube"},
 			.ps = {.type = ShaderType::PIXEL,  .shaderName = "cube.hlsl", .entryPoint = "PS_Cube"},
-			.depthStencilState = DepthStencilState::Preset::kEnabled,
 			.renderPassLayout = 
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },
@@ -207,14 +206,14 @@ public:
 		ctx.DestroyTexture(m_DepthRT);
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
-		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize, ClearDepthStencil { CLEAR_DEPTH_VALUE_STANDARD }));
+		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
 	}
 
 	float4x4 ComputeViewProjectionMatrix()
 	{
 		float4x4 viewMatrix = Camera::ComputeViewMatrix(float3(-3.0f, 3.0f, -8.0f), float3(0, 0, 0), float3(0, 1, 0));
-		float4x4 projMatrix = Camera::ComputeProjectionMatrix(DEG_TO_RAD(30.0f), ctx.GetBackBufferAspectRatio(), 0.001f, 10.0f, false);
+		float4x4 projMatrix = Camera::ComputeProjectionMatrix(DEG_TO_RAD(30.0f), ctx.GetBackBufferAspectRatio(), 0.001f, 10.0f);
 		return Camera::ComputeViewProjectionMatrix(viewMatrix, projMatrix);
 	}
 };
