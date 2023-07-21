@@ -27,4 +27,105 @@ namespace vast::gfx
 	{
 		return hlslpp::mul(view, proj);
 	}
+
+	//
+
+	Camera::Camera(const float4x4& transform, float zNear /* = 0.001f */, float zFar /* = 1000.0f */, bool bReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
+		: m_ViewMatrix()
+		, m_ProjMatrix()
+		, m_ViewProjMatrix()
+		, m_ModelMatrix(transform)
+		, m_ZNear(zNear)
+		, m_ZFar(zFar)
+		, m_bReverseZ(bReverseZ)
+	{
+		ModelChanged();
+	}
+	
+	Camera::Camera(const float3& eye, const float3& lookAt, const float3& up, float zNear /* = 0.001f */, float zFar /* = 1000.0f */, bool bReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
+		: m_ViewMatrix()
+		, m_ProjMatrix()
+		, m_ViewProjMatrix()
+		, m_ModelMatrix()
+		, m_ZNear(zNear)
+		, m_ZFar(zFar)
+		, m_bReverseZ(bReverseZ)
+	{
+		SetLookAt(eye, lookAt, up);
+	}
+
+	float4x4 Camera::GetViewMatrix() const
+	{
+		return m_ViewMatrix;
+	}
+
+	float4x4 Camera::GetProjectionMatrix() const
+	{
+		return m_ProjMatrix;
+	}
+	
+	float4x4 Camera::GetViewProjectionMatrix() const
+	{
+		return m_ViewProjMatrix;
+	}
+
+	float4x4 Camera::GetTransform() const
+	{
+		return m_ModelMatrix;
+	}
+
+	void Camera::SetTransform(const float4x4& model)
+	{
+		m_ModelMatrix = model;
+		ModelChanged();
+	}
+
+	void Camera::SetLookAt(const float3& eye, const float3& lookAt, const float3& up)
+	{
+		m_ViewMatrix = Camera::ComputeViewMatrix(eye, lookAt, up);
+		ViewChanged();
+	}
+
+	void Camera::ModelChanged()
+	{
+		m_ViewMatrix = hlslpp::inverse(m_ModelMatrix);
+		m_ViewProjMatrix = Camera::ComputeViewProjectionMatrix(m_ViewMatrix, m_ProjMatrix);
+	}
+
+	void Camera::ViewChanged()
+	{
+		m_ModelMatrix = hlslpp::inverse(m_ViewMatrix);
+		m_ViewProjMatrix = Camera::ComputeViewProjectionMatrix(m_ViewMatrix, m_ProjMatrix);
+	}
+
+	void Camera::ProjectionChanged()
+	{
+		m_ViewProjMatrix = Camera::ComputeViewProjectionMatrix(m_ViewMatrix, m_ProjMatrix);
+	}
+
+	//
+
+	PerspectiveCamera::PerspectiveCamera(const float4x4& transform, float aspectRatio /* = (16.0f / 9.0f) */, float fovY /* = DEG_TO_RAD(45) */, float zNear /* = 0.001f */, float zFar /* = 1000.0f */, bool bReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
+		: Camera(transform, zNear, zFar, bReverseZ)
+		, m_AspectRatio(aspectRatio)
+		, m_FovY(fovY)
+	{
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
+	PerspectiveCamera::PerspectiveCamera(const float3& eye, const float3& lookAt, const float3& up, float aspectRatio /* = (16.0f / 9.0f) */, float fovY /* = DEG_TO_RAD(45) */, float zNear /* = 0.001f */, float zFar /* = 1000.0f */, bool bReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
+		: Camera(eye, lookAt, up, zNear, zFar, bReverseZ)
+		, m_AspectRatio(aspectRatio)
+		, m_FovY(fovY)
+	{
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
+	void PerspectiveCamera::RegenerateProjection()
+	{
+		m_ProjMatrix = Camera::ComputeProjectionMatrix(m_FovY, m_AspectRatio, m_ZNear, m_ZFar, m_bReverseZ);
+	}
+
 }
