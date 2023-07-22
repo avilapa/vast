@@ -149,7 +149,7 @@ public:
 		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, s_CubeIndexData.data(), s_CubeIndexData.size() * sizeof(s_CubeIndexData[0]));
 
 		// Create a structured buffer to hold our instance data and initialize it.
-		auto instBufDesc = AllocStructuredBufferDesc(sizeof(InstanceData) * s_NumInstances, sizeof(InstanceData), true);
+		auto instBufDesc = AllocStructuredBufferDesc(sizeof(InstanceData) * s_NumInstances, sizeof(InstanceData), ResourceUsage::UPLOAD);
 		m_CubeInstBuf = ctx.CreateBuffer(instBufDesc);
 
 		for (auto& i : m_InstanceData)

@@ -73,7 +73,6 @@ namespace vast::gfx
 		float GetAspectRatio() const;
 		float GetFieldOfView() const;
 
-
 	protected:
 		void RegenerateProjection() override;
 

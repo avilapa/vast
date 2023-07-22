@@ -301,7 +301,7 @@ void Dev::CreateTriangleResources()
 	};
 	m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
 
-	BufferDesc vtxBufDesc = AllocVertexBufferDesc(sizeof(s_TriangleVertexData), sizeof(s_TriangleVertexData[0]), true);
+	BufferDesc vtxBufDesc = AllocVertexBufferDesc(sizeof(s_TriangleVertexData), sizeof(s_TriangleVertexData[0]));
 	m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_TriangleVertexData, sizeof(s_TriangleVertexData));
 	m_TriangleVtxBufIdx = ctx.GetBindlessIndex(m_TriangleVtxBuf);
 }

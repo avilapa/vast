@@ -18,17 +18,14 @@ namespace vast::gfx
 		uint32 size = 0;
 		uint32 stride = 0;
 		BufViewFlags viewFlags = BufViewFlags::NONE;
-		BufCpuAccess cpuAccess = BufCpuAccess::WRITE;
-		ResourceUsage usage = ResourceUsage::STATIC;
+		ResourceUsage usage = ResourceUsage::DEFAULT;
 		bool isRawAccess = false;
 	};
 
-	// TODO: Currently usage is tied to CPU access, need to better figure out a general approach to
-	// Dynamic buffers
-	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, bool bCpuAccess = false, bool bBindless = true);
-	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format = IndexBufFormat::R16_UINT);
-	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess = true);
-	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, bool bCpuAccess = false);
+	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, ResourceUsage usage = ResourceUsage::DEFAULT, bool bBindless = true);
+	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format = IndexBufFormat::R16_UINT, ResourceUsage usage = ResourceUsage::DEFAULT);
+	BufferDesc AllocCbvBufferDesc(uint32 size, ResourceUsage usage = ResourceUsage::UPLOAD);
+	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, ResourceUsage usage = ResourceUsage::DEFAULT);
 
 	struct BufferView
 	{

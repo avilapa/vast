@@ -3,14 +3,6 @@
 namespace vast::gfx
 {
 
-	// TODO: Should CPU writable and Dynamic be exclusive? (cpu write is always dynamic, in which case dynamic would only be used for upload buffers)
-	enum class BufCpuAccess
-	{
-		NONE,
-		WRITE,
-		// TODO: READBACK
-	};
-
 	enum class BufViewFlags
 	{
 		NONE = 0,
@@ -230,11 +222,11 @@ namespace vast::gfx
 	};
 	static_assert(NELEM(g_ResourceStateNames) == (CountBits(IDX(ResourceState::CONSTANT_BUFFER)) + 1));
 
-	// TODO: Update Frequency?
 	enum class ResourceUsage
 	{
-		STATIC,
-		DYNAMIC,
+		DEFAULT,	// CPU no access, GPU read/write
+		UPLOAD,		// CPU write, GPU read
+		READBACK,	// CPU read, GPU write
 	};
 
 	enum class SamplerState
@@ -244,7 +236,6 @@ namespace vast::gfx
 		POINT_CLAMP,
 		COUNT
 	};
-
 	static const char* g_SamplerNames[]
 	{
 		"LinearWrapSampler",

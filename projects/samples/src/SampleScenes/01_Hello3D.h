@@ -127,7 +127,7 @@ public:
 		} };
 
 		// Create the cube vertex buffer with bindless access.
-		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(cubeVertexData), sizeof(cubeVertexData[0]), false, true);
+		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(cubeVertexData), sizeof(cubeVertexData[0]));
 		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
 
 		// Load a texture from file to be used on the cube

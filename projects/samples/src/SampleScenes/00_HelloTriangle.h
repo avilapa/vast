@@ -8,13 +8,12 @@ using namespace vast::gfx;
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Hello Triangle 
  * --------------
- * This sample implements the classic multi-color triangle as an introduction to the main gfx
- * members in vast, with the only addition of the triangle vertex buffer being dynamic to showcase
- * a simple user interface alongside it.
+ * This sample implements the classic multi-color triangle as an introduction to the gfx API in
+ * vast. As an extra, the triangle vertices can be edited from a simple graphical user interface.
  * 
  * All code for this sample is contained within this file plus a simple 'triangle.hlsl' shader file.
  * 
- * Topics: render to back buffer, push constants, bindless dynamic CPU buffer, user interface
+ * Topics: render to back buffer, push constants, bindless vertex buffer, user interface
  * 
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 class HelloTriangle final : public ISample
@@ -53,15 +52,12 @@ public:
 		};
 		m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
 
-		// Create the triangle vertex buffer as a dynamic buffer resident in CPU memory, as well as
-		// an SRV to be able to access it bindlessly from the shader.
+		// Create the triangle vertex buffer with an SRV to be able to access it bindlessly from the shader.
 		BufferDesc vtxBufDesc =
 		{
 			.size	= sizeof(m_TriangleVertexData),
 			.stride = sizeof(m_TriangleVertexData[0]),
 			.viewFlags = BufViewFlags::SRV,
-			.cpuAccess = BufCpuAccess::WRITE,
-			.usage = ResourceUsage::DYNAMIC,
 			.isRawAccess = true,
 		};
 		m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));

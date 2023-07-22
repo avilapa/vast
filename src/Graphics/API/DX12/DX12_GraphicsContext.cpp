@@ -469,14 +469,7 @@ namespace vast::gfx
 		buf->SetName("Unnamed Buffer");
 		if (initialData != nullptr)
 		{
-			if (desc.cpuAccess == BufCpuAccess::WRITE)
-			{
-				SetBufferData(buf, initialData, dataSize);
-			}
-			else
-			{
-				UploadBufferData(buf, initialData, dataSize);
-			}
+			UpdateBuffer_Internal(buf, initialData, dataSize);
 		}
 		return h;
 	}
@@ -487,47 +480,40 @@ namespace vast::gfx
 		VAST_ASSERT(h.IsValid());
 		auto buf = m_Buffers->LookupResource(h);
 		// TODO: Check buffer does not have UAV
-		VAST_ASSERTF(buf->usage == ResourceUsage::DYNAMIC, "Attempted to update non dynamic resource.");
-		// TODO: Dynamic no CPU access buffers
-		// TODO: Use buffered approach to improve performance (how do we handle updating descriptors?)
-		SetBufferData(buf, srcMem, srcSize);
-	}
-	
-	void DX12GraphicsContext::UpdatePipeline(const PipelineHandle h)
-	{
-		VAST_PROFILE_SCOPE("gfx", "Update Pipeline");
-		VAST_ASSERT(h.IsValid());
-		auto pipeline = m_Pipelines->LookupResource(h);
-
-		WaitForIdle(); // TODO TEMP: We should cache pipelines that want to update on a given frame and reload them all at a safe place, but this does the job for now.
-
-		m_Device->UpdatePipeline(pipeline);
+		// TODO: Offer option to use buffered approach to improve performance (how do we handle updating descriptors?)
+		UpdateBuffer_Internal(buf, srcMem, srcSize);
 	}
 
-	void DX12GraphicsContext::SetBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize)
+	void DX12GraphicsContext::UpdateBuffer_Internal(DX12Buffer* buf, void* srcMem, size_t srcSize)
 	{
-		VAST_ASSERT(buf);
-		VAST_ASSERT(srcMem && srcSize);
-		const auto dstSize = buf->resource->GetDesc().Width;
-		VAST_ASSERT(srcSize > 0 && srcSize <= dstSize);
+		VAST_PROFILE_SCOPE("gfx", "Update Buffer");
+		VAST_ASSERT(buf && srcMem && srcSize);
 
-		uint8* dstMem = buf->data;
-		memcpy(dstMem, srcMem, srcSize);
-	}
-
-	void DX12GraphicsContext::UploadBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize)
-	{
-		VAST_PROFILE_SCOPE("gfx", "Upload Buffer Data");
-		VAST_ASSERT(buf);
-		VAST_ASSERT(srcMem && srcSize);
-
-		Ptr<BufferUpload> upload = MakePtr<BufferUpload>();
-		upload->buf = buf;
-		upload->data = MakePtr<uint8[]>(srcSize);
-		upload->size = srcSize;
-
-		memcpy(upload->data.get(), srcMem, srcSize);
-		m_UploadCommandLists[m_FrameId]->UploadBuffer(std::move(upload));
+		switch (buf->usage)
+		{
+		case ResourceUsage::DEFAULT:
+		{
+			Ptr<BufferUpload> upload = MakePtr<BufferUpload>();
+			upload->buf = buf;
+			upload->data = MakePtr<uint8[]>(srcSize);
+			upload->size = srcSize;
+			memcpy(upload->data.get(), srcMem, srcSize);
+			m_UploadCommandLists[m_FrameId]->UploadBuffer(std::move(upload));
+			break;
+		}
+		case ResourceUsage::UPLOAD:
+		{
+			const auto dstSize = buf->resource->GetDesc().Width;
+			VAST_ASSERT(srcSize > 0 && srcSize <= dstSize);
+			uint8* dstMem = buf->data;
+			memcpy(dstMem, srcMem, srcSize);
+			break;
+		}
+		case ResourceUsage::READBACK:
+		default:
+			VAST_ASSERTF(0, "This path is not currently supported.");
+			break;
+		}
 	}
 
 	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
@@ -539,9 +525,59 @@ namespace vast::gfx
 		tex->SetName("Unnamed Texture");
 		if (initialData != nullptr)
 		{
-			UploadTextureData(tex, initialData);
+			UpdateTexture_Internal(tex, initialData);
 		}
 		return h;
+	}
+
+	void DX12GraphicsContext::UpdateTexture_Internal(DX12Texture* tex, void* srcMem)
+	{
+		VAST_PROFILE_SCOPE("gfx", "Update Texture");
+		VAST_ASSERT(tex && srcMem);
+
+		D3D12_RESOURCE_DESC desc = tex->resource->GetDesc();
+		auto upload = std::make_unique<TextureUpload>();
+		upload->tex = tex;
+		upload->numSubresources = desc.DepthOrArraySize * desc.MipLevels;
+
+		UINT numRows[MAX_TEXTURE_SUBRESOURCE_COUNT];
+		uint64 rowSizesInBytes[MAX_TEXTURE_SUBRESOURCE_COUNT];
+		m_Device->GetDevice()->GetCopyableFootprints(&desc, 0, upload->numSubresources, 0, upload->subresourceLayouts.data(), numRows, rowSizesInBytes, &upload->size);
+
+		upload->data = std::make_unique<uint8[]>(upload->size);
+
+		const uint8* srcMemory = reinterpret_cast<const uint8*>(srcMem);
+		const uint64 srcTexelSize = DirectX::BitsPerPixel(desc.Format) / 8;
+
+		for (uint64 arrayIdx = 0; arrayIdx < desc.DepthOrArraySize; ++arrayIdx)
+		{
+			uint64 mipWidth = desc.Width;
+			for (uint64 mipIdx = 0; mipIdx < desc.MipLevels; ++mipIdx)
+			{
+				const uint64 subresourceIdx = mipIdx + (arrayIdx * desc.MipLevels);
+
+				const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& subresourceLayout = upload->subresourceLayouts[subresourceIdx];
+				const uint64 subresourceHeight = numRows[subresourceIdx];
+				const uint64 subresourcePitch = AlignU32(subresourceLayout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+				const uint64 subresourceDepth = subresourceLayout.Footprint.Depth;
+				const uint64 srcPitch = mipWidth * srcTexelSize;
+				uint8* dstSubresourceMemory = upload->data.get() + subresourceLayout.Offset;
+
+				for (uint64 sliceIdx = 0; sliceIdx < subresourceDepth; ++sliceIdx)
+				{
+					for (uint64 height = 0; height < subresourceHeight; ++height)
+					{
+						memcpy(dstSubresourceMemory, srcMemory, (std::min)(subresourcePitch, srcPitch));
+						dstSubresourceMemory += subresourcePitch;
+						srcMemory += srcPitch;
+					}
+				}
+
+				mipWidth = (std::max)(mipWidth / 2, 1ull);
+			}
+		}
+
+		m_UploadCommandLists[m_FrameId]->UploadTexture(std::move(upload));
 	}
 
 	static bool FileExists(const std::wstring& filePath)
@@ -628,57 +664,6 @@ namespace vast::gfx
 		return CreateTexture(texDesc, image.GetPixels());
 	}
 
-	void DX12GraphicsContext::UploadTextureData(DX12Texture* tex, void* srcMem)
-	{
-		VAST_PROFILE_SCOPE("gfx", "Upload Texture");
-		VAST_ASSERT(tex);
-		VAST_ASSERT(srcMem);
-
-		D3D12_RESOURCE_DESC desc = tex->resource->GetDesc();
-		auto upload = std::make_unique<TextureUpload>();
-		upload->tex = tex;
-		upload->numSubresources = desc.DepthOrArraySize * desc.MipLevels;
-
-		UINT numRows[MAX_TEXTURE_SUBRESOURCE_COUNT];
-		uint64 rowSizesInBytes[MAX_TEXTURE_SUBRESOURCE_COUNT];
-		m_Device->GetDevice()->GetCopyableFootprints(&desc, 0, upload->numSubresources, 0, upload->subresourceLayouts.data(), numRows, rowSizesInBytes, &upload->size);
-
-		upload->data = std::make_unique<uint8[]>(upload->size);
-
-		const uint8* srcMemory = reinterpret_cast<const uint8*>(srcMem);
-		const uint64 srcTexelSize = DirectX::BitsPerPixel(desc.Format) / 8;
-
-		for (uint64 arrayIdx = 0; arrayIdx < desc.DepthOrArraySize; ++arrayIdx)
-		{
-			uint64 mipWidth = desc.Width;
-			for (uint64 mipIdx = 0; mipIdx < desc.MipLevels; ++mipIdx)
-			{
-				const uint64 subresourceIdx = mipIdx + (arrayIdx * desc.MipLevels);
-
-				const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& subresourceLayout = upload->subresourceLayouts[subresourceIdx];
-				const uint64 subresourceHeight = numRows[subresourceIdx];
-				const uint64 subresourcePitch = AlignU32(subresourceLayout.Footprint.RowPitch, D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-				const uint64 subresourceDepth = subresourceLayout.Footprint.Depth;
-				const uint64 srcPitch = mipWidth * srcTexelSize;
-				uint8* dstSubresourceMemory = upload->data.get() + subresourceLayout.Offset;
-
-				for (uint64 sliceIdx = 0; sliceIdx < subresourceDepth; ++sliceIdx)
-				{
-					for (uint64 height = 0; height < subresourceHeight; ++height)
-					{
-						memcpy(dstSubresourceMemory, srcMemory, (std::min)(subresourcePitch, srcPitch));
-						dstSubresourceMemory += subresourcePitch;
-						srcMemory += srcPitch;
-					}
-				}
-
-				mipWidth = (std::max)(mipWidth / 2, 1ull);
-			}
-		}
-
-		m_UploadCommandLists[m_FrameId]->UploadTexture(std::move(upload));
-	}
-
 	PipelineHandle DX12GraphicsContext::CreatePipeline(const PipelineDesc& desc)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Pipeline");
@@ -686,6 +671,17 @@ namespace vast::gfx
 		auto [h, pipeline] = m_Pipelines->AcquireResource();
 		m_Device->CreatePipeline(desc, pipeline);
 		return h;
+	}
+
+	void DX12GraphicsContext::UpdatePipeline(const PipelineHandle h)
+	{
+		VAST_PROFILE_SCOPE("gfx", "Update Pipeline");
+		VAST_ASSERT(h.IsValid());
+		auto pipeline = m_Pipelines->LookupResource(h);
+
+		WaitForIdle(); // TODO TEMP: We should cache pipelines that want to update on a given frame and reload them all at a safe place, but this does the job for now.
+
+		m_Device->UpdatePipeline(pipeline);
 	}
 
 	void DX12GraphicsContext::DestroyTexture(const TextureHandle h)
@@ -880,8 +876,7 @@ namespace vast::gfx
 		BufferDesc tempFrameBufferDesc =
 		{
 			.size = tempFrameBufferSize * 2, // TODO: Alignment?
-			.cpuAccess = BufCpuAccess::WRITE,
-			// TODO: Should this be dynamic?
+			.usage = ResourceUsage::UPLOAD,
 			.isRawAccess = true,
 		};
 

@@ -58,7 +58,6 @@ namespace vast::gfx
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
 		uint32 descriptorHeapIdx = kInvalidHeapIdx;
 		bool isReady = false;
-		ResourceUsage usage = ResourceUsage::STATIC;
 
 		virtual void Reset()
 		{
@@ -68,7 +67,6 @@ namespace vast::gfx
 			state = D3D12_RESOURCE_STATE_COMMON;
 			descriptorHeapIdx = kInvalidHeapIdx;
 			isReady = false;
-			usage = ResourceUsage::STATIC;
 		}
 
 		void SetName(const std::string& name)
@@ -100,6 +98,7 @@ namespace vast::gfx
 	{
 		uint8* data = nullptr;
 		uint32 stride = 0;
+		ResourceUsage usage = ResourceUsage::DEFAULT;
 		DX12Descriptor cbv = {};
 		DX12Descriptor srv = {};
 		DX12Descriptor uav = {};
@@ -108,6 +107,7 @@ namespace vast::gfx
 		{
 			data = nullptr;
 			stride = 0;
+			usage = ResourceUsage::DEFAULT;
 			cbv = {};
 			srv = {};
 			uav = {};

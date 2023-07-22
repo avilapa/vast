@@ -104,11 +104,8 @@ namespace vast::gfx
 
 		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
-		void SetBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize);
-
-		void UploadBufferData(DX12Buffer* buf, void* srcMem, size_t srcSize);
-		void UploadTextureData(DX12Texture* tex, void* srcMem);
-
+		void UpdateBuffer_Internal(DX12Buffer* buf, void* srcMem, size_t srcSize);
+		void UpdateTexture_Internal(DX12Texture* tex, void* srcMem);
 		void SetShaderResourceView_Internal(const DX12Descriptor& srv);
 
 		Ptr<DX12Device> m_Device;

@@ -4,20 +4,19 @@
 namespace vast::gfx
 {
 
-	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, bool bCpuAccess /* = false */, bool bBindless /* = true */)
+	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, ResourceUsage usage /* = ResourceUsage::DEFAULT */, bool bBindless /* = true */)
 	{
 		return BufferDesc
 		{
 			.size = size,
 			.stride = stride,
 			.viewFlags = bBindless ? BufViewFlags::SRV : BufViewFlags::NONE,
-			.cpuAccess = bCpuAccess ? BufCpuAccess::WRITE : BufCpuAccess::NONE,
-			.usage = bCpuAccess ? ResourceUsage::DYNAMIC : ResourceUsage::STATIC,
+			.usage = usage,
 			.isRawAccess = bBindless,
 		};
 	}
 
-	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
+	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format /* = IndexBufFormat::R16_UINT */, ResourceUsage usage /* = ResourceUsage::DEFAULT */)
 	{
 		VAST_ASSERT(format != IndexBufFormat::UNKNOWN);
 		const uint32 indexSize = (format == IndexBufFormat::R32_UINT) ? sizeof(uint32) : sizeof(uint16);
@@ -27,34 +26,31 @@ namespace vast::gfx
 			.size = numIndices * indexSize,
 			.stride = indexSize,
 			.viewFlags = BufViewFlags::NONE,
-			.cpuAccess = BufCpuAccess::NONE,
-			.usage = ResourceUsage::STATIC,
+			.usage = usage,
 			.isRawAccess = false,
 		};
 	}
 
-	BufferDesc AllocCbvBufferDesc(uint32 size, bool bCpuAccess /* = true */)
+	BufferDesc AllocCbvBufferDesc(uint32 size, ResourceUsage usage /* = ResourceUsage::UPLOAD */)
 	{
 		return BufferDesc
 		{
 			.size = size,
 			.stride = 0,
 			.viewFlags = BufViewFlags::CBV,
-			.cpuAccess = bCpuAccess ? BufCpuAccess::WRITE : BufCpuAccess::NONE,
-			.usage = bCpuAccess ? ResourceUsage::DYNAMIC : ResourceUsage::STATIC,
+			.usage = usage,
 			.isRawAccess = false,
 		};
 	}
 	
-	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, bool bCpuAccess /* = false */)
+	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, ResourceUsage usage /* = ResourceUsage::DEFAULT */)
 	{
 		return BufferDesc
 		{
 			.size = size,
 			.stride = stride,
 			.viewFlags = BufViewFlags::SRV,
-			.cpuAccess = bCpuAccess ? BufCpuAccess::WRITE : BufCpuAccess::NONE,
-			.usage = bCpuAccess ? ResourceUsage::DYNAMIC : ResourceUsage::STATIC,
+			.usage = usage,
 			.isRawAccess = false,
 		};
 	}

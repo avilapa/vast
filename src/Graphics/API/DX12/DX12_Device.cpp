@@ -243,15 +243,20 @@ namespace vast::gfx
 		VAST_ASSERT(outBuf);
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
-		if (desc.cpuAccess == BufCpuAccess::NONE)
+		switch (desc.usage)
 		{
+		case ResourceUsage::DEFAULT:
 			outBuf->state = D3D12_RESOURCE_STATE_COPY_DEST;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
-		}
-		else
-		{
+			break;
+		case ResourceUsage::UPLOAD:
 			outBuf->state = D3D12_RESOURCE_STATE_GENERIC_READ;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
+			break;
+		case ResourceUsage::READBACK:
+		default:
+			VAST_ASSERTF(0, "This path is not currently supported.");
+			break;
 		}
 		// TODO: BufferCpuAccess::READBACK
 
@@ -266,10 +271,9 @@ namespace vast::gfx
 			rscDesc.Width = static_cast<UINT64>(AlignU32(static_cast<uint32>(rscDesc.Width), D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
 		}
 
-		if (desc.usage == ResourceUsage::DYNAMIC)
-		{
-			rscDesc.Width *= NUM_FRAMES_IN_FLIGHT; // TODO: This is not currently used!
-		}
+		// TODO: Do we need dynamic * NUM_FRAMES_IN_FLIGHT buffers?
+		//rscDesc.Width *= NUM_FRAMES_IN_FLIGHT;
+
 		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
 		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
 
@@ -321,9 +325,9 @@ namespace vast::gfx
 			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
 		}
 
-		if (desc.cpuAccess == BufCpuAccess::WRITE)
+		if (desc.usage == ResourceUsage::UPLOAD)
 		{
-			// TODO: Persistent mapping may require manual GPU sync. Mapping/Unmapping every time may yield better performance
+			// TODO: Persistent mapping may require manual GPU sync. Mapping/Unmapping every time may yield better performance?
 			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
 		}
 

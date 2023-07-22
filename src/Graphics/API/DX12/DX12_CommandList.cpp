@@ -295,11 +295,11 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Create Upload Command List");
 		BufferDesc uploadBufferDesc;
 		uploadBufferDesc.size = 10 * 1024 * 1024;
-		uploadBufferDesc.cpuAccess = BufCpuAccess::WRITE;
+		uploadBufferDesc.usage = ResourceUsage::UPLOAD;
 
 		BufferDesc uploadTextureDesc;
 		uploadTextureDesc.size = 40 * 1024 * 1024;
-		uploadTextureDesc.cpuAccess = BufCpuAccess::WRITE;
+		uploadTextureDesc.usage = ResourceUsage::UPLOAD;
 
 		m_BufferUploadHeap = MakePtr<DX12Buffer>();
 		m_Device.CreateBuffer(uploadBufferDesc, m_BufferUploadHeap.get());
