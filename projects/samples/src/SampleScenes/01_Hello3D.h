@@ -21,7 +21,7 @@ using namespace vast::gfx;
  * to the back buffer respectively.
  *
  * Topics: full-screen triangle, render targets and depth target, texture loading, constant buffer,
- *         perspective camera, clear color
+ *         camera matrices, clear color
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 class Hello3D final : public ISample

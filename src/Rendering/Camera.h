@@ -9,27 +9,29 @@ namespace vast::gfx
 	{
 	public:
 		Camera(const float4x4& transform, 
-			float zNear = 0.001f, float zFar = 1000.0f, 
-			bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
+			float zNear = 0.001f, float zFar = 1000.0f, bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
 
 		Camera(const float3& eye, const float3& lookAt, const float3& up,
-			float zNear = 0.001f, float zFar = 1000.0f, 
-			bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
+			float zNear = 0.001f, float zFar = 1000.0f, bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
 		
 		float4x4 GetViewMatrix() const;
 		float4x4 GetProjectionMatrix() const;
 		float4x4 GetViewProjectionMatrix() const;
 
-		float4x4 GetTransform() const;
-		void SetTransform(const float4x4& model);
-
 		void SetLookAt(const float3& eye, const float3& lookAt, const float3& up);
 
-		float GetNearClip() const;
-		float GetFarClip() const;
+		void SetTransform(const float4x4& model);
+		float4x4 GetTransform() const;
 
 		void SetNearClip(float zNear);
 		void SetFarClip(float zFar);
+		void SetIsReverseZ(bool bReverseZ);
+
+		float GetNearClip() const;
+		float GetFarClip() const;
+		bool GetIsReverseZ() const;
+
+		virtual bool GetIsOrthographic() const;
 
 	protected:
 		virtual void RegenerateProjection() = 0;
@@ -59,19 +61,18 @@ namespace vast::gfx
 	public:
 		PerspectiveCamera(const float4x4& transform, 
 			float aspectRatio = (16.0f / 9.0f), float fovY = DEG_TO_RAD(45), 
-			float zNear = 0.001f, float zFar = 1000.0f, 
-			bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
+			float zNear = 0.001f, float zFar = 1000.0f, bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
 
 		PerspectiveCamera(const float3& eye, const float3& lookAt, const float3& up,
 			float aspectRatio = (16.0f / 9.0f), float fovY = DEG_TO_RAD(45), 
-			float zNear = 0.001f, float zFar = 1000.0f, 
-			bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
+			float zNear = 0.001f, float zFar = 1000.0f, bool bReverseZ = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z);
+
+		void SetAspectRatio(float aspectRatio);
+		void SetFieldOfView(float fovY);
 
 		float GetAspectRatio() const;
 		float GetFieldOfView() const;
 
-		void SetAspectRatio(float aspectRatio);
-		void SetFieldOfView(float fovY);
 
 	protected:
 		void RegenerateProjection() override;

@@ -69,9 +69,10 @@ namespace vast::gfx
 		return m_ViewProjMatrix;
 	}
 
-	float4x4 Camera::GetTransform() const
+	void Camera::SetLookAt(const float3& eye, const float3& lookAt, const float3& up)
 	{
-		return m_ModelMatrix;
+		m_ViewMatrix = Camera::ComputeViewMatrix(eye, lookAt, up);
+		ViewChanged();
 	}
 
 	void Camera::SetTransform(const float4x4& model)
@@ -80,20 +81,9 @@ namespace vast::gfx
 		ModelChanged();
 	}
 
-	void Camera::SetLookAt(const float3& eye, const float3& lookAt, const float3& up)
+	float4x4 Camera::GetTransform() const
 	{
-		m_ViewMatrix = Camera::ComputeViewMatrix(eye, lookAt, up);
-		ViewChanged();
-	}
-
-	float Camera::GetNearClip() const
-	{
-		return m_ZNear;
-	}
-
-	float Camera::GetFarClip() const
-	{
-		return m_ZFar;
+		return m_ModelMatrix;
 	}
 
 	void Camera::SetNearClip(float zNear)
@@ -108,6 +98,33 @@ namespace vast::gfx
 		m_ZFar = zFar;
 		RegenerateProjection();
 		ProjectionChanged();
+	}
+
+	void Camera::SetIsReverseZ(bool bReverseZ)
+	{
+		m_bReverseZ = bReverseZ;
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
+	float Camera::GetNearClip() const
+	{
+		return m_ZNear;
+	}
+
+	float Camera::GetFarClip() const
+	{
+		return m_ZFar;
+	}
+
+	bool Camera::GetIsReverseZ() const
+	{
+		return m_bReverseZ;
+	}
+	
+	bool Camera::GetIsOrthographic() const
+	{
+		return false;
 	}
 
 	void Camera::ModelChanged()
@@ -147,6 +164,20 @@ namespace vast::gfx
 		ProjectionChanged();
 	}
 
+	void PerspectiveCamera::SetAspectRatio(float aspectRatio)
+	{
+		m_AspectRatio = aspectRatio;
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
+	void PerspectiveCamera::SetFieldOfView(float fovY)
+	{
+		m_FovY = fovY;
+		RegenerateProjection();
+		ProjectionChanged();
+	}
+
 	float PerspectiveCamera::GetAspectRatio() const
 	{
 		return m_AspectRatio;
@@ -155,20 +186,6 @@ namespace vast::gfx
 	float PerspectiveCamera::GetFieldOfView() const
 	{
 		return m_FovY;
-	}
-
-	void PerspectiveCamera::SetAspectRatio(float aspectRatio)
-	{
-		m_AspectRatio = aspectRatio;
-		RegenerateProjection();
-		ProjectionChanged();
-	}
-	
-	void PerspectiveCamera::SetFieldOfView(float fovY)
-	{
-		m_FovY = fovY;
-		RegenerateProjection();
-		ProjectionChanged();
 	}
 
 	void PerspectiveCamera::RegenerateProjection()

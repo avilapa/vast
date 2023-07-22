@@ -22,7 +22,7 @@ using namespace vast::gfx;
  * and 'fullscreen.hlsl' containing code for rendering the cube and gamma correcting the color
  * result to the back buffer respectively.
  * 
- * Topics: instancing, structured buffer, index buffer, reverse-z depth buffer
+ * Topics: instancing, structured buffer, index buffer, reverse-z depth buffer, camera object
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -64,6 +64,8 @@ private:
 		COUNT,
 	};
 
+	Ptr<PerspectiveCamera> m_Camera;
+
 	PipelineHandle m_FullscreenPso;
 	TextureHandle m_ColorRT;
 	Array<TextureHandle, DepthBufferMode::COUNT> m_DepthRT;
@@ -95,6 +97,11 @@ private:
 public:
 	Instancing(GraphicsContext& ctx_) : ISample(ctx_)
 	{
+		const float3 cameraPos = float3(0.0f, 30.0f, -20.0f);
+		const float3 lookAt = float3(0.0f, 0.0f, 100.0f);
+		m_Camera = MakePtr<PerspectiveCamera>(cameraPos, lookAt, float3(0, 1, 0), 
+			ctx.GetBackBufferAspectRatio(), DEG_TO_RAD(45.0f), 0.001f, 10000.0f, m_bDepthUseReverseZ);
+
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
 			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
@@ -151,7 +158,7 @@ public:
 			i.color = { rand() % 255 / 255.0f, rand() % 255 / 255.0f, rand() % 255 / 255.0f };
 		}
 
-		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
+		m_CubeCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 		m_CubeCB.vtxBufIdx = ctx.GetBindlessIndex(m_CubeVtxBuf);
 		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
 
@@ -198,6 +205,7 @@ public:
 	{
 		if (m_bViewChanged)
 		{
+			m_CubeCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 			ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(CubeCB));
 			m_bViewChanged = false;
 		}
@@ -255,18 +263,8 @@ public:
 		dsDesc.clear.ds.depth = 0.0f;
 		m_DepthRT[DepthBufferMode::REVERSE_Z] = ctx.CreateTexture(dsDesc);
 
-		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
+		m_Camera->SetAspectRatio(ctx.GetBackBufferAspectRatio());
 		m_bViewChanged = true;
-	}
-
-	float4x4 ComputeViewProjectionMatrix()
-	{
-		const float3 cameraPos = float3(0.0f, 30.0f, -20.0f);
-		const float3 lookAt = float3(0.0f, 0.0f, 100.0f);
-
-		float4x4 viewMatrix = Camera::ComputeViewMatrix(cameraPos, lookAt, float3(0, 1, 0));
-		float4x4 projMatrix = Camera::ComputeProjectionMatrix(DEG_TO_RAD(45.0f), ctx.GetBackBufferAspectRatio(), 0.001f, 10000.0f, m_bDepthUseReverseZ);
-		return Camera::ComputeViewProjectionMatrix(viewMatrix, projMatrix);
 	}
 
 	void OnGUI() override
@@ -275,7 +273,7 @@ public:
 		{
 			if (ImGui::Checkbox("Use Reverse-Z", &m_bDepthUseReverseZ))
 			{
-				m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
+				m_Camera->SetIsReverseZ(m_bDepthUseReverseZ);
 				m_bViewChanged = true;
 			}
 		}
