@@ -2,6 +2,19 @@
 
 namespace vast::gfx
 {
+	// - Graphics constants -------------------------------------------------------------------- //
+
+	constexpr uint32 NUM_FRAMES_IN_FLIGHT = 2;
+
+	// TODO: Set sensible defaults
+	constexpr uint32 NUM_TEXTURES = 512;
+	constexpr uint32 NUM_BUFFERS = 512;
+	constexpr uint32 NUM_PIPELINES = 64;
+
+	constexpr bool ENABLE_VSYNC = true;
+	constexpr bool ALLOW_TEARING = false;
+
+	// - Graphics Enums ------------------------------------------------------------------------ //
 
 	enum class BufViewFlags
 	{

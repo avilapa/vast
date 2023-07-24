@@ -6,6 +6,8 @@ struct IDXGISwapChain4;
 
 namespace vast::gfx
 {
+	constexpr uint32 NUM_BACK_BUFFERS = 3;
+
 	class DX12Device;
 
 	class DX12SwapChain

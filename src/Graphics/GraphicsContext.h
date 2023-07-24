@@ -7,6 +7,7 @@
 
 namespace vast::gfx
 {
+
 	struct GraphicsParams
 	{
 		GraphicsParams() : swapChainSize(1600, 900), swapChainFormat(TexFormat::RGBA8_UNORM), backBufferFormat(TexFormat::RGBA8_UNORM_SRGB) {}
@@ -84,5 +85,20 @@ namespace vast::gfx
 
 		virtual bool GetIsReady(const BufferHandle h) = 0;
 		virtual bool GetIsReady(const TextureHandle h) = 0;
+
+	protected:
+		uint32 m_FrameId = 0;
+
+		struct TempAllocator
+		{
+			BufferHandle buffer;
+			uint32 size = 0;
+			uint32 offset = 0;
+
+			void Reset() { offset = 0; }
+		};
+		// TODO: This could be replaced by a single, big dynamic buffer?
+		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators = {};
+
 	};
 }

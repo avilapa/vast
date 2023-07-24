@@ -14,6 +14,11 @@
 
 namespace vast::gfx
 {
+	constexpr uint32 NUM_RTV_STAGING_DESCRIPTORS = 256;
+	constexpr uint32 NUM_DSV_STAGING_DESCRIPTORS = 32;
+	constexpr uint32 NUM_SRV_STAGING_DESCRIPTORS = 4096;
+	constexpr uint32 NUM_RESERVED_SRV_DESCRIPTORS = 8192;
+	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
 
 	DX12Device::DX12Device()
 		: m_DXGIFactory(nullptr)

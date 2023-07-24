@@ -10,6 +10,7 @@
 
 namespace vast::gfx
 {
+	static_assert(NUM_BACK_BUFFERS <= DXGI_MAX_SWAP_CHAIN_BUFFERS);
 
 	DX12SwapChain::DX12SwapChain(const uint2& size, const TexFormat& format, const TexFormat& backBufferFormat,
 		DX12Device& device, ID3D12CommandQueue& graphicsQueue, HWND windowHandle /*= ::GetActiveWindow()*/)

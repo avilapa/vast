@@ -33,8 +33,6 @@ namespace vast::gfx
 		, m_BuffersMarkedForDestruction({})
 		, m_TexturesMarkedForDestruction({})
 		, m_PipelinesMarkedForDestruction({})
-		, m_TempFrameAllocators({})
-		, m_FrameId(0)
 		, m_bHasFrameBegun(false)
 		, m_bHasRenderPassBegun(false)
 		, m_bHasBackBufferBeenRenderedToThisFrame(false)
@@ -891,8 +889,10 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::DestroyTempFrameAllocators()
 	{
-		DestroyBuffer(m_TempFrameAllocators[0].buffer);
-		DestroyBuffer(m_TempFrameAllocators[1].buffer);
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			DestroyBuffer(m_TempFrameAllocators[i].buffer);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////

@@ -127,19 +127,6 @@ namespace vast::gfx
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
 
-		uint32 m_FrameId;
-		
-		struct TempAllocator
-		{
-			BufferHandle buffer;
-			uint32 size = 0;
-			uint32 offset = 0;
-
-			void Reset() { offset = 0; }
-		};
-		// TODO: This could be replaced by a single, big dynamic buffer?
-		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators;
-
 		void CreateTempFrameAllocators();
 		void DestroyTempFrameAllocators();
 	};

@@ -15,25 +15,6 @@ struct ID3D12ShaderReflection;
 
 namespace vast::gfx
 {
-	// - Graphics constants ----------------------------------------------------------------------- //
-
-	constexpr uint32 NUM_FRAMES_IN_FLIGHT = 2;
-	constexpr uint32 NUM_BACK_BUFFERS = 3;
-	constexpr uint32 NUM_RTV_STAGING_DESCRIPTORS = 256;
-	constexpr uint32 NUM_DSV_STAGING_DESCRIPTORS = 32;
-	constexpr uint32 NUM_SRV_STAGING_DESCRIPTORS = 4096;
-	constexpr uint32 NUM_RESERVED_SRV_DESCRIPTORS = 8192;
-	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
-	constexpr uint32 MAX_QUEUED_BARRIERS = 16;
-	constexpr uint32 MAX_TEXTURE_SUBRESOURCE_COUNT = 32;
-	// TODO: Set sensible defaults
-	constexpr uint32 NUM_TEXTURES = 512;
-	constexpr uint32 NUM_BUFFERS = 512;
-	constexpr uint32 NUM_PIPELINES = 64;
-
-	constexpr bool ENABLE_VSYNC = true;
-	constexpr bool ALLOW_TEARING = false;
-
 	static_assert(MAX_RENDERTARGETS == D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
 	// - Resources -------------------------------------------------------------------------------- //
