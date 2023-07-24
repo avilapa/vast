@@ -246,7 +246,7 @@ namespace vast::gfx
 		switch (desc.usage)
 		{
 		case ResourceUsage::DEFAULT:
-			outBuf->state = D3D12_RESOURCE_STATE_COPY_DEST;
+			outBuf->state = D3D12_RESOURCE_STATE_COMMON;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 			break;
 		case ResourceUsage::UPLOAD:
@@ -254,11 +254,12 @@ namespace vast::gfx
 			allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
 			break;
 		case ResourceUsage::READBACK:
-		default:
-			VAST_ASSERTF(0, "This path is not currently supported.");
+			outBuf->state = D3D12_RESOURCE_STATE_COPY_DEST;
+			allocDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
+			break;
+		default: VAST_ASSERT(0);
 			break;
 		}
-		// TODO: BufferCpuAccess::READBACK
 
 		D3D12_RESOURCE_DESC rscDesc = TranslateToDX12(desc);
 
@@ -325,9 +326,8 @@ namespace vast::gfx
 			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
 		}
 
-		if (desc.usage == ResourceUsage::UPLOAD)
+		if (desc.usage == ResourceUsage::UPLOAD || desc.usage == ResourceUsage::READBACK)
 		{
-			// TODO: Persistent mapping may require manual GPU sync. Mapping/Unmapping every time may yield better performance?
 			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
 		}
 
@@ -366,7 +366,7 @@ namespace vast::gfx
 		bool hasSRV = (desc.viewFlags & TexViewFlags::SRV) == TexViewFlags::SRV;
 		bool hasUAV = (desc.viewFlags & TexViewFlags::UAV) == TexViewFlags::UAV;
 
-		D3D12_RESOURCE_STATES rscState = D3D12_RESOURCE_STATE_COPY_DEST;
+		D3D12_RESOURCE_STATES rscState = D3D12_RESOURCE_STATE_COMMON;
 		DXGI_FORMAT srvFormat = rscDesc.Format;
 
 		outTex->clearValue.Format = rscDesc.Format;
@@ -424,6 +424,7 @@ namespace vast::gfx
 
 		D3D12MA::ALLOCATION_DESC allocationDesc = {};
 		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
+		// TODO: For texture readback we need to treat the resource as a Buffer... or just use a Buffer.
 		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &outTex->clearValue, &outTex->allocation, IID_PPV_ARGS(&outTex->resource));
 
 		if (hasSRV)

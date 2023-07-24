@@ -227,6 +227,7 @@ namespace vast::gfx
 		DEFAULT,	// CPU no access, GPU read/write
 		UPLOAD,		// CPU write, GPU read
 		READBACK,	// CPU read, GPU write
+		// TODO: GPU_UPLOAD support when it hits mainstream support on the Agility SDK
 	};
 
 	enum class SamplerState
