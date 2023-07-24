@@ -96,11 +96,11 @@ namespace vast::gfx
 		bool m_bHasRenderPassBegun;
 		bool m_bHasBackBufferBeenRenderedToThisFrame;
 
-		DX12RenderPassData SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets);
+		DX12RenderPassData SetupCommonRenderPassBarrierTransitions(const DX12Pipeline& pipeline, RenderPassTargets targets);
 		DX12RenderPassData SetupBackBufferRenderPassBarrierTransitions(LoadOp loadOp, StoreOp storeOp);
 		void BeginRenderPass_Internal(const DX12RenderPassData& rpd);
-		void BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline, LoadOp loadOp, StoreOp storeOp);
-		void ValidateRenderPassTargets(DX12Pipeline* pipeline, RenderPassTargets targets) const;
+		void BeginRenderPassToBackBuffer_Internal(DX12Pipeline& pipeline, LoadOp loadOp, StoreOp storeOp);
+		void ValidateRenderPassTargets(const DX12Pipeline& pipeline, RenderPassTargets targets) const;
 
 		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
@@ -119,9 +119,13 @@ namespace vast::gfx
 		using RenderPassEndBarrier = std::pair<DX12Texture*, D3D12_RESOURCE_STATES>;
 		Vector<RenderPassEndBarrier> m_RenderPassEndBarriers;
 
-		Ptr<HandlePool<DX12Buffer,   Buffer,   NUM_BUFFERS>>   m_Buffers;
-		Ptr<HandlePool<DX12Texture,  Texture,  NUM_TEXTURES>>  m_Textures;
-		Ptr<HandlePool<DX12Pipeline, Pipeline, NUM_PIPELINES>> m_Pipelines;
+		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles;
+		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
+		Ptr<HandlePool<Pipeline, NUM_PIPELINES>> m_PipelineHandles;
+		// TODO: These should go to the Backend/Device when we get there.
+		Ptr<ResourceHandler<DX12Buffer, Buffer, NUM_BUFFERS>> m_Buffers;
+		Ptr<ResourceHandler<DX12Texture, Texture, NUM_TEXTURES>> m_Textures;
+		Ptr<ResourceHandler<DX12Pipeline, Pipeline, NUM_PIPELINES>> m_Pipelines;
 
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;

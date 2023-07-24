@@ -302,21 +302,21 @@ namespace vast::gfx
 		uploadTextureDesc.usage = ResourceUsage::UPLOAD;
 
 		m_BufferUploadHeap = MakePtr<DX12Buffer>();
-		m_Device.CreateBuffer(uploadBufferDesc, m_BufferUploadHeap.get());
+		m_Device.CreateBuffer(uploadBufferDesc, *m_BufferUploadHeap);
 
 		m_TextureUploadHeap = MakePtr<DX12Buffer>();
-		m_Device.CreateBuffer(uploadTextureDesc, m_TextureUploadHeap.get());
+		m_Device.CreateBuffer(uploadTextureDesc, *m_TextureUploadHeap);
 	}
 
 	DX12UploadCommandList::~DX12UploadCommandList()
 	{
 		VAST_PROFILE_SCOPE("gfx", "Destroy Upload Command List");
 		VAST_ASSERT(m_BufferUploadHeap);
-		m_Device.DestroyBuffer(m_BufferUploadHeap.get());
+		m_Device.DestroyBuffer(*m_BufferUploadHeap);
 		m_BufferUploadHeap = nullptr;
 
 		VAST_ASSERT(m_TextureUploadHeap);
-		m_Device.DestroyBuffer(m_TextureUploadHeap.get());
+		m_Device.DestroyBuffer(*m_TextureUploadHeap);
 		m_TextureUploadHeap = nullptr;
 	}
 

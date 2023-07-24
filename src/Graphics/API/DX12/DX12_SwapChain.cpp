@@ -123,7 +123,7 @@ namespace vast::gfx
 		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
 		{
 			VAST_ASSERT(m_BackBuffers[i]);
-			m_Device.DestroyTexture(m_BackBuffers[i].get());
+			m_Device.DestroyTexture(*m_BackBuffers[i]);
 			m_BackBuffers[i]->Reset();
 		}
 	}

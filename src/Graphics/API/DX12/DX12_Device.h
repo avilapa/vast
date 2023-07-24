@@ -20,15 +20,15 @@ namespace vast::gfx
 		DX12Device();
 		~DX12Device();
 
-		void CreateBuffer(const BufferDesc& desc, DX12Buffer* outBuf);
-		void CreateTexture(const TextureDesc& desc, DX12Texture* outTex);
-		void CreatePipeline(const PipelineDesc& desc, DX12Pipeline* outPipeline);
+		void CreateBuffer(const BufferDesc& desc, DX12Buffer& outBuf);
+		void CreateTexture(const TextureDesc& desc, DX12Texture& outTex);
+		void CreatePipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline);
 
-		void UpdatePipeline(DX12Pipeline* pipeline);
+		void UpdatePipeline(DX12Pipeline& pipeline);
 
-		void DestroyBuffer(DX12Buffer* buf);
-		void DestroyTexture(DX12Texture* tex);
-		void DestroyPipeline(DX12Pipeline* pipeline);
+		void DestroyBuffer(DX12Buffer& buf);
+		void DestroyTexture(DX12Texture& tex);
+		void DestroyPipeline(DX12Pipeline& pipeline);
 
 		ID3D12Device5* GetDevice() const;
 		IDXGIFactory7* GetDXGIFactory() const;

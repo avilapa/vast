@@ -2,8 +2,6 @@
 
 #include "Core/Core.h"
 
-#include <utility> // std::pair
-
 // ==================================== RESOURCE HANDLING =========================================
 //
 // In vast, the user manages GPU resources via 'handles' rather than raw pointers. A handle is, in
@@ -16,10 +14,8 @@
 // amount of possible unique objects we can have, since indices are duplicated across each handle
 // type. 
 //
-// HandlePool is a fixed size pool owning an array T of the resources. It manages allocation,
-// validation and releasing of handles, as well as ensuring the re-usability of the resources these 
-// point to after their previous instances are no longer needed. However it has no knowledge of the
-// data it owns, which should still be initialized and reset by the engine.
+// HandlePool provides a fixed size pool of unique handles that can be used as coherent indexing 
+// into an array of resources elsewhere.
 //
 // ================================================================================================
 
@@ -32,7 +28,7 @@ namespace vast
 	template<typename T>
 	class Handle
 	{
-		template<typename T, typename H, const uint32 SIZE> friend class HandlePool;
+		template<typename H, const uint32 SIZE> friend class HandlePool;
 	public:
 		Handle() : m_Index(0), m_Generation(0) {}
 		bool IsValid() const { return m_Generation != 0; }
@@ -50,128 +46,89 @@ namespace vast
 		uint32 m_Generation;
 	};
 
-	template<typename T, typename H, const uint32 SIZE>
+	template<typename H, const uint32 SIZE>
 	class HandlePool
 	{
-	public:
-		HandlePool() : m_UsedSlots(0), m_GenerationCounters() {	InitializeFreeQueue(); }
-		~HandlePool() {}
-
-		// Allocates a new resource handle and returns a pointer to the resource for initialization.
-		std::pair<Handle<H>, T*> AcquireResource()
-		{
-			Handle<H> h = AllocHandle();
-
-			if (h.IsValid())
-			{
-				T* rsc = AccessResource(h);
-				VAST_ASSERT(rsc);
-				rsc->m_Handle = h;
-				VAST_TRACE("[handles] Acquired new {} handle with index {}, gen {} ({}/{}).", H::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, SIZE);
-				return { h, rsc };
-			}
-			else
-			{
-				VAST_CRITICAL("[handles] Failed to acquire new {} resource.", H::GetStaticResourceTypeName());
-				return { h, nullptr };
-			}
-		}
-
-		// Resets internal resource handle and returns handle index to the free queue for reuse.
-		void FreeResource(Handle<H> h)
-		{
-			VAST_ASSERTF(h.IsValid(), "Cannot free invalid index.");
-
-			T* rsc = LookupResource(h);
-			if (rsc)
-			{
-				rsc->m_Handle = Handle<H>(); // Reset internal resource handle to invalid handle.
-				FreeHandle(h);
-				VAST_TRACE("[handles] Freed {} handle with index {}, gen {} ({}/{}).", H::GetStaticResourceTypeName(), h.GetIndex(), h.GetGeneration(), m_UsedSlots, SIZE);
-			}
-			else
-			{
-				VAST_ASSERTF(0, "Failed to free handle. Check for double free.");
-			}
-		}
-
-		// Provides resource access with matching handle index check.
-		// Note: Returned pointers should never be stored anywhere, and they should only be used 
-		// within small code blocks.
-		T* LookupResource(Handle<H> h)
-		{
-			VAST_ASSERTF(h.IsValid() && h.GetIndex() < SIZE, "Cannot lookup invalid index.");
-			T* rsc = AccessResource(h);
-			VAST_ASSERT(rsc);
-			if (rsc->m_Handle == h)
-			{
-				return rsc;
-			}
-			else
-			{
-				VAST_ERROR("[handles] Failed to lookup resource. Mismatched handle index with internal resource.");
-				return nullptr;
-			}
-		}
-
-	private:
 		static const uint32 kInvalidHandleIdx = UINT32_MAX;
-
 		uint32 m_UsedSlots;
 		Array<uint32, SIZE> m_FreeQueue;
 		Array<uint32, SIZE> m_GenerationCounters;
-		Array<T, SIZE> m_Resources;
 
-	private:
-		// Sets up free queue with increasing indices.
-		void InitializeFreeQueue()
+	public:
+		HandlePool() : m_UsedSlots(0), m_GenerationCounters() 
 		{
+			// Set up free queue with increasing indices.
 			for (uint32 i = 0; i < SIZE; ++i)
 			{
 				m_FreeQueue[i] = i;
 			}
 		}
 
-		uint32 GetNextFreeHandleIndex()
-		{
-			if (m_UsedSlots < SIZE)
-			{
-				uint32 idx = m_FreeQueue[m_UsedSlots++];
-				VAST_ASSERT(idx >= 0 && idx < SIZE);
-				return idx;
-			}
-			else
-			{
-				VAST_ERROR("[resource] [handles] {} handle pool capacity exhausted.", H::GetStaticResourceTypeName());
-				VAST_ASSERTF(0, "Pool capacity exhausted.");
-				return kInvalidHandleIdx;
-			}
-		}
-
 		Handle<H> AllocHandle()
 		{
-			uint32 handleIdx = GetNextFreeHandleIndex();
-
-			if (handleIdx != kInvalidHandleIdx)
+			// Get next free handle index
+			uint32 handleIdx = kInvalidHandleIdx;
+			if (m_UsedSlots < SIZE)
 			{
+				handleIdx = m_FreeQueue[m_UsedSlots++];
+				VAST_ASSERT(handleIdx >= 0 && handleIdx < SIZE && handleIdx != kInvalidHandleIdx);
+
+				// Increase generation counter every time a slot gets (re-)used.
 				return Handle<H>(handleIdx, ++m_GenerationCounters[handleIdx]);
 			}
-			else
-			{
-				return Handle<H>();
-			}
+
+			VAST_ASSERTF(0, "Pool capacity exhausted.");
+			return Handle<H>();
 		}
 
 		void FreeHandle(Handle<H> h)
 		{
+			VAST_ASSERTF(h.IsValid(), "Cannot free invalid handle.");
+#ifdef VAST_DEBUG
+			// Check against double free
+			for (uint32 i = m_UsedSlots; i < SIZE; ++i)
+			{
+				VAST_ASSERT(m_FreeQueue[i] != h.GetIndex());
+			}
+#endif
+			VAST_ASSERT(m_UsedSlots > 0);
+			// Return slot to the queue for re-use.
 			m_FreeQueue[--m_UsedSlots] = h.GetIndex();
 		}
+	};
 
-		// Access resource without matching index handle check.
-		T* AccessResource(Handle<H> h)
+	template<typename T, typename H, const uint32 SIZE>
+	class ResourceHandler
+	{
+	public:
+		T& AcquireResource(Handle<H> h)
 		{
-			return &m_Resources[h.GetIndex()];
+			auto& r = AccessResource(h);
+			r.m_Handle = h;
+			return r;
 		}
+
+		T& LookupResource(Handle<H> h)
+		{
+			auto& r = AccessResource(h);
+			VAST_ASSERT(h == r.m_Handle);
+			return r;
+		}
+
+		void FreeResource(Handle<H> h)
+		{
+			auto& r = LookupResource(h);
+			r.m_Handle = Handle<H>();
+		}
+
+	private:
+		T& AccessResource(Handle<H> h)
+		{
+			VAST_ASSERT(h.IsValid());
+			return m_Resources[h.GetIndex()];
+		}
+
+		Array<T, SIZE> m_Resources;
 	};
 
 }

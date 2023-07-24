@@ -255,10 +255,10 @@ namespace vast::gfx
 		return true;
 	}
 
-	ID3DBlob* DX12ShaderManager::CreateRootSignatureFromReflection(DX12Pipeline* pipeline) const
+	ID3DBlob* DX12ShaderManager::CreateRootSignatureFromReflection(DX12Pipeline& pipeline) const
 	{
 		VAST_PROFILE_SCOPE("gfx", "Reflect Root Signature");
-		DX12Shader* shaders[] = { pipeline->vs.get(), pipeline->ps.get() };
+		DX12Shader* shaders[] = { pipeline.vs.get(), pipeline.ps.get() };
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
 		Vector<D3D12_DESCRIPTOR_RANGE1> descriptorRanges;
 
@@ -275,10 +275,10 @@ namespace vast::gfx
 				D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
 				DX12Check(shader->reflection->GetResourceBindingDesc(rscIdx, &sibDesc));
 
-				if (pipeline->resourceProxyTable->IsRegistered(sibDesc.Name))
+				if (pipeline.resourceProxyTable->IsRegistered(sibDesc.Name))
 					continue;
 
-				pipeline->resourceProxyTable->Register(sibDesc.Name, ShaderResourceProxy{ static_cast<uint32>(rootParameters.size()) });
+				pipeline.resourceProxyTable->Register(sibDesc.Name, ShaderResourceProxy{ static_cast<uint32>(rootParameters.size()) });
 
 				switch (sibDesc.Type)
 				{
@@ -299,8 +299,8 @@ namespace vast::gfx
 						rootParameter.Constants.RegisterSpace = sibDesc.Space;
 						rootParameter.Constants.Num32BitValues = cbDesc.Size / 4;
 
-						VAST_ASSERTF(pipeline->pushConstantIndex == UINT8_MAX, "Multiple push constants for a single pipeline not currently supported.");
-						pipeline->pushConstantIndex = static_cast<uint8>(rootParameters.size());
+						VAST_ASSERTF(pipeline.pushConstantIndex == UINT8_MAX, "Multiple push constants for a single pipeline not currently supported.");
+						pipeline.pushConstantIndex = static_cast<uint8>(rootParameters.size());
 					}
 					else
 					{
@@ -347,8 +347,8 @@ namespace vast::gfx
 			descriptorTable.DescriptorTable.NumDescriptorRanges = static_cast<uint32>(descriptorRanges.size());
 			descriptorTable.DescriptorTable.pDescriptorRanges = descriptorRanges.data();
 
-			VAST_ASSERTF(pipeline->descriptorTableIndex == UINT8_MAX, "Multiple descriptor tables for a single pipeline not currently supported.");
-			pipeline->descriptorTableIndex = static_cast<uint8>(rootParameters.size());
+			VAST_ASSERTF(pipeline.descriptorTableIndex == UINT8_MAX, "Multiple descriptor tables for a single pipeline not currently supported.");
+			pipeline.descriptorTableIndex = static_cast<uint8>(rootParameters.size());
 			rootParameters.push_back(descriptorTable);
 		}
 

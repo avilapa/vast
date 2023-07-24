@@ -153,7 +153,7 @@ namespace vast::gfx
 	template<typename T>
 	class Resource
 	{
-		template<typename T, typename H, const uint32 SIZE> friend class HandlePool;
+		template<typename T, typename H, const uint32 SIZE> friend class ResourceHandler;
 	public:
 		Resource(ResourceType type) : m_Type(type) {}
 

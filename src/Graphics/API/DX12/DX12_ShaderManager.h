@@ -23,7 +23,7 @@ namespace vast::gfx
 		Ref<DX12Shader> LoadShader(const ShaderDesc& desc);
 		bool ReloadShader(Ref<DX12Shader> shader);
 
-		ID3DBlob* CreateRootSignatureFromReflection(DX12Pipeline* pipeline) const;
+		ID3DBlob* CreateRootSignatureFromReflection(DX12Pipeline& pipeline) const;
 		Vector<D3D12_SIGNATURE_PARAMETER_DESC> GetInputParametersFromReflection(ID3D12ShaderReflection* reflection) const;
 
 	private:

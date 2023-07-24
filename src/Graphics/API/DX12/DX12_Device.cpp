@@ -242,24 +242,23 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer* outBuf)
+	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer& outBuf)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Device Create Buffer");
-		VAST_ASSERT(outBuf);
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
 		switch (desc.usage)
 		{
 		case ResourceUsage::DEFAULT:
-			outBuf->state = D3D12_RESOURCE_STATE_COMMON;
+			outBuf.state = D3D12_RESOURCE_STATE_COMMON;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 			break;
 		case ResourceUsage::UPLOAD:
-			outBuf->state = D3D12_RESOURCE_STATE_GENERIC_READ;
+			outBuf.state = D3D12_RESOURCE_STATE_GENERIC_READ;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_UPLOAD;
 			break;
 		case ResourceUsage::READBACK:
-			outBuf->state = D3D12_RESOURCE_STATE_COPY_DEST;
+			outBuf.state = D3D12_RESOURCE_STATE_COPY_DEST;
 			allocDesc.HeapType = D3D12_HEAP_TYPE_READBACK;
 			break;
 		default: VAST_ASSERT(0);
@@ -280,17 +279,17 @@ namespace vast::gfx
 		// TODO: Do we need dynamic * NUM_FRAMES_IN_FLIGHT buffers?
 		//rscDesc.Width *= NUM_FRAMES_IN_FLIGHT;
 
-		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf->state, nullptr, &outBuf->allocation, IID_PPV_ARGS(&outBuf->resource));
-		outBuf->gpuAddress = outBuf->resource->GetGPUVirtualAddress();
+		m_Allocator->CreateResource(&allocDesc, &rscDesc, outBuf.state, nullptr, &outBuf.allocation, IID_PPV_ARGS(&outBuf.resource));
+		outBuf.gpuAddress = outBuf.resource->GetGPUVirtualAddress();
 
 		if (hasCBV)
 		{
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-			cbvDesc.BufferLocation = outBuf->gpuAddress;
+			cbvDesc.BufferLocation = outBuf.gpuAddress;
 			cbvDesc.SizeInBytes = static_cast<uint32>(rscDesc.Width);
 
-			outBuf->cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateConstantBufferView(&cbvDesc, outBuf->cbv.cpuHandle);
+			outBuf.cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateConstantBufferView(&cbvDesc, outBuf.cbv.cpuHandle);
 		}
 
 		const uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
@@ -306,14 +305,14 @@ namespace vast::gfx
 			srvDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			srvDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
 
-			outBuf->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateShaderResourceView(outBuf->resource, &srvDesc, outBuf->srv.cpuHandle);
+			outBuf.srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateShaderResourceView(outBuf.resource, &srvDesc, outBuf.srv.cpuHandle);
 
-			outBuf->descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
+			outBuf.descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
 			// TODO: For dynamic bindless vertex/index buffers we need to be able to update the SRVs accordingly
-			CopySRVHandleToReservedTable(outBuf->srv, outBuf->descriptorHeapIdx);
+			CopySRVHandleToReservedTable(outBuf.srv, outBuf.descriptorHeapIdx);
 		}
 
 		if (hasUAV)
@@ -327,17 +326,17 @@ namespace vast::gfx
 			uavDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			uavDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
-			outBuf->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateUnorderedAccessView(outBuf->resource, nullptr, &uavDesc, outBuf->uav.cpuHandle);
+			outBuf.uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateUnorderedAccessView(outBuf.resource, nullptr, &uavDesc, outBuf.uav.cpuHandle);
 		}
 
 		if (desc.usage == ResourceUsage::UPLOAD || desc.usage == ResourceUsage::READBACK)
 		{
-			outBuf->resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf->data));
+			outBuf.resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf.data));
 		}
 
-		outBuf->usage = desc.usage;
-		outBuf->stride = desc.stride;
+		outBuf.usage = desc.usage;
+		outBuf.stride = desc.stride;
 	}
 
 	static uint32 MipLevelCount(uint32 width, uint32 height, uint32 depth = 1)
@@ -357,10 +356,9 @@ namespace vast::gfx
 		return mipCount;
 	}
 
-	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture* outTex)
+	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture& outTex)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Device Create Texture");
-		VAST_ASSERT(outTex);
 		VAST_ASSERTF(desc.width > 0 && desc.height > 0 && desc.depthOrArraySize > 0, "Invalid texture size.");
 		VAST_ASSERTF(desc.mipCount <= MipLevelCount(desc.width, desc.height, desc.depthOrArraySize), "Invalid mip count.");
 
@@ -374,17 +372,17 @@ namespace vast::gfx
 		D3D12_RESOURCE_STATES rscState = D3D12_RESOURCE_STATE_COMMON;
 		DXGI_FORMAT srvFormat = rscDesc.Format;
 
-		outTex->clearValue.Format = rscDesc.Format;
+		outTex.clearValue.Format = rscDesc.Format;
 
 		if (hasRTV)
 		{
 			rscDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 			rscState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
-			outTex->clearValue.Color[0] = desc.clear.color.x;
-			outTex->clearValue.Color[1] = desc.clear.color.y;
-			outTex->clearValue.Color[2] = desc.clear.color.z;
-			outTex->clearValue.Color[3] = desc.clear.color.w;
+			outTex.clearValue.Color[0] = desc.clear.color.x;
+			outTex.clearValue.Color[1] = desc.clear.color.y;
+			outTex.clearValue.Color[2] = desc.clear.color.z;
+			outTex.clearValue.Color[3] = desc.clear.color.w;
 		}
 
 		if (hasDSV)
@@ -415,8 +413,8 @@ namespace vast::gfx
 				break;
 			}
 
-			outTex->clearValue.DepthStencil.Depth = desc.clear.ds.depth;
-			outTex->clearValue.DepthStencil.Stencil = desc.clear.ds.stencil;
+			outTex.clearValue.DepthStencil.Depth = desc.clear.ds.depth;
+			outTex.clearValue.DepthStencil.Stencil = desc.clear.ds.stencil;
 		}
 
 		if (hasUAV)
@@ -425,16 +423,16 @@ namespace vast::gfx
 			rscState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 		}
 
-		outTex->state = rscState;
+		outTex.state = rscState;
 
 		D3D12MA::ALLOCATION_DESC allocationDesc = {};
 		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 		// TODO: For texture readback we need to treat the resource as a Buffer... or just use a Buffer.
-		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &outTex->clearValue, &outTex->allocation, IID_PPV_ARGS(&outTex->resource));
+		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &outTex.clearValue, &outTex.allocation, IID_PPV_ARGS(&outTex.resource));
 
 		if (hasSRV)
 		{
-			outTex->srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			outTex.srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
 
 			if (hasDSV)
 			{
@@ -447,7 +445,7 @@ namespace vast::gfx
 				srvDesc.Texture2D.PlaneSlice = 0;
 				srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 
-				m_Device->CreateShaderResourceView(outTex->resource, &srvDesc, outTex->srv.cpuHandle);
+				m_Device->CreateShaderResourceView(outTex.resource, &srvDesc, outTex.srv.cpuHandle);
 			}
 			else
 			{
@@ -460,25 +458,25 @@ namespace vast::gfx
 					srvDesc.TextureCube.MostDetailedMip = 0;
 					srvDesc.TextureCube.MipLevels = desc.mipCount;
 					srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
-					m_Device->CreateShaderResourceView(outTex->resource, &srvDesc, outTex->srv.cpuHandle);
+					m_Device->CreateShaderResourceView(outTex.resource, &srvDesc, outTex.srv.cpuHandle);
 				}
 				else
 				{
 					// Null descriptor inherits the resource format and dimension
-					m_Device->CreateShaderResourceView(outTex->resource, nullptr, outTex->srv.cpuHandle);
+					m_Device->CreateShaderResourceView(outTex.resource, nullptr, outTex.srv.cpuHandle);
 				}
 			}
 
-			outTex->descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
+			outTex.descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
-			CopySRVHandleToReservedTable(outTex->srv, outTex->descriptorHeapIdx);
+			CopySRVHandleToReservedTable(outTex.srv, outTex.descriptorHeapIdx);
 		}
 
 		if (hasRTV)
 		{
-			outTex->rtv = m_RTVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateRenderTargetView(outTex->resource, nullptr, outTex->rtv.cpuHandle);
+			outTex.rtv = m_RTVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateRenderTargetView(outTex.resource, nullptr, outTex.rtv.cpuHandle);
 		}
 
 		if (hasDSV)
@@ -489,17 +487,17 @@ namespace vast::gfx
 			dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 			dsvDesc.Texture2D.MipSlice = 0;
 
-			outTex->dsv = m_DSVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateDepthStencilView(outTex->resource, &dsvDesc, outTex->dsv.cpuHandle);
+			outTex.dsv = m_DSVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateDepthStencilView(outTex.resource, &dsvDesc, outTex.dsv.cpuHandle);
 		}
 
 		if (hasUAV)
 		{
-			outTex->uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateUnorderedAccessView(outTex->resource, nullptr, nullptr, outTex->uav.cpuHandle);
+			outTex.uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, nullptr, outTex.uav.cpuHandle);
 		}
 
-		outTex->isReady = (hasRTV || hasDSV);
+		outTex.isReady = (hasRTV || hasDSV);
 	}
 
 	static DXGI_FORMAT ConvertToDXGIFormat(D3D_REGISTER_COMPONENT_TYPE type, BYTE mask)
@@ -525,20 +523,19 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline* outPipeline)
+	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Device Create Pipeline");
-		VAST_ASSERT(outPipeline);
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
 		if (desc.vs.type != ShaderType::UNKNOWN)
 		{
-			outPipeline->vs = m_ShaderManager->LoadShader(desc.vs);
-			psDesc.VS.pShaderBytecode = outPipeline->vs->blob->GetBufferPointer();
-			psDesc.VS.BytecodeLength = outPipeline->vs->blob->GetBufferSize();
+			outPipeline.vs = m_ShaderManager->LoadShader(desc.vs);
+			psDesc.VS.pShaderBytecode = outPipeline.vs->blob->GetBufferPointer();
+			psDesc.VS.BytecodeLength = outPipeline.vs->blob->GetBufferSize();
 
-			auto paramsDesc = m_ShaderManager->GetInputParametersFromReflection(outPipeline->vs->reflection);
+			auto paramsDesc = m_ShaderManager->GetInputParametersFromReflection(outPipeline.vs->reflection);
 			D3D12_INPUT_ELEMENT_DESC* inputElementDescs = new D3D12_INPUT_ELEMENT_DESC[paramsDesc.size()]{};
 
 			for (uint32 i = 0; i < paramsDesc.size(); ++i)
@@ -562,13 +559,13 @@ namespace vast::gfx
 		std::string shaderName = "Unknown";
 		if (desc.ps.type != ShaderType::UNKNOWN)
 		{
-			outPipeline->ps = m_ShaderManager->LoadShader(desc.ps);
-			psDesc.PS.pShaderBytecode = outPipeline->ps->blob->GetBufferPointer();
-			psDesc.PS.BytecodeLength = outPipeline->ps->blob->GetBufferSize();
+			outPipeline.ps = m_ShaderManager->LoadShader(desc.ps);
+			psDesc.PS.pShaderBytecode = outPipeline.ps->blob->GetBufferPointer();
+			psDesc.PS.BytecodeLength = outPipeline.ps->blob->GetBufferSize();
 			shaderName = desc.ps.shaderName;
 		}
 
-		outPipeline->resourceProxyTable = MakePtr<ShaderResourceProxyTable>(shaderName);
+		outPipeline.resourceProxyTable = MakePtr<ShaderResourceProxyTable>(shaderName);
 
 		ID3DBlob* rootSignatureBlob = m_ShaderManager->CreateRootSignatureFromReflection(outPipeline);
 		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
@@ -635,112 +632,109 @@ namespace vast::gfx
 
 		psDesc.NodeMask = 0;
 
-		outPipeline->desc = psDesc;
+		outPipeline.desc = psDesc;
 		{
 			VAST_PROFILE_SCOPE("gfx", "Device Create PSO");
-			DX12Check(m_Device->CreateGraphicsPipelineState(&outPipeline->desc, IID_PPV_ARGS(&outPipeline->pipelineState)));
+			DX12Check(m_Device->CreateGraphicsPipelineState(&outPipeline.desc, IID_PPV_ARGS(&outPipeline.pipelineState)));
 		}
 	}
 
-	void DX12Device::UpdatePipeline(DX12Pipeline* pipeline)
+	void DX12Device::UpdatePipeline(DX12Pipeline& pipeline)
 	{
-		if (pipeline->vs != nullptr)
+		if (pipeline.vs != nullptr)
 		{
-			if (!m_ShaderManager->ReloadShader(pipeline->vs))
+			if (!m_ShaderManager->ReloadShader(pipeline.vs))
 			{
 				return;
 			}
-			pipeline->desc.VS.pShaderBytecode = pipeline->vs->blob->GetBufferPointer();
-			pipeline->desc.VS.BytecodeLength = pipeline->vs->blob->GetBufferSize();
+			pipeline.desc.VS.pShaderBytecode = pipeline.vs->blob->GetBufferPointer();
+			pipeline.desc.VS.BytecodeLength = pipeline.vs->blob->GetBufferSize();
 		}
 
-		if (pipeline->ps != nullptr)
+		if (pipeline.ps != nullptr)
 		{
-			if (!m_ShaderManager->ReloadShader(pipeline->ps))
+			if (!m_ShaderManager->ReloadShader(pipeline.ps))
 			{
 				return;
 			}			
-			pipeline->desc.PS.pShaderBytecode = pipeline->ps->blob->GetBufferPointer();
-			pipeline->desc.PS.BytecodeLength = pipeline->ps->blob->GetBufferSize();
+			pipeline.desc.PS.pShaderBytecode = pipeline.ps->blob->GetBufferPointer();
+			pipeline.desc.PS.BytecodeLength = pipeline.ps->blob->GetBufferSize();
 		}
 
-		DX12SafeRelease(pipeline->pipelineState);
-		DX12Check(m_Device->CreateGraphicsPipelineState(&pipeline->desc, IID_PPV_ARGS(&pipeline->pipelineState)));
+		DX12SafeRelease(pipeline.pipelineState);
+		DX12Check(m_Device->CreateGraphicsPipelineState(&pipeline.desc, IID_PPV_ARGS(&pipeline.pipelineState)));
 	}
 
-	void DX12Device::DestroyBuffer(DX12Buffer* buf)
+	void DX12Device::DestroyBuffer(DX12Buffer& buf)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Device Destroy Buffer");
-		VAST_ASSERTF(buf, "Attempted to destroy an empty buffer.");
 
-		if (buf->cbv.IsValid())
+		if (buf.cbv.IsValid())
 		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->cbv);
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf.cbv);
 		}
 
-		if (buf->srv.IsValid())
+		if (buf.srv.IsValid())
 		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->srv);
-			m_FreeReservedDescriptorIndices.push_back(buf->descriptorHeapIdx);
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf.srv);
+			m_FreeReservedDescriptorIndices.push_back(buf.descriptorHeapIdx);
 		}
 
-		if (buf->uav.IsValid())
+		if (buf.uav.IsValid())
 		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf->uav);
+			m_SRVStagingDescriptorHeap->FreeDescriptor(buf.uav);
 		}
 
-		if (buf->data != nullptr)
+		if (buf.data != nullptr)
 		{
-			buf->resource->Unmap(0, nullptr);
+			buf.resource->Unmap(0, nullptr);
 		}
 
-		DX12SafeRelease(buf->resource);
-		DX12SafeRelease(buf->allocation);
+		DX12SafeRelease(buf.resource);
+		DX12SafeRelease(buf.allocation);
 	}
 
-	void DX12Device::DestroyTexture(DX12Texture* tex)
+	void DX12Device::DestroyTexture(DX12Texture& tex)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Device Destroy Texture");
-		VAST_ASSERTF(tex, "Attempted to destroy an empty texture.");
 
-		if (tex->rtv.IsValid())
+		if (tex.rtv.IsValid())
 		{
-			m_RTVStagingDescriptorHeap->FreeDescriptor(tex->rtv);
+			m_RTVStagingDescriptorHeap->FreeDescriptor(tex.rtv);
 		}
 
-		if (tex->dsv.IsValid())
+		if (tex.dsv.IsValid())
 		{
-			m_DSVStagingDescriptorHeap->FreeDescriptor(tex->dsv);
+			m_DSVStagingDescriptorHeap->FreeDescriptor(tex.dsv);
 		}
 
-		if (tex->srv.IsValid())
+		if (tex.srv.IsValid())
 		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(tex->srv);
-			m_FreeReservedDescriptorIndices.push_back(tex->descriptorHeapIdx);
+			m_SRVStagingDescriptorHeap->FreeDescriptor(tex.srv);
+			m_FreeReservedDescriptorIndices.push_back(tex.descriptorHeapIdx);
 		}
 
-		if (tex->uav.IsValid())
+		if (tex.uav.IsValid())
 		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(tex->uav);
+			m_SRVStagingDescriptorHeap->FreeDescriptor(tex.uav);
 		}
 
-		DX12SafeRelease(tex->resource);
-		DX12SafeRelease(tex->allocation);
+		DX12SafeRelease(tex.resource);
+		DX12SafeRelease(tex.allocation);
 	}
 	
-	void DX12Device::DestroyPipeline(DX12Pipeline* pipeline)
+	void DX12Device::DestroyPipeline(DX12Pipeline& pipeline)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Device Destroy Pipeline");
-		VAST_ASSERTF(pipeline, "Attempted to destroy an empty pipeline.");
-		pipeline->vs = nullptr;
-		pipeline->ps = nullptr;
-		if (pipeline->desc.InputLayout.pInputElementDescs)
+		pipeline.vs = nullptr;
+		pipeline.ps = nullptr;
+		if (pipeline.desc.InputLayout.pInputElementDescs)
 		{
-			delete[] pipeline->desc.InputLayout.pInputElementDescs;
-			pipeline->desc.InputLayout.pInputElementDescs = nullptr;
+			delete[] pipeline.desc.InputLayout.pInputElementDescs;
+			pipeline.desc.InputLayout.pInputElementDescs = nullptr;
 		}
-		DX12SafeRelease(pipeline->desc.pRootSignature);
-		DX12SafeRelease(pipeline->pipelineState);
+		DX12SafeRelease(pipeline.desc.pRootSignature);
+		DX12SafeRelease(pipeline.pipelineState);
 	}
 
 	ID3D12Device5* DX12Device::GetDevice() const

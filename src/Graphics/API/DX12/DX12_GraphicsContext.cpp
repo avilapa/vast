@@ -27,6 +27,9 @@ namespace vast::gfx
 		, m_UploadCommandLists({ nullptr })
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
+		, m_BufferHandles(nullptr)
+		, m_TextureHandles(nullptr)
+		, m_PipelineHandles(nullptr)
 		, m_Buffers(nullptr)
 		, m_Textures(nullptr)
 		, m_Pipelines(nullptr)
@@ -38,9 +41,12 @@ namespace vast::gfx
 		, m_bHasBackBufferBeenRenderedToThisFrame(false)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Graphics Context");
-		m_Buffers   = MakePtr<HandlePool<DX12Buffer,   Buffer,   NUM_BUFFERS>>();
-		m_Textures  = MakePtr<HandlePool<DX12Texture,  Texture,  NUM_TEXTURES>>();
-		m_Pipelines = MakePtr<HandlePool<DX12Pipeline, Pipeline, NUM_PIPELINES>>();
+		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
+		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
+		m_PipelineHandles = MakePtr<HandlePool<Pipeline, NUM_PIPELINES>>();
+		m_Buffers = MakePtr<ResourceHandler<DX12Buffer, Buffer, NUM_BUFFERS>>();
+		m_Textures = MakePtr<ResourceHandler<DX12Texture, Texture, NUM_TEXTURES>>();
+		m_Pipelines = MakePtr<ResourceHandler<DX12Pipeline, Pipeline, NUM_PIPELINES>>();
 
 		m_Device = MakePtr<DX12Device>();
 
@@ -92,6 +98,9 @@ namespace vast::gfx
 		m_Buffers = nullptr;
 		m_Textures = nullptr;
 		m_Pipelines = nullptr;
+		m_BufferHandles = nullptr;
+		m_TextureHandles = nullptr;
+		m_PipelineHandles = nullptr;
 
 		m_Device = nullptr;
 	}
@@ -212,50 +221,48 @@ namespace vast::gfx
 		return rpd;
 	}
 
-	DX12RenderPassData DX12GraphicsContext::SetupCommonRenderPassBarrierTransitions(DX12Pipeline* pipeline, RenderPassTargets targets)
+	DX12RenderPassData DX12GraphicsContext::SetupCommonRenderPassBarrierTransitions(const DX12Pipeline& pipeline, RenderPassTargets targets)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Setup Barriers (RT)");
 		DX12RenderPassData rpd;
-		rpd.rtCount = pipeline->desc.NumRenderTargets;
+		rpd.rtCount = pipeline.desc.NumRenderTargets;
 		for (uint32 i = 0; i < rpd.rtCount; ++i)
 		{
-			VAST_ASSERT(pipeline->desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);
+			VAST_ASSERT(pipeline.desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);
 			VAST_ASSERT(targets.rt[i].h.IsValid());
-			auto rt = m_Textures->LookupResource(targets.rt[i].h);
-			VAST_ASSERT(rt);
+			DX12Texture& rt = m_Textures->LookupResource(targets.rt[i].h);
 
-			m_GraphicsCommandList->AddBarrier(*rt, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			m_GraphicsCommandList->AddBarrier(rt, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			if (targets.rt[i].nextUsage != ResourceState::NONE)
 			{
-				m_RenderPassEndBarriers.push_back(std::make_pair(rt, TranslateToDX12(targets.rt[i].nextUsage)));
+				m_RenderPassEndBarriers.push_back(std::make_pair(&rt, TranslateToDX12(targets.rt[i].nextUsage)));
 			}
 
-			rpd.rtDesc[i].cpuDescriptor = rt->rtv.cpuHandle;
+			rpd.rtDesc[i].cpuDescriptor = rt.rtv.cpuHandle;
 			rpd.rtDesc[i].BeginningAccess.Type = TranslateToDX12(targets.rt[i].loadOp);
-			rpd.rtDesc[i].BeginningAccess.Clear.ClearValue = rt->clearValue;
+			rpd.rtDesc[i].BeginningAccess.Clear.ClearValue = rt.clearValue;
 			rpd.rtDesc[i].EndingAccess.Type = TranslateToDX12(targets.rt[i].storeOp);
 			// TODO: Multisample support (EndingAccess.Resolve)
 		}
 
-		VAST_ASSERT(targets.ds.h.IsValid() == (pipeline->desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
+		VAST_ASSERT(targets.ds.h.IsValid() == (pipeline.desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
 		if (targets.ds.h.IsValid())
 		{
 			auto ds = m_Textures->LookupResource(targets.ds.h);
-			VAST_ASSERT(ds);
 
-			m_GraphicsCommandList->AddBarrier(*ds, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			m_GraphicsCommandList->AddBarrier(ds, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 			if (targets.ds.nextUsage != ResourceState::NONE)
 			{
-				m_RenderPassEndBarriers.push_back(std::make_pair(ds, TranslateToDX12(targets.ds.nextUsage)));
+				m_RenderPassEndBarriers.push_back(std::make_pair(&ds, TranslateToDX12(targets.ds.nextUsage)));
 			}
 
-			rpd.dsDesc.cpuDescriptor = ds->dsv.cpuHandle;
+			rpd.dsDesc.cpuDescriptor = ds.dsv.cpuHandle;
 			rpd.dsDesc.DepthBeginningAccess.Type = TranslateToDX12(targets.ds.loadOp);
-			rpd.dsDesc.DepthBeginningAccess.Clear.ClearValue = ds->clearValue;
+			rpd.dsDesc.DepthBeginningAccess.Clear.ClearValue = ds.clearValue;
 			rpd.dsDesc.DepthEndingAccess.Type = TranslateToDX12(targets.ds.storeOp);
-			rpd.dsDesc.DepthEndingAccess.Resolve.pSrcResource = ds->resource;
+			rpd.dsDesc.DepthEndingAccess.Resolve.pSrcResource = ds.resource;
 			rpd.dsDesc.DepthEndingAccess.Resolve.PreserveResolveSource = rpd.dsDesc.DepthEndingAccess.Type == D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
-			if (IsTexFormatStencil(TranslateFromDX12(ds->clearValue.Format)))
+			if (IsTexFormatStencil(TranslateFromDX12(ds.clearValue.Format)))
 			{
 				rpd.dsDesc.StencilBeginningAccess = rpd.dsDesc.DepthBeginningAccess;
 				rpd.dsDesc.StencilEndingAccess = rpd.dsDesc.DepthEndingAccess;
@@ -275,10 +282,9 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
 	}
 
-	void DX12GraphicsContext::BeginRenderPassToBackBuffer_Internal(DX12Pipeline* pipeline, LoadOp loadOp, StoreOp storeOp)
+	void DX12GraphicsContext::BeginRenderPassToBackBuffer_Internal(DX12Pipeline& pipeline, LoadOp loadOp, StoreOp storeOp)
 	{
-		VAST_ASSERT(pipeline);
-		m_GraphicsCommandList->SetPipeline(pipeline);
+		m_GraphicsCommandList->SetPipeline(&pipeline);
 
 		DX12RenderPassData rdp = SetupBackBufferRenderPassBarrierTransitions(loadOp, storeOp);
 		BeginRenderPass_Internal(rdp);
@@ -291,7 +297,7 @@ namespace vast::gfx
 		BeginRenderPassToBackBuffer_Internal(m_Pipelines->LookupResource(h), loadOp, storeOp);
 	}
 
-	void DX12GraphicsContext::ValidateRenderPassTargets(DX12Pipeline* pipeline, RenderPassTargets targets) const
+	void DX12GraphicsContext::ValidateRenderPassTargets(const DX12Pipeline& pipeline, RenderPassTargets targets) const
 	{
 		// Validate user bindings against PSO.
 		uint32 rtCount = 0;
@@ -300,16 +306,15 @@ namespace vast::gfx
 			if (targets.rt[i].h.IsValid())
 				rtCount++;
 		}
-		VAST_ASSERT(rtCount == pipeline->desc.NumRenderTargets);
+		VAST_ASSERT(rtCount == pipeline.desc.NumRenderTargets);
 	}
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets)
 	{
 		VAST_PROFILE_BEGIN("gfx", "Render Pass");
-		VAST_ASSERT(m_Pipelines && m_Textures && h.IsValid());
-		auto pipeline = m_Pipelines->LookupResource(h);
-		VAST_ASSERT(pipeline);
-		m_GraphicsCommandList->SetPipeline(pipeline);
+		VAST_ASSERT(m_Pipelines && h.IsValid());
+		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
+		m_GraphicsCommandList->SetPipeline(&pipeline);
 
 #ifdef VAST_DEBUG
 		ValidateRenderPassTargets(pipeline, targets);
@@ -347,18 +352,14 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_SCOPE("gfx", "Set Vertex Buffer");
 		VAST_ASSERT(h.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetVertexBuffer(*buf, offset, stride);
+		m_GraphicsCommandList->SetVertexBuffer(m_Buffers->LookupResource(h), offset, stride);
 	}
 
 	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Set Index Buffer");
 		VAST_ASSERT(h.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetIndexBuffer(*buf, offset, TranslateToDX12(format));
+		m_GraphicsCommandList->SetIndexBuffer(m_Buffers->LookupResource(h), offset, TranslateToDX12(format));
 	}
 
 	void DX12GraphicsContext::SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
@@ -366,9 +367,7 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
-		m_GraphicsCommandList->SetConstantBuffer(*buf, 0, shaderResourceProxy.idx);
+		m_GraphicsCommandList->SetConstantBuffer(m_Buffers->LookupResource(h), 0, shaderResourceProxy.idx);
 	}
 
 	void DX12GraphicsContext::SetShaderResourceView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
@@ -376,10 +375,8 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
 		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		SetShaderResourceView_Internal(buf->srv);
+		SetShaderResourceView_Internal(m_Buffers->LookupResource(h).srv);
 	}
 
 	void DX12GraphicsContext::SetShaderResourceView(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
@@ -387,10 +384,8 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
-		auto tex = m_Textures->LookupResource(h);
-		VAST_ASSERT(tex);
 		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		SetShaderResourceView_Internal(tex->srv);
+		SetShaderResourceView_Internal(m_Textures->LookupResource(h).srv);
 	}
 
 	void DX12GraphicsContext::SetShaderResourceView_Internal(const DX12Descriptor& srv)
@@ -462,12 +457,13 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Buffer");
 		VAST_ASSERT(m_Device);
-		auto [h, buf] = m_Buffers->AcquireResource();
+		BufferHandle h = m_BufferHandles->AllocHandle();
+		DX12Buffer& buf = m_Buffers->AcquireResource(h);
 		m_Device->CreateBuffer(desc, buf);
-		buf->SetName("Unnamed Buffer");
+		buf.SetName("Unnamed Buffer");
 		if (initialData != nullptr)
 		{
-			UpdateBuffer_Internal(buf, initialData, dataSize);
+			UpdateBuffer_Internal(&buf, initialData, dataSize);
 		}
 		return h;
 	}
@@ -479,7 +475,7 @@ namespace vast::gfx
 		auto buf = m_Buffers->LookupResource(h);
 		// TODO: Check buffer does not have UAV
 		// TODO: Offer option to use buffered approach to improve performance (how do we handle updating descriptors?)
-		UpdateBuffer_Internal(buf, srcMem, srcSize);
+		UpdateBuffer_Internal(&buf, srcMem, srcSize);
 	}
 
 	void DX12GraphicsContext::UpdateBuffer_Internal(DX12Buffer* buf, void* srcMem, size_t srcSize)
@@ -518,12 +514,13 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Texture");
 		VAST_ASSERT(m_Device);
-		auto [h, tex] = m_Textures->AcquireResource();
+		TextureHandle h = m_TextureHandles->AllocHandle();
+		DX12Texture& tex = m_Textures->AcquireResource(h);
 		m_Device->CreateTexture(desc, tex);
-		tex->SetName("Unnamed Texture");
+		tex.SetName("Unnamed Texture");
 		if (initialData != nullptr)
 		{
-			UpdateTexture_Internal(tex, initialData);
+			UpdateTexture_Internal(&tex, initialData);
 		}
 		return h;
 	}
@@ -666,7 +663,8 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Pipeline");
 		VAST_ASSERT(m_Device);
-		auto [h, pipeline] = m_Pipelines->AcquireResource();
+		PipelineHandle h = m_PipelineHandles->AllocHandle();
+		DX12Pipeline& pipeline = m_Pipelines->AcquireResource(h);
 		m_Device->CreatePipeline(desc, pipeline);
 		return h;
 	}
@@ -675,11 +673,8 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_SCOPE("gfx", "Update Pipeline");
 		VAST_ASSERT(h.IsValid());
-		auto pipeline = m_Pipelines->LookupResource(h);
-
 		WaitForIdle(); // TODO TEMP: We should cache pipelines that want to update on a given frame and reload them all at a safe place, but this does the job for now.
-
-		m_Device->UpdatePipeline(pipeline);
+		m_Device->UpdatePipeline(m_Pipelines->LookupResource(h));
 	}
 
 	void DX12GraphicsContext::DestroyTexture(const TextureHandle h)
@@ -705,10 +700,10 @@ namespace vast::gfx
 	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName)
 	{
 		VAST_ASSERT(h.IsValid());
-		auto pipeline = m_Pipelines->LookupResource(h);
-		if (pipeline && pipeline->resourceProxyTable->IsRegistered(shaderResourceName))
+		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
+		if (pipeline.resourceProxyTable->IsRegistered(shaderResourceName))
 		{
-			return pipeline->resourceProxyTable->LookupShaderResource(shaderResourceName);
+			return pipeline.resourceProxyTable->LookupShaderResource(shaderResourceName);
 		}
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}
@@ -737,51 +732,47 @@ namespace vast::gfx
 		// Note: Clear Value stores the format given on resource creation, while the format stored
 		// in the descriptor is modified for depth/stencil targets to store a TYPELESS equivalent.
 		// We could translate back to the original format, but since we have this...
-		return TranslateFromDX12(m_Textures->LookupResource(h)->clearValue.Format);
+		return TranslateFromDX12(m_Textures->LookupResource(h).clearValue.Format);
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessIndex(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf && buf->descriptorHeapIdx != kInvalidHeapIdx);
-		return buf->descriptorHeapIdx;
+		DX12Buffer& buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(buf.descriptorHeapIdx != kInvalidHeapIdx);
+		return buf.descriptorHeapIdx;
 	}
 
 	uint32 DX12GraphicsContext::GetBindlessIndex(const TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		auto tex = m_Textures->LookupResource(h);
-		VAST_ASSERT(tex && tex->descriptorHeapIdx != kInvalidHeapIdx);
-		return tex->descriptorHeapIdx;
+		DX12Texture& tex = m_Textures->LookupResource(h);
+		VAST_ASSERT(tex.descriptorHeapIdx != kInvalidHeapIdx);
+		return tex.descriptorHeapIdx;
 	}
 
 	bool DX12GraphicsContext::GetIsReady(const BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return m_Buffers->LookupResource(h)->isReady;
+		return m_Buffers->LookupResource(h).isReady;
 	}
 
 	bool DX12GraphicsContext::GetIsReady(const TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return m_Textures->LookupResource(h)->isReady;
+		return m_Textures->LookupResource(h).isReady;
 	}
 
 	void DX12GraphicsContext::SetDebugName(BufferHandle h, const std::string& name)
 	{
 		VAST_ASSERT(h.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf);
-		buf->SetName(name);
+		m_Buffers->LookupResource(h).SetName(name);
 	}
 
 	void DX12GraphicsContext::SetDebugName(TextureHandle h, const std::string& name)
 	{
 		VAST_ASSERT(h.IsValid());
-		auto tex = m_Textures->LookupResource(h);
-		VAST_ASSERT(tex);
-		tex->SetName(name);
+		m_Textures->LookupResource(h).SetName(name);
 	}
 
 	void DX12GraphicsContext::ProcessDestructions(uint32 frameId)
@@ -789,33 +780,34 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Process Destructions");
 		VAST_ASSERT(m_Device);
 
+		// TODO: Lookup then Free is a double lookup, combine into one
 		for (auto& h : m_BuffersMarkedForDestruction[frameId])
 		{
-			DX12Buffer* buf = m_Buffers->LookupResource(h);
-			VAST_ASSERT(buf);
+			DX12Buffer& buf = m_Buffers->LookupResource(h);
 			m_Device->DestroyBuffer(buf);
-			buf->Reset();
+			buf.Reset();
 			m_Buffers->FreeResource(h);
+			m_BufferHandles->FreeHandle(h);
 		}
 		m_BuffersMarkedForDestruction[frameId].clear();
 
 		for (auto& h : m_TexturesMarkedForDestruction[frameId])
 		{
-			DX12Texture* tex = m_Textures->LookupResource(h);
-			VAST_ASSERT(tex);
+			DX12Texture& tex = m_Textures->LookupResource(h);
 			m_Device->DestroyTexture(tex);
-			tex->Reset();
+			tex.Reset();
 			m_Textures->FreeResource(h);
+			m_TextureHandles->FreeHandle(h);
 		}
 		m_TexturesMarkedForDestruction[frameId].clear();
 
 		for (auto& h : m_PipelinesMarkedForDestruction[frameId])
 		{
-			DX12Pipeline* pipeline = m_Pipelines->LookupResource(h);
-			VAST_ASSERT(pipeline);
+			DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
 			m_Device->DestroyPipeline(pipeline);
-			pipeline->Reset();
+			pipeline.Reset();
 			m_Pipelines->FreeResource(h);
+			m_PipelineHandles->FreeHandle(h);
 		}
 		m_PipelinesMarkedForDestruction[frameId].clear();
 	}
@@ -854,14 +846,13 @@ namespace vast::gfx
 
 		m_TempFrameAllocators[m_FrameId].offset += allocSize;
 
-		auto buf = m_Buffers->LookupResource(m_TempFrameAllocators[m_FrameId].buffer);
-		VAST_ASSERT(buf);
+		DX12Buffer& buf = m_Buffers->LookupResource(m_TempFrameAllocators[m_FrameId].buffer);
 
 		return BufferView
 		{
 			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
 			m_TempFrameAllocators[m_FrameId].buffer,
-			(uint8*)(buf->data + offset),
+			(uint8*)(buf.data + offset),
 			offset,
 		};
 	}
