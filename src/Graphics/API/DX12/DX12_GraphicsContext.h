@@ -29,14 +29,12 @@ namespace vast::gfx
 
 		void BeginFrame() override;
 		void EndFrame() override;
-		bool IsInFrame() const override;
 
 		void FlushGPU() override;
 
 		void BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) override;
 		void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) override;
 		void EndRenderPass() override;
-		bool IsInRenderPass() const override;
 
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
 		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) override;
@@ -53,18 +51,6 @@ namespace vast::gfx
 		void DrawInstanced(uint32 vtxCountPerInst, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0) override;
 		void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) override;
 		void DrawFullscreenTriangle() override;
-
-		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) override;
-		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) override;
-		TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) override;
-		PipelineHandle CreatePipeline(const PipelineDesc& desc) override;
-
-		void UpdateBuffer(const BufferHandle h, void* data, const size_t size) override;
-		void UpdatePipeline(const PipelineHandle h) override;
-
-		void DestroyBuffer(const BufferHandle h) override;
-		void DestroyTexture(const TextureHandle h) override;
-		void DestroyPipeline(const PipelineHandle h) override;
 
 		// TODO: We need to attach descriptors to the BufferViews if we want to use them as CBVs, SRVs...
 		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) override;
@@ -86,15 +72,21 @@ namespace vast::gfx
 		void SetDebugName(TextureHandle h, const std::string& name);
 
 	private:
+		void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) override;
+		void UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize) override;
+		void DestroyBuffer_Internal(BufferHandle h) override;
+
+		void CreateTexture_Internal(TextureHandle h, const TextureDesc& desc) override;
+		void UpdateTexture_Internal(TextureHandle h, void* srcMem) override;
+		void DestroyTexture_Internal(TextureHandle h) override;
+
+		void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) override;
+		void UpdatePipeline_Internal(PipelineHandle h) override;
+		void DestroyPipeline_Internal(PipelineHandle h) override;
+
 		void SubmitCommandList(DX12CommandList& ctx);
 		void SignalEndOfFrame(const QueueType type);
 		void WaitForIdle();
-
-		void ProcessDestructions(uint32 frameId);
-
-		bool m_bHasFrameBegun;
-		bool m_bHasRenderPassBegun;
-		bool m_bHasBackBufferBeenRenderedToThisFrame;
 
 		DX12RenderPassData SetupCommonRenderPassBarrierTransitions(const DX12Pipeline& pipeline, RenderPassTargets targets);
 		DX12RenderPassData SetupBackBufferRenderPassBarrierTransitions(LoadOp loadOp, StoreOp storeOp);
@@ -104,8 +96,6 @@ namespace vast::gfx
 
 		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
-		void UpdateBuffer_Internal(DX12Buffer* buf, void* srcMem, size_t srcSize);
-		void UpdateTexture_Internal(DX12Texture* tex, void* srcMem);
 		void SetShaderResourceView_Internal(const DX12Descriptor& srv);
 
 		Ptr<DX12Device> m_Device;
@@ -119,19 +109,8 @@ namespace vast::gfx
 		using RenderPassEndBarrier = std::pair<DX12Texture*, D3D12_RESOURCE_STATES>;
 		Vector<RenderPassEndBarrier> m_RenderPassEndBarriers;
 
-		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles;
-		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
-		Ptr<HandlePool<Pipeline, NUM_PIPELINES>> m_PipelineHandles;
-		// TODO: These should go to the Backend/Device when we get there.
 		Ptr<ResourceHandler<DX12Buffer, Buffer, NUM_BUFFERS>> m_Buffers;
 		Ptr<ResourceHandler<DX12Texture, Texture, NUM_TEXTURES>> m_Textures;
 		Ptr<ResourceHandler<DX12Pipeline, Pipeline, NUM_PIPELINES>> m_Pipelines;
-
-		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
-		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
-		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
-
-		void CreateTempFrameAllocators();
-		void DestroyTempFrameAllocators();
 	};
 }

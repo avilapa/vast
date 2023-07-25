@@ -10,12 +10,9 @@
 #include "Graphics/Resources.h"
 
 #include "dx12/DirectXTex/DirectXTex/DirectXTex.h"
-#include <iostream>
 
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 606; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
-
-static const wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 
 namespace vast::gfx
 {
@@ -27,23 +24,12 @@ namespace vast::gfx
 		, m_UploadCommandLists({ nullptr })
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
-		, m_BufferHandles(nullptr)
-		, m_TextureHandles(nullptr)
-		, m_PipelineHandles(nullptr)
 		, m_Buffers(nullptr)
 		, m_Textures(nullptr)
 		, m_Pipelines(nullptr)
-		, m_BuffersMarkedForDestruction({})
-		, m_TexturesMarkedForDestruction({})
-		, m_PipelinesMarkedForDestruction({})
-		, m_bHasFrameBegun(false)
-		, m_bHasRenderPassBegun(false)
-		, m_bHasBackBufferBeenRenderedToThisFrame(false)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Graphics Context");
-		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
-		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
-		m_PipelineHandles = MakePtr<HandlePool<Pipeline, NUM_PIPELINES>>();
+		CreateHandlePools();
+
 		m_Buffers = MakePtr<ResourceHandler<DX12Buffer, Buffer, NUM_BUFFERS>>();
 		m_Textures = MakePtr<ResourceHandler<DX12Texture, Texture, NUM_TEXTURES>>();
 		m_Pipelines = MakePtr<ResourceHandler<DX12Pipeline, Pipeline, NUM_PIPELINES>>();
@@ -95,14 +81,13 @@ namespace vast::gfx
 			ProcessDestructions(i);
 		}
 
+		m_Device = nullptr;
+
 		m_Buffers = nullptr;
 		m_Textures = nullptr;
 		m_Pipelines = nullptr;
-		m_BufferHandles = nullptr;
-		m_TextureHandles = nullptr;
-		m_PipelineHandles = nullptr;
 
-		m_Device = nullptr;
+		DestroyHandlePools();
 	}
 
 	void DX12GraphicsContext::BeginFrame()
@@ -143,14 +128,8 @@ namespace vast::gfx
 
 		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
-		m_bHasBackBufferBeenRenderedToThisFrame = false;
 		SignalEndOfFrame(QueueType::GRAPHICS);
 		m_bHasFrameBegun = false;
-	}
-
-	bool DX12GraphicsContext::IsInFrame() const
-	{
-		return m_bHasFrameBegun;
 	}
 
 	void DX12GraphicsContext::FlushGPU()
@@ -339,11 +318,6 @@ namespace vast::gfx
 		VAST_PROFILE_END("gfx", "Render Pass");
 	}
 
-	bool DX12GraphicsContext::IsInRenderPass() const
-	{
-		return m_bHasRenderPassBegun;
-	}
-
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	// Resource Binding
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -449,46 +423,26 @@ namespace vast::gfx
 		DrawInstanced(3, 1);
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////////////////
-	// Resource Creation/Destruction/Update
-	///////////////////////////////////////////////////////////////////////////////////////////////
-
-	BufferHandle DX12GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
+	void DX12GraphicsContext::CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Buffer");
-		VAST_ASSERT(m_Device);
-		BufferHandle h = m_BufferHandles->AllocHandle();
 		DX12Buffer& buf = m_Buffers->AcquireResource(h);
 		m_Device->CreateBuffer(desc, buf);
 		buf.SetName("Unnamed Buffer");
-		if (initialData != nullptr)
-		{
-			UpdateBuffer_Internal(&buf, initialData, dataSize);
-		}
-		return h;
 	}
 
-	void DX12GraphicsContext::UpdateBuffer(const BufferHandle h, void* srcMem, const size_t srcSize)
+	void DX12GraphicsContext::UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Update Buffer");
-		VAST_ASSERT(h.IsValid());
-		auto buf = m_Buffers->LookupResource(h);
+		VAST_ASSERT(srcMem && srcSize);
+		DX12Buffer& buf = m_Buffers->LookupResource(h);
 		// TODO: Check buffer does not have UAV
 		// TODO: Offer option to use buffered approach to improve performance (how do we handle updating descriptors?)
-		UpdateBuffer_Internal(&buf, srcMem, srcSize);
-	}
 
-	void DX12GraphicsContext::UpdateBuffer_Internal(DX12Buffer* buf, void* srcMem, size_t srcSize)
-	{
-		VAST_PROFILE_SCOPE("gfx", "Update Buffer");
-		VAST_ASSERT(buf && srcMem && srcSize);
-
-		switch (buf->usage)
+		switch (buf.usage)
 		{
 		case ResourceUsage::DEFAULT:
 		{
 			Ptr<BufferUpload> upload = MakePtr<BufferUpload>();
-			upload->buf = buf;
+			upload->buf = &buf;
 			upload->data = MakePtr<uint8[]>(srcSize);
 			upload->size = srcSize;
 			memcpy(upload->data.get(), srcMem, srcSize);
@@ -497,9 +451,9 @@ namespace vast::gfx
 		}
 		case ResourceUsage::UPLOAD:
 		{
-			const auto dstSize = buf->resource->GetDesc().Width;
+			const auto dstSize = buf.resource->GetDesc().Width;
 			VAST_ASSERT(srcSize > 0 && srcSize <= dstSize);
-			uint8* dstMem = buf->data;
+			uint8* dstMem = buf.data;
 			memcpy(dstMem, srcMem, srcSize);
 			break;
 		}
@@ -510,29 +464,28 @@ namespace vast::gfx
 		}
 	}
 
-	TextureHandle DX12GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
+	void DX12GraphicsContext::DestroyBuffer_Internal(BufferHandle h)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Texture");
-		VAST_ASSERT(m_Device);
-		TextureHandle h = m_TextureHandles->AllocHandle();
+		DX12Buffer& buf = m_Buffers->ReleaseResource(h);
+		m_Device->DestroyBuffer(buf);
+		buf.Reset();
+	}
+
+	void DX12GraphicsContext::CreateTexture_Internal(TextureHandle h, const TextureDesc& desc)
+	{
 		DX12Texture& tex = m_Textures->AcquireResource(h);
 		m_Device->CreateTexture(desc, tex);
 		tex.SetName("Unnamed Texture");
-		if (initialData != nullptr)
-		{
-			UpdateTexture_Internal(&tex, initialData);
-		}
-		return h;
 	}
 
-	void DX12GraphicsContext::UpdateTexture_Internal(DX12Texture* tex, void* srcMem)
+	void DX12GraphicsContext::UpdateTexture_Internal(TextureHandle h, void* srcMem)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Update Texture");
-		VAST_ASSERT(tex && srcMem);
+		VAST_ASSERT(srcMem);
+		DX12Texture& tex = m_Textures->LookupResource(h);
 
-		D3D12_RESOURCE_DESC desc = tex->resource->GetDesc();
+		D3D12_RESOURCE_DESC desc = tex.resource->GetDesc();
 		auto upload = std::make_unique<TextureUpload>();
-		upload->tex = tex;
+		upload->tex = &tex;
 		upload->numSubresources = desc.DepthOrArraySize * desc.MipLevels;
 
 		UINT numRows[MAX_TEXTURE_SUBRESOURCE_COUNT];
@@ -575,101 +528,21 @@ namespace vast::gfx
 		m_UploadCommandLists[m_FrameId]->UploadTexture(std::move(upload));
 	}
 
-	static bool FileExists(const std::wstring& filePath)
+	void DX12GraphicsContext::DestroyTexture_Internal(TextureHandle h)
 	{
-		if (filePath.c_str() == NULL)
-			return false;
-
-		DWORD fileAttr = GetFileAttributesW(filePath.c_str());
-		if (fileAttr == INVALID_FILE_ATTRIBUTES)
-			return false;
-
-		return true;
+		DX12Texture& tex = m_Textures->ReleaseResource(h);
+		m_Device->DestroyTexture(tex);
+		tex.Reset();
 	}
 
-	static std::wstring GetFileExtension(const std::wstring& filePath)
-	{
-		size_t idx = filePath.rfind(L'.');
-		if (idx != std::wstring::npos)
-			return filePath.substr(idx + 1, filePath.length() - idx - 2);
-		else
-			return std::wstring(L"");
-	}
-
-	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
-	static std::wstring StringToWString(const std::string& s, bool bIsUTF8 = true)
-	{
-		int32 slength = (int32)s.length() + 1;
-		int32 len = MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, 0, 0);
-		std::wstring buf;
-		buf.resize(len);
-		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
-		return buf;
-	}
-
-	TextureHandle DX12GraphicsContext::CreateTexture(const std::string& filePath, bool sRGB /* = true */)
-	{
-		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(filePath);
-		if (!FileExists(wpath))
-		{
-			VAST_ASSERTF(0, "Texture file path does not exist.");
-			return TextureHandle();
-		}
-
-		VAST_PROFILE_BEGIN("gfx", "Load Texture File");
-		const std::wstring wext = GetFileExtension(wpath);
-		DirectX::ScratchImage image;
-		if (wext.compare(L"DDS") == 0 || wext.compare(L"dds") == 0)
-		{
-			DX12Check(DirectX::LoadFromDDSFile(wpath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image));
-		}
-		else if (wext.compare(L"TGA") == 0 || wext.compare(L"tga") == 0)
-		{
-			DirectX::ScratchImage tempImage;
-			DX12Check(DirectX::LoadFromTGAFile(wpath.c_str(), nullptr, tempImage));
-			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
-		}
-		else // Windows Imaging Component (WIC) includes .BMP, .PNG, .GIF, .TIFF, .JPEG
-		{
-			DirectX::ScratchImage tempImage;
-			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, tempImage));
-			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
-		}
-		VAST_PROFILE_END("gfx", "Load Texture File");
-
-		const DirectX::TexMetadata& metaData = image.GetMetadata();
-		DXGI_FORMAT format = metaData.format;
-		if (sRGB)
-		{
-			format = DirectX::MakeSRGB(format);
-		}
-
-		TexType type = TranslateFromDX12(static_cast<D3D12_RESOURCE_DIMENSION>(metaData.dimension));
-
-		TextureDesc texDesc =
-		{
-			.type = type,
-			.format = TranslateFromDX12(metaData.format),
-			.width  = static_cast<uint32>(metaData.width),
-			.height = static_cast<uint32>(metaData.height),
-			.depthOrArraySize = static_cast<uint32>((type == TexType::TEXTURE_3D) ? metaData.depth : metaData.arraySize),
-			.mipCount = static_cast<uint32>(metaData.mipLevels),
-			.viewFlags = TexViewFlags::SRV, // TODO: Provide option to add more flags when needed
-		};
-		return CreateTexture(texDesc, image.GetPixels());
-	}
-
-	PipelineHandle DX12GraphicsContext::CreatePipeline(const PipelineDesc& desc)
+	void DX12GraphicsContext::CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Pipeline");
-		VAST_ASSERT(m_Device);
-		PipelineHandle h = m_PipelineHandles->AllocHandle();
 		DX12Pipeline& pipeline = m_Pipelines->AcquireResource(h);
 		m_Device->CreatePipeline(desc, pipeline);
-		return h;
 	}
 
-	void DX12GraphicsContext::UpdatePipeline(const PipelineHandle h)
+	void DX12GraphicsContext::UpdatePipeline_Internal(const PipelineHandle h)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Update Pipeline");
 		VAST_ASSERT(h.IsValid());
@@ -677,25 +550,12 @@ namespace vast::gfx
 		m_Device->UpdatePipeline(m_Pipelines->LookupResource(h));
 	}
 
-	void DX12GraphicsContext::DestroyTexture(const TextureHandle h)
+	void DX12GraphicsContext::DestroyPipeline_Internal(PipelineHandle h)
 	{
-		VAST_ASSERT(h.IsValid());
-		m_TexturesMarkedForDestruction[m_FrameId].push_back(h);
+		DX12Pipeline& pipeline = m_Pipelines->ReleaseResource(h);
+		m_Device->DestroyPipeline(pipeline);
+		pipeline.Reset();
 	}
-
-	void DX12GraphicsContext::DestroyBuffer(const BufferHandle h)
-	{
-		VAST_ASSERT(h.IsValid());
-		m_BuffersMarkedForDestruction[m_FrameId].push_back(h);
-	}
-
-	void DX12GraphicsContext::DestroyPipeline(const PipelineHandle h)
-	{
-		VAST_ASSERT(h.IsValid());
-		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName)
 	{
@@ -775,39 +635,6 @@ namespace vast::gfx
 		m_Textures->LookupResource(h).SetName(name);
 	}
 
-	void DX12GraphicsContext::ProcessDestructions(uint32 frameId)
-	{
-		VAST_PROFILE_SCOPE("gfx", "Process Destructions");
-		VAST_ASSERT(m_Device);
-
-		for (auto& h : m_BuffersMarkedForDestruction[frameId])
-		{
-			DX12Buffer& buf = m_Buffers->ReleaseResource(h);
-			m_Device->DestroyBuffer(buf);
-			buf.Reset();
-			m_BufferHandles->FreeHandle(h);
-		}
-		m_BuffersMarkedForDestruction[frameId].clear();
-
-		for (auto& h : m_TexturesMarkedForDestruction[frameId])
-		{
-			DX12Texture& tex = m_Textures->ReleaseResource(h);
-			m_Device->DestroyTexture(tex);
-			tex.Reset();
-			m_TextureHandles->FreeHandle(h);
-		}
-		m_TexturesMarkedForDestruction[frameId].clear();
-
-		for (auto& h : m_PipelinesMarkedForDestruction[frameId])
-		{
-			DX12Pipeline& pipeline = m_Pipelines->ReleaseResource(h);
-			m_Device->DestroyPipeline(pipeline);
-			pipeline.Reset();
-			m_PipelineHandles->FreeHandle(h);
-		}
-		m_PipelinesMarkedForDestruction[frameId].clear();
-	}
-
 	void DX12GraphicsContext::OnWindowResizeEvent(const WindowResizeEvent& event)
 	{
 		const uint2 scSize = m_SwapChain->GetSize();
@@ -822,10 +649,6 @@ namespace vast::gfx
 			m_SwapChain->Resize(event.m_WindowSize);
 		}
 	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
-	// Temp Frame Allocator
-	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	BufferView DX12GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
 	{
@@ -853,34 +676,4 @@ namespace vast::gfx
 		};
 	}
 
-	void DX12GraphicsContext::CreateTempFrameAllocators()
-	{
-		VAST_PROFILE_SCOPE("gfx", "Create Temp Frame Allocators");
-		uint32 tempFrameBufferSize = 1024 * 1024;
-
-		BufferDesc tempFrameBufferDesc =
-		{
-			.size = tempFrameBufferSize * 2, // TODO: Alignment?
-			.usage = ResourceUsage::UPLOAD,
-			.isRawAccess = true,
-		};
-
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			VAST_ASSERT(!m_TempFrameAllocators[i].buffer.IsValid());
-			m_TempFrameAllocators[i].buffer = CreateBuffer(tempFrameBufferDesc);
-			m_TempFrameAllocators[i].size = tempFrameBufferSize;
-			m_TempFrameAllocators[i].offset = 0;
-		}
-	}
-
-	void DX12GraphicsContext::DestroyTempFrameAllocators()
-	{
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			DestroyBuffer(m_TempFrameAllocators[i].buffer);
-		}
-	}
-
-	///////////////////////////////////////////////////////////////////////////////////////////////
 }

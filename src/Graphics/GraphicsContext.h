@@ -17,16 +17,77 @@ namespace vast::gfx
 		TexFormat backBufferFormat;
 	};
 
+	// TODO: Look into __declspec(novtable)
 	class GraphicsContext
 	{
 	public:
 		static Ptr<GraphicsContext> Create(const GraphicsParams& params = GraphicsParams());
-
 		virtual ~GraphicsContext() = default;
 
+		// - GPU Resources --------------------------------------------------------------------- //
+	public:
+		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0);
+		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr);
+		PipelineHandle CreatePipeline(const PipelineDesc& h);
+
+		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
+		void UpdatePipeline(PipelineHandle h);
+
+		void DestroyBuffer(BufferHandle h);
+		void DestroyTexture(TextureHandle h);
+		void DestroyPipeline(PipelineHandle h);
+
+		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of
+		// the frame and automatically invalidated after that.
+		virtual BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) = 0;
+		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
+		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
+
+	protected:
+		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles = nullptr;
+		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles = nullptr;
+		Ptr<HandlePool<Pipeline, NUM_PIPELINES>> m_PipelineHandles = nullptr;
+
+		void CreateHandlePools();
+		void DestroyHandlePools();
+
+		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction = {};
+		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction = {};
+		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction = {};
+
+		void ProcessDestructions(uint32 frameId);
+
+		struct TempAllocator
+		{
+			BufferHandle buffer;
+			uint32 size = 0;
+			uint32 offset = 0;
+
+			void Reset() { offset = 0; }
+		};
+		// TODO: Could this be replaced by a single, big dynamic buffer?
+		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators = {};
+
+		void CreateTempFrameAllocators();
+		void DestroyTempFrameAllocators();
+
+		virtual void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) = 0;
+		virtual void UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize) = 0;
+		virtual void DestroyBuffer_Internal(BufferHandle h) = 0;
+
+		virtual void CreateTexture_Internal(TextureHandle h, const TextureDesc& desc) = 0;
+		virtual void UpdateTexture_Internal(TextureHandle h, void* srcMem) = 0;
+		virtual void DestroyTexture_Internal(TextureHandle h) = 0;
+
+		virtual void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) = 0;
+		virtual void UpdatePipeline_Internal(PipelineHandle h) = 0;
+		virtual void DestroyPipeline_Internal(PipelineHandle h) = 0;
+
+		// - Render Commands ------------------------------------------------------------------- //
+	public:
 		virtual void BeginFrame() = 0;
 		virtual void EndFrame() = 0;
-		virtual bool IsInFrame() const = 0;
+		virtual bool IsInFrame() const;
 		// Waits for all active GPU work to finish as well as any queued resource destructions.
 		virtual void FlushGPU() = 0;
 
@@ -34,7 +95,7 @@ namespace vast::gfx
 		virtual void BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) = 0;
 		virtual void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) = 0;
 		virtual void EndRenderPass() = 0;
-		virtual bool IsInRenderPass() const = 0;
+		virtual bool IsInRenderPass() const;
 
 		// Resource Binding
 		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
@@ -56,25 +117,6 @@ namespace vast::gfx
 		virtual void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) = 0;
 		virtual void DrawFullscreenTriangle() = 0;
 
-		// Resource Creation/Destruction/Update
-		virtual BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0) = 0;
-		virtual TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr) = 0;
-		virtual TextureHandle CreateTexture(const std::string& filePath, bool sRGB = true) = 0;
-		virtual PipelineHandle CreatePipeline(const PipelineDesc& desc) = 0;
-
-		virtual void UpdateBuffer(const BufferHandle h, void* data, const size_t size) = 0;
-		virtual void UpdatePipeline(const PipelineHandle h) = 0;
-
-		virtual void DestroyBuffer(const BufferHandle h) = 0;
-		virtual void DestroyTexture(const TextureHandle h) = 0;
-		virtual void DestroyPipeline(const PipelineHandle h) = 0;
-
-		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of
-		// the frame and automatically invalidated after that.
-		virtual BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) = 0;
-
-		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
-		
 		virtual uint2 GetBackBufferSize() const = 0;
 		virtual float GetBackBufferAspectRatio() const = 0;
 		virtual TexFormat GetBackBufferFormat() const = 0;
@@ -89,16 +131,7 @@ namespace vast::gfx
 	protected:
 		uint32 m_FrameId = 0;
 
-		struct TempAllocator
-		{
-			BufferHandle buffer;
-			uint32 size = 0;
-			uint32 offset = 0;
-
-			void Reset() { offset = 0; }
-		};
-		// TODO: This could be replaced by a single, big dynamic buffer?
-		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators = {};
-
+		bool m_bHasFrameBegun = false;
+		bool m_bHasRenderPassBegun = false;
 	};
 }

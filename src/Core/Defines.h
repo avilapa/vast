@@ -33,6 +33,12 @@
 
 // - Graphics ---------------------------------------------------------------------------------- //
 
+#ifdef VAST_PLATFORM_WINDOWS
+#define VAST_GFX_DX12_SUPPORTED 1
+#else
+#define VAST_GFX_DX12_SUPPORTED 0
+#endif
+
 #define VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z 1
 
 // - Utility ----------------------------------------------------------------------------------- //

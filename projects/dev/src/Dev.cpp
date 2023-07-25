@@ -313,7 +313,7 @@ void Dev::CreateCubeResources()
 	BufferDesc vtxBufDesc = AllocVertexBufferDesc(sizeof(s_CubeVertexData), sizeof(s_CubeVertexData[0]));
 	m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
 
-	m_CubeColorTex = ctx.CreateTexture("image.tga");
+	m_CubeColorTex = ctx.LoadTextureFromFile("image.tga");
 	m_CubeCB =
 	{
 		.model = float4x4(),
@@ -339,7 +339,7 @@ void Dev::CreateSphereResources()
 	BufferDesc idxBufDesc = AllocIndexBufferDesc(static_cast<uint32>(s_SphereIndexData.size()));
 	m_SphereIdxBuf = ctx.CreateBuffer(idxBufDesc, s_SphereIndexData.data(), s_SphereIndexData.size() * sizeof(uint16));
 
-	m_SphereColorTex = ctx.CreateTexture("2k_earth_daymap.jpg");
+	m_SphereColorTex = ctx.LoadTextureFromFile("2k_earth_daymap.jpg");
 	m_SphereCB =
 	{
 		.model =float4x4(),

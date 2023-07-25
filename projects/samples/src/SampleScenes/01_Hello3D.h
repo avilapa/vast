@@ -131,7 +131,7 @@ public:
 		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
 
 		// Load a texture from file to be used on the cube
-		m_CubeColorTex = ctx.CreateTexture("image.tga");
+		m_CubeColorTex = ctx.LoadTextureFromFile("image.tga");
 
 		// Create a constant buffer and fill it with the necessary data for rendering the cube.
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
