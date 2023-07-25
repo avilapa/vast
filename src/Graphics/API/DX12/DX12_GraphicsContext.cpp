@@ -780,33 +780,29 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Process Destructions");
 		VAST_ASSERT(m_Device);
 
-		// TODO: Lookup then Free is a double lookup, combine into one
 		for (auto& h : m_BuffersMarkedForDestruction[frameId])
 		{
-			DX12Buffer& buf = m_Buffers->LookupResource(h);
+			DX12Buffer& buf = m_Buffers->ReleaseResource(h);
 			m_Device->DestroyBuffer(buf);
 			buf.Reset();
-			m_Buffers->FreeResource(h);
 			m_BufferHandles->FreeHandle(h);
 		}
 		m_BuffersMarkedForDestruction[frameId].clear();
 
 		for (auto& h : m_TexturesMarkedForDestruction[frameId])
 		{
-			DX12Texture& tex = m_Textures->LookupResource(h);
+			DX12Texture& tex = m_Textures->ReleaseResource(h);
 			m_Device->DestroyTexture(tex);
 			tex.Reset();
-			m_Textures->FreeResource(h);
 			m_TextureHandles->FreeHandle(h);
 		}
 		m_TexturesMarkedForDestruction[frameId].clear();
 
 		for (auto& h : m_PipelinesMarkedForDestruction[frameId])
 		{
-			DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
+			DX12Pipeline& pipeline = m_Pipelines->ReleaseResource(h);
 			m_Device->DestroyPipeline(pipeline);
 			pipeline.Reset();
-			m_Pipelines->FreeResource(h);
 			m_PipelineHandles->FreeHandle(h);
 		}
 		m_PipelinesMarkedForDestruction[frameId].clear();

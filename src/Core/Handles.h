@@ -115,10 +115,11 @@ namespace vast
 			return r;
 		}
 
-		void FreeResource(Handle<H> h)
+		T& ReleaseResource(Handle<H> h)
 		{
 			auto& r = LookupResource(h);
 			r.m_Handle = Handle<H>();
+			return r;
 		}
 
 	private:

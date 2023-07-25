@@ -728,6 +728,7 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Device Destroy Pipeline");
 		pipeline.vs = nullptr;
 		pipeline.ps = nullptr;
+		pipeline.resourceProxyTable = nullptr;
 		if (pipeline.desc.InputLayout.pInputElementDescs)
 		{
 			delete[] pipeline.desc.InputLayout.pInputElementDescs;
