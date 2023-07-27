@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Handles.h"
+#include "Graphics/Handles.h"
 #include "Graphics/GraphicsTypes.h"
 
 namespace vast::gfx
