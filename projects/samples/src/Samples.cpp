@@ -90,6 +90,9 @@ void SamplesApp::Draw()
 	m_CurrentSample->Render();
 	m_ImguiRenderer->Render();
 	m_CurrentSample->EndFrame();
+
+	m_Timer.Update();
+	VAST_INFO("Frame time: {:.3f} ms", m_Timer.GetDeltaMilliseconds<float>());
 }
 
 void SamplesApp::DrawSamplesEditorUI()
