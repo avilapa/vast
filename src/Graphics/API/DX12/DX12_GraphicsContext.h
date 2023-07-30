@@ -8,6 +8,7 @@ namespace vast::gfx
 	class DX12Device;
 	class DX12SwapChain;
 	class DX12CommandList;
+	class DX12QueryHeap;
 	class DX12GraphicsCommandList;
 	class DX12UploadCommandList;
 	class DX12CommandQueue;
@@ -84,6 +85,11 @@ namespace vast::gfx
 		void UpdatePipeline_Internal(PipelineHandle h) override;
 		void DestroyPipeline_Internal(PipelineHandle h) override;
 
+		void BeginTiming_Internal(uint32 idx) override;
+		void EndTiming_Internal(uint32 idx) override;
+		uint64* ReadTimings_Internal(BufferHandle h, uint32 numTimings) override;
+		uint64 GetTimestampFrequency() override;
+
 		void SubmitCommandList(DX12CommandList& ctx);
 		void SignalEndOfFrame(const QueueType type);
 		void WaitForIdle();
@@ -112,5 +118,7 @@ namespace vast::gfx
 		Ptr<ResourceHandler<DX12Buffer, Buffer, NUM_BUFFERS>> m_Buffers;
 		Ptr<ResourceHandler<DX12Texture, Texture, NUM_TEXTURES>> m_Textures;
 		Ptr<ResourceHandler<DX12Pipeline, Pipeline, NUM_PIPELINES>> m_Pipelines;
+
+		Ptr<DX12QueryHeap> m_QueryHeap;
 	};
 }

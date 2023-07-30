@@ -52,6 +52,10 @@ namespace vast::gfx
 
 		CreateTempFrameAllocators();
 
+		m_QueryHeap = MakePtr<DX12QueryHeap>(*m_Device, D3D12_QUERY_HEAP_TYPE_TIMESTAMP, kMaxProfilingEntries * 2);
+
+		CreateProfilingResources();
+
 		VAST_SUBSCRIBE_TO_EVENT("gfxctx", WindowResizeEvent, VAST_EVENT_HANDLER_CB(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
 	}
 
@@ -60,6 +64,10 @@ namespace vast::gfx
 		VAST_PROFILE_SCOPE("gfx", "Destroy Graphics Context");
 		WaitForIdle();
 		
+		DestroyProfilingResources();
+
+		m_QueryHeap = nullptr;
+
 		DestroyTempFrameAllocators();
 
 		m_GraphicsCommandList = nullptr;
@@ -126,8 +134,12 @@ namespace vast::gfx
 		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
 
+		// TODO: Not entirely sure where to put this...
+		ReadProfilingData();
+
 		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
+
 		SignalEndOfFrame(QueueType::GRAPHICS);
 		m_bHasFrameBegun = false;
 	}
@@ -633,6 +645,35 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		m_Textures->LookupResource(h).SetName(name);
+	}
+
+	void DX12GraphicsContext::BeginTiming_Internal(uint32 idx)
+	{
+		EndTiming_Internal(idx);
+	}
+	
+	void DX12GraphicsContext::EndTiming_Internal(uint32 idx)
+	{
+		VAST_ASSERT(m_QueryHeap);
+		m_GraphicsCommandList->EndQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, idx);
+	}
+
+	uint64* DX12GraphicsContext::ReadTimings_Internal(BufferHandle h, uint32 numTimings)
+	{
+		VAST_ASSERT(m_QueryHeap);
+		DX12Buffer& buf = m_Buffers->LookupResource(h);
+		VAST_ASSERTF(buf.usage == ResourceUsage::READBACK, "This call requires a readback buffer.");
+		m_GraphicsCommandList->ResolveQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, numTimings, buf, 0);
+
+		return std::move(reinterpret_cast<uint64*>(buf.data));
+	}
+
+	uint64 DX12GraphicsContext::GetTimestampFrequency()
+	{
+		// TODO: Tidy up this function.
+		uint64 gpuFrequency = 0;
+		m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue()->GetTimestampFrequency(&gpuFrequency);
+		return gpuFrequency;
 	}
 
 	void DX12GraphicsContext::OnWindowResizeEvent(const WindowResizeEvent& event)

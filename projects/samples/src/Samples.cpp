@@ -87,8 +87,12 @@ void SamplesApp::Draw()
 	m_ImguiRenderer->EndCommandRecording();
 
 	m_CurrentSample->BeginFrame();
+	m_GraphicsContext->PushProfilingMarker("Sample");
 	m_CurrentSample->Render();
+	m_GraphicsContext->PopProfilingMarker();
+	m_GraphicsContext->PushProfilingMarker("Imgui");
 	m_ImguiRenderer->Render();
+	m_GraphicsContext->PopProfilingMarker();
 	m_CurrentSample->EndFrame();
 
 	m_Timer.Update();
