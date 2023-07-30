@@ -30,6 +30,20 @@ namespace vast::gfx
 #endif
 	}
 
+	//
+
+	bool GraphicsContext::IsInFrame() const
+	{
+		return m_bHasFrameBegun;
+	}
+
+	bool GraphicsContext::IsInRenderPass() const
+	{
+		return m_bHasRenderPassBegun;
+	}
+
+	//
+
 	BufferHandle GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
 		VAST_PROFILE_SCOPE("gfx", "Create Buffer");
@@ -208,16 +222,6 @@ namespace vast::gfx
 		m_PipelinesMarkedForDestruction[frameId].clear();
 	}
 
-	bool GraphicsContext::IsInFrame() const
-	{
-		return m_bHasFrameBegun;
-	}
-
-	bool GraphicsContext::IsInRenderPass() const
-	{
-		return m_bHasRenderPassBegun;
-	}
-
 	void GraphicsContext::CreateHandlePools()
 	{
 		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
@@ -239,7 +243,7 @@ namespace vast::gfx
 
 		BufferDesc tempFrameBufferDesc =
 		{
-			.size = tempFrameBufferSize * 2, // TODO: Alignment?
+			.size = tempFrameBufferSize,
 			.usage = ResourceUsage::UPLOAD,
 			.isRawAccess = true,
 		};
