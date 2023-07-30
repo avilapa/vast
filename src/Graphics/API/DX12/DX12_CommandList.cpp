@@ -168,6 +168,28 @@ namespace vast::gfx
 		m_CommandList->SetDescriptorHeaps(NELEM(heapsToBind), heapsToBind);
 	}
 
+	void DX12CommandList::BeginQuery(const DX12QueryHeap& heap, D3D12_QUERY_TYPE type, uint32 idx)
+	{
+		if (type == D3D12_QUERY_TYPE_TIMESTAMP)
+		{
+			EndQuery(heap, type, idx);
+		}
+		else
+		{
+			m_CommandList->BeginQuery(heap.m_QueryHeap, type, idx);
+		}
+	}
+
+	void DX12CommandList::EndQuery(const DX12QueryHeap& heap, D3D12_QUERY_TYPE type, uint32 idx)
+	{
+		m_CommandList->EndQuery(heap.m_QueryHeap, type, idx);
+	}
+
+	void DX12CommandList::ResolveQuery(const DX12QueryHeap& heap, D3D12_QUERY_TYPE type, uint32 idx, uint32 count, DX12Resource& dstRsc, uint64 dstOffset)
+	{
+		m_CommandList->ResolveQueryData(heap.m_QueryHeap, type, idx, count, dstRsc.resource, dstOffset);
+	}
+
 	//
 
 	DX12GraphicsCommandList::DX12GraphicsCommandList(DX12Device& device)
@@ -403,4 +425,22 @@ namespace vast::gfx
 		m_BufferUploadsInProgress.clear();
 		m_TextureUploadsInProgress.clear();
 	}
+
+	//
+
+	DX12QueryHeap::DX12QueryHeap(DX12Device& device, D3D12_QUERY_HEAP_TYPE heapType, uint32 queryCount)
+	{
+		D3D12_QUERY_HEAP_DESC heapDesc = {};
+		heapDesc.Count = queryCount;
+		heapDesc.Type = heapType;
+		heapDesc.NodeMask = 0;
+
+		DX12Check(device.GetDevice()->CreateQueryHeap(&heapDesc, IID_PPV_ARGS(&m_QueryHeap)));
+	}
+
+	DX12QueryHeap::~DX12QueryHeap()
+	{
+		DX12SafeRelease(m_QueryHeap);
+	}
+
 }

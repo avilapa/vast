@@ -8,6 +8,7 @@ namespace vast::gfx
 	constexpr uint32 MAX_TEXTURE_SUBRESOURCE_COUNT = 32;
 
 	class DX12Device;
+	class DX12QueryHeap;
 	class DX12RenderPassDescriptorHeap;
 
 	class DX12CommandList
@@ -26,6 +27,10 @@ namespace vast::gfx
 		void CopyResource(const DX12Resource& dst, const DX12Resource& src);
 		void CopyBufferRegion(DX12Resource& dst, uint64 dstOffset, DX12Resource& src, uint64 srcOffset, uint64 numBytes);
 		void CopyTextureRegion(DX12Resource& dst, DX12Resource& src, size_t srcOffset, Array<D3D12_PLACED_SUBRESOURCE_FOOTPRINT, MAX_TEXTURE_SUBRESOURCE_COUNT>& subresourceLayouts, uint32 numSubresources);
+
+		void BeginQuery(const DX12QueryHeap& heap, D3D12_QUERY_TYPE type, uint32 idx);
+		void EndQuery(const DX12QueryHeap& heap, D3D12_QUERY_TYPE type, uint32 idx);
+		void ResolveQuery(const DX12QueryHeap& heap, D3D12_QUERY_TYPE type, uint32 idx, uint32 count, DX12Resource& dstRsc, uint64 dstOffset);
 
 	protected:
 		void BindDescriptorHeaps(uint32 frameId);
@@ -105,6 +110,17 @@ namespace vast::gfx
 		Vector<DX12Buffer*> m_BufferUploadsInProgress;
 		Vector<Ptr<TextureUpload>> m_TextureUploads;
 		Vector<DX12Texture*> m_TextureUploadsInProgress;
+	};
+
+	class DX12QueryHeap
+	{
+		friend class DX12CommandList;
+	public:
+		DX12QueryHeap(DX12Device& device, D3D12_QUERY_HEAP_TYPE heapType, uint32 queryCount);
+		~DX12QueryHeap();
+
+	private:
+		ID3D12QueryHeap* m_QueryHeap;
 	};
 
 }
