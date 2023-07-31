@@ -20,7 +20,7 @@ namespace vast::gfx
 	// reaching the device/cmdlist.
 	Ptr<GraphicsContext> GraphicsContext::Create(const GraphicsParams& params /* = GraphicsParams() */)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Graphics Context");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Context");
 		VAST_INFO("[gfx] Creating graphics context.");
 #ifdef VAST_GFX_DX12_SUPPORTED
 		return MakePtr<DX12GraphicsContext>(params);
@@ -46,7 +46,7 @@ namespace vast::gfx
 
 	BufferHandle GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Buffer");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Buffer");
 		BufferHandle h = m_BufferHandles->AllocHandle();
 		CreateBuffer_Internal(h, desc);
 		if (initialData != nullptr)
@@ -58,7 +58,7 @@ namespace vast::gfx
 
 	TextureHandle GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Texture");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Texture");
 		TextureHandle h = m_TextureHandles->AllocHandle();
 		CreateTexture_Internal(h, desc);
 		if (initialData != nullptr)
@@ -70,7 +70,7 @@ namespace vast::gfx
 
 	PipelineHandle GraphicsContext::CreatePipeline(const PipelineDesc& desc)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Pipeline");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
 		PipelineHandle h = m_PipelineHandles->AllocHandle();
 		CreatePipeline_Internal(h, desc);
 		return h;
@@ -118,7 +118,7 @@ namespace vast::gfx
 			return TextureHandle();
 		}
 
-		VAST_PROFILE_BEGIN("gfx", "Load Texture File");
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Load Texture File");
 		const std::wstring wext = GetFileExtension(wpath);
 		DirectX::ScratchImage image;
 		if (wext.compare(L"DDS") == 0 || wext.compare(L"dds") == 0)
@@ -137,7 +137,7 @@ namespace vast::gfx
 			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, tempImage));
 			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
 		}
-		VAST_PROFILE_END("gfx", "Load Texture File");
+		VAST_PROFILE_TRACE_END("gfx", "Load Texture File");
 
 		const DirectX::TexMetadata& metaData = image.GetMetadata();
 		DXGI_FORMAT format = metaData.format;
@@ -163,14 +163,14 @@ namespace vast::gfx
 
 	void GraphicsContext::UpdateBuffer(BufferHandle h, void* data, const size_t size)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Update Buffer");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Buffer");
 		VAST_ASSERT(h.IsValid());
 		UpdateBuffer_Internal(h, data, size);
 	}
 
 	void GraphicsContext::UpdatePipeline(PipelineHandle h)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Update Pipeline");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Pipeline");
 		VAST_ASSERT(h.IsValid());
 		UpdatePipeline_Internal(h);
 	}
@@ -195,7 +195,7 @@ namespace vast::gfx
 
 	void GraphicsContext::ProcessDestructions(uint32 frameId)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Process Destructions");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Process Destructions");
 
 		for (auto& h : m_BuffersMarkedForDestruction[frameId])
 		{
@@ -238,7 +238,7 @@ namespace vast::gfx
 
 	void GraphicsContext::CreateTempFrameAllocators()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Temp Frame Allocators");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Temp Frame Allocators");
 		uint32 tempFrameBufferSize = 1024 * 1024;
 
 		BufferDesc tempFrameBufferDesc =

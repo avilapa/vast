@@ -61,7 +61,7 @@ namespace vast::gfx
 
 	DX12GraphicsContext::~DX12GraphicsContext()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Destroy Graphics Context");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Graphics Context");
 		WaitForIdle();
 		
 		DestroyProfilingResources();
@@ -100,7 +100,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginFrame()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Begin Frame");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Begin Frame");
 		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
 		m_bHasFrameBegun = true;
 
@@ -123,7 +123,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndFrame()
 	{
-		VAST_PROFILE_SCOPE("gfx", "End Frame");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "End Frame");
 		VAST_ASSERTF(m_bHasFrameBegun, "No frame is currently running.");
 
 		m_UploadCommandLists[m_FrameId]->ProcessUploads();
@@ -146,7 +146,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::FlushGPU()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Flush GPU Work");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
 		WaitForIdle();
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
@@ -161,14 +161,14 @@ namespace vast::gfx
 		{
 		case D3D12_COMMAND_LIST_TYPE_DIRECT:
 		{
-			VAST_PROFILE_SCOPE("gfx", "Execute Graphics Command List");
+			VAST_PROFILE_TRACE_SCOPE("gfx", "Execute Graphics Command List");
 			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
 		}
 		// TODO: Compute
 		case D3D12_COMMAND_LIST_TYPE_COPY:
 		{
-			VAST_PROFILE_SCOPE("gfx", "Execute Upload Command List");
+			VAST_PROFILE_TRACE_SCOPE("gfx", "Execute Upload Command List");
 			m_CommandQueues[IDX(QueueType::UPLOAD)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
 		}
@@ -185,7 +185,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::WaitForIdle()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Wait CPU on GPU");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Wait CPU on GPU");
 		for (auto& q : m_CommandQueues)
 		{
 			q->WaitForIdle();
@@ -214,7 +214,7 @@ namespace vast::gfx
 
 	DX12RenderPassData DX12GraphicsContext::SetupCommonRenderPassBarrierTransitions(const DX12Pipeline& pipeline, RenderPassTargets targets)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Setup Barriers (RT)");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Setup Barriers (RT)");
 		DX12RenderPassData rpd;
 		rpd.rtCount = pipeline.desc.NumRenderTargets;
 		for (uint32 i = 0; i < rpd.rtCount; ++i)
@@ -283,7 +283,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
 	{
-		VAST_PROFILE_BEGIN("gfx", "Render Pass");
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
 		VAST_ASSERT(m_Pipelines && h.IsValid());
 		BeginRenderPassToBackBuffer_Internal(m_Pipelines->LookupResource(h), loadOp, storeOp);
 	}
@@ -302,7 +302,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets)
 	{
-		VAST_PROFILE_BEGIN("gfx", "Render Pass");
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
 		VAST_ASSERT(m_Pipelines && h.IsValid());
 		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
 		m_GraphicsCommandList->SetPipeline(&pipeline);
@@ -327,7 +327,7 @@ namespace vast::gfx
 		m_RenderPassEndBarriers.clear();
 
 		m_GraphicsCommandList->SetPipeline(nullptr);
-		VAST_PROFILE_END("gfx", "Render Pass");
+		VAST_PROFILE_TRACE_END("gfx", "Render Pass");
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -336,21 +336,21 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Set Vertex Buffer");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Vertex Buffer");
 		VAST_ASSERT(h.IsValid());
 		m_GraphicsCommandList->SetVertexBuffer(m_Buffers->LookupResource(h), offset, stride);
 	}
 
 	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Set Index Buffer");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Index Buffer");
 		VAST_ASSERT(h.IsValid());
 		m_GraphicsCommandList->SetIndexBuffer(m_Buffers->LookupResource(h), offset, TranslateToDX12(format));
 	}
 
 	void DX12GraphicsContext::SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
 		m_GraphicsCommandList->SetConstantBuffer(m_Buffers->LookupResource(h), 0, shaderResourceProxy.idx);
@@ -358,7 +358,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetShaderResourceView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
 		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
@@ -367,7 +367,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::SetShaderResourceView(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Set Shader Resource");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Shader Resource");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(shaderResourceProxy.IsValid());
 		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
@@ -417,19 +417,19 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation/* = 0 */, uint32 instStartLocation /* = 0 */)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Draw Instanced");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Instanced");
 		m_GraphicsCommandList->GetCommandList()->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
 	}
 
 	void DX12GraphicsContext::DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Draw Indexed Instanced");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Indexed Instanced");
 		m_GraphicsCommandList->GetCommandList()->DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
 	}
 
 	void DX12GraphicsContext::DrawFullscreenTriangle()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Draw Fullscreen Triangle");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Fullscreen Triangle");
 		m_GraphicsCommandList->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		m_GraphicsCommandList->GetCommandList()->IASetIndexBuffer(nullptr);
 		DrawInstanced(3, 1);
@@ -549,14 +549,14 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Pipeline");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
 		DX12Pipeline& pipeline = m_Pipelines->AcquireResource(h);
 		m_Device->CreatePipeline(desc, pipeline);
 	}
 
 	void DX12GraphicsContext::UpdatePipeline_Internal(const PipelineHandle h)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Update Pipeline");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Pipeline");
 		VAST_ASSERT(h.IsValid());
 		WaitForIdle(); // TODO TEMP: We should cache pipelines that want to update on a given frame and reload them all at a safe place, but this does the job for now.
 		m_Device->UpdatePipeline(m_Pipelines->LookupResource(h));

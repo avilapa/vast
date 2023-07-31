@@ -3,13 +3,13 @@
 #include "Core/Defines.h"
 
 #if VAST_ENABLE_PROFILING
-#define VAST_PROFILE_SCOPE(c, n)	vast::Profiler::ScopedTrace __profScopedT(c, n)
-#define VAST_PROFILE_BEGIN(c, n)	vast::Profiler::BeginTrace(c, n)
-#define VAST_PROFILE_END(c, n)		vast::Profiler::EndTrace(c, n)
+#define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::Profiler::ScopedTrace __profScopedT(c, n)
+#define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::Profiler::BeginTrace(c, n)
+#define VAST_PROFILE_TRACE_END(c, n)	vast::Profiler::EndTrace(c, n)
 #else
-#define VAST_PROFILE_SCOPE(c, n)
-#define VAST_PROFILE_BEGIN(c, n)
-#define VAST_PROFILE_END(c, n)
+#define VAST_PROFILE_TRACE_SCOPE(c, n)
+#define VAST_PROFILE_TRACE_BEGIN(c, n)
+#define VAST_PROFILE_TRACE_END(c, n)
 #endif
 
 namespace vast

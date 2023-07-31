@@ -45,7 +45,7 @@ namespace vast::gfx
 
 	void DX12CommandList::Reset(uint32 frameId)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Reset Command List");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Reset Command List");
 		m_CommandAllocators[frameId]->Reset();
 		m_CommandList->Reset(m_CommandAllocators[frameId], nullptr);
 		
@@ -116,7 +116,7 @@ namespace vast::gfx
 // 
 // 		}
 
-		VAST_PROFILE_SCOPE("gfx", "Flush Barriers");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush Barriers");
 #if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
 		VAST_TRACE("[barrier] Flushing {} cached barrier transitions...", m_NumQueuedBarriers);
 #endif
@@ -155,7 +155,7 @@ namespace vast::gfx
 
 	void DX12CommandList::BindDescriptorHeaps(uint32 frameId)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Bind Descriptor Heaps");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Descriptor Heaps");
 		m_CurrentSRVDescriptorHeap = &m_Device.GetSRVDescriptorHeap(frameId);
 		m_CurrentSRVDescriptorHeap->Reset();
 
@@ -196,17 +196,17 @@ namespace vast::gfx
 		: DX12CommandList(device, D3D12_COMMAND_LIST_TYPE_DIRECT)
 		, m_CurrentPipeline(nullptr)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Graphics Command List");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Command List");
 	}
 
 	DX12GraphicsCommandList::~DX12GraphicsCommandList()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Destroy Graphics Command List");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Graphics Command List");
 	}
 
 	void DX12GraphicsCommandList::BeginRenderPass(const DX12RenderPassData& rpd)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Begin Render Pass");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Begin Render Pass");
 		m_CommandList->BeginRenderPass(
 			rpd.rtCount, 
 			rpd.rtDesc, 
@@ -217,7 +217,7 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::EndRenderPass()
 	{
-		VAST_PROFILE_SCOPE("gfx", "End Render Pass");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "End Render Pass");
 		m_CommandList->EndRenderPass();
 	}
 
@@ -225,7 +225,7 @@ namespace vast::gfx
 	{
 		if (pipeline)
 		{
-			VAST_PROFILE_SCOPE("gfx", "Set Pipeline State and Root Signature");
+			VAST_PROFILE_TRACE_SCOPE("gfx", "Set Pipeline State and Root Signature");
 			m_CommandList->SetPipelineState(pipeline->pipelineState);
 			m_CommandList->SetGraphicsRootSignature(pipeline->desc.pRootSignature);
 		}
@@ -262,14 +262,14 @@ namespace vast::gfx
 
 	void DX12GraphicsCommandList::SetConstantBuffer(const DX12Buffer& buf, uint32 offset, uint32 slotIndex)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Set Constant Buffer");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Constant Buffer");
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind constant buffer before setting a render pipeline."); // TODO: What about global/per frame resources
 		m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, buf.gpuAddress + offset);
 	}
 
 	void DX12GraphicsCommandList::SetDescriptorTable(const D3D12_GPU_DESCRIPTOR_HANDLE& gpuHandle)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Set Descriptor Table");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Descriptor Table");
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind descriptor table before setting a render pipeline."); // TODO: What about global/per frame resources
 		m_CommandList->SetGraphicsRootDescriptorTable(m_CurrentPipeline->descriptorTableIndex, gpuHandle);
 	}
@@ -314,7 +314,7 @@ namespace vast::gfx
 	DX12UploadCommandList::DX12UploadCommandList(DX12Device& device)
 		: DX12CommandList(device, D3D12_COMMAND_LIST_TYPE_COPY)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Upload Command List");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Upload Command List");
 		BufferDesc uploadBufferDesc;
 		uploadBufferDesc.size = 10 * 1024 * 1024;
 		uploadBufferDesc.usage = ResourceUsage::UPLOAD;
@@ -332,7 +332,7 @@ namespace vast::gfx
 
 	DX12UploadCommandList::~DX12UploadCommandList()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Destroy Upload Command List");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Upload Command List");
 		VAST_ASSERT(m_BufferUploadHeap);
 		m_Device.DestroyBuffer(*m_BufferUploadHeap);
 		m_BufferUploadHeap = nullptr;
@@ -356,7 +356,7 @@ namespace vast::gfx
 
 	void DX12UploadCommandList::ProcessUploads()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Process Uploads");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Process Uploads");
 		const uint32 numBufferUploads = static_cast<uint32>(m_BufferUploads.size());
 		uint32 numBuffersProcessed = 0;
 		size_t bufferUploadHeapOffset = 0;

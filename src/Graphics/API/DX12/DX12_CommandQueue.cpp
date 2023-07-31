@@ -12,7 +12,7 @@ namespace vast::gfx
 		, m_LastCompletedFenceValue(0)
 		, m_FenceEventHandle(0)
 	{
-		VAST_PROFILE_SCOPE("gfx", "Create Command Queue");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Command Queue");
 		D3D12_COMMAND_QUEUE_DESC desc = {};
 		desc.Type = m_CommandType;
 		desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
@@ -30,7 +30,7 @@ namespace vast::gfx
 
 	DX12CommandQueue::~DX12CommandQueue()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Destroy Command Queue");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Command Queue");
 		CloseHandle(m_FenceEventHandle);
 
 		DX12SafeRelease(m_Fence);
@@ -55,7 +55,7 @@ namespace vast::gfx
 		}
 
 		{
-			VAST_PROFILE_SCOPE("gfx", "Wait For Fence Value");
+			VAST_PROFILE_TRACE_SCOPE("gfx", "Wait For Fence Value");
 			std::lock_guard<std::mutex> lockGuard(m_EventMutex);
 
 			m_Fence->SetEventOnCompletion(fenceValue, m_FenceEventHandle);
@@ -82,7 +82,7 @@ namespace vast::gfx
 
 	uint64 DX12CommandQueue::SignalFence()
 	{
-		VAST_PROFILE_SCOPE("gfx", "Singal Fence");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Singal Fence");
 		std::lock_guard<std::mutex> lockGuard(m_FenceMutex);
 
 		DX12Check(m_Queue->Signal(m_Fence, m_NextFenceValue));

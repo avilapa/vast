@@ -11,7 +11,7 @@ namespace vast
 		: m_bRunning(false)
 		, m_Window(nullptr)
 	{
-		VAST_PROFILE_BEGIN("app", "App Startup");
+		VAST_PROFILE_TRACE_BEGIN("app", "App Startup");
 		(void)argc; (void)argv; // TODO: Process input args.
 
 		Log::Init();
@@ -23,31 +23,31 @@ namespace vast
 	WindowedApp::~WindowedApp()
 	{
 		m_Window = nullptr;
-		VAST_PROFILE_END("app", "App Shutdown");
+		VAST_PROFILE_TRACE_END("app", "App Shutdown");
 	}
 
 	void WindowedApp::Run()
 	{
-		VAST_PROFILE_END("app", "App Startup");
-		VAST_PROFILE_BEGIN("app", "App Loop");
+		VAST_PROFILE_TRACE_END("app", "App Startup");
+		VAST_PROFILE_TRACE_BEGIN("app", "App Loop");
 
 		m_bRunning = true;
 
 		while (m_bRunning)
 		{
 			{
-				VAST_PROFILE_SCOPE("app", "Update");
+				VAST_PROFILE_TRACE_SCOPE("app", "Update");
 				m_Window->Update();
 				Update();
 			}
 			{
-				VAST_PROFILE_SCOPE("app", "Draw");
+				VAST_PROFILE_TRACE_SCOPE("app", "Draw");
 				Draw();
 			}
 		}
 
-		VAST_PROFILE_END("app", "App Loop");
-		VAST_PROFILE_BEGIN("app", "App Shutdown");
+		VAST_PROFILE_TRACE_END("app", "App Loop");
+		VAST_PROFILE_TRACE_BEGIN("app", "App Shutdown");
 	}
 
 	void WindowedApp::Quit()
