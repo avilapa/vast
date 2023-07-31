@@ -10,11 +10,11 @@ int main(int argc, char** argv)					\
 #define VAST_DEFINE_APP_MAIN(className)			\
 void RunApp(int argc, char** argv)				\
 {												\
-	VAST_PROFILE_INIT("vast-profile.json");		\
+	vast::Profiler::Init("vast-profile.json");	\
 	className* app = new className(argc, argv);	\
 	app->Run();									\
 	delete app;									\
-	VAST_PROFILE_STOP();						\
+	vast::Profiler::Stop();						\
 }												\
 VAST_DEFINE_MAIN(RunApp);
 
