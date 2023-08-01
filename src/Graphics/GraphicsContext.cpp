@@ -267,88 +267,11 @@ namespace vast::gfx
 
 	//
 
-	void GraphicsContext::PushProfilingMarker(const std::string& name)
-	{
-		// TODO: Currently stacking timings is not supported.
-		VAST_ASSERT(m_ActiveProfilingEntry == kInvalidProfilingEntryIdx);
-
-		// Check if profile already exists
-		for (uint32 i = 0; i < m_ProfilingEntryCount; ++i)
-		{
-			if (m_ProfilingEntries[i].name == name)
-			{
-				m_ActiveProfilingEntry = i;
-				break;
-			}
-		}
-		
-		if (m_ActiveProfilingEntry == kInvalidProfilingEntryIdx)
-		{
-			// Add new profile
-			VAST_ASSERTF(m_ProfilingEntryCount < kMaxProfilingEntries, "Exceeded max number of unique profiling markers ({}).", kMaxProfilingEntries);
-			m_ActiveProfilingEntry = m_ProfilingEntryCount++;
-			m_ProfilingEntries[m_ActiveProfilingEntry].name = name;
-		}
-		
-		VAST_ASSERTF(m_ProfilingEntries[m_ActiveProfilingEntry].state == ProfilingEntryState::IDLE, "Profiling marker '{}' already pushed this frame.", name);
-		m_ProfilingEntries[m_ActiveProfilingEntry].state = ProfilingEntryState::ACTIVE;
-
-		// Insert timestamp
-		BeginTiming_Internal(m_ActiveProfilingEntry * 2);
-	}
-
-	void GraphicsContext::PopProfilingMarker()
-	{
-		// TODO: Currently stacking timings is not supported.
-		VAST_ASSERT(m_ActiveProfilingEntry != kInvalidProfilingEntryIdx);
-
-		VAST_ASSERT(m_ProfilingEntries[m_ActiveProfilingEntry].state == ProfilingEntryState::ACTIVE);
-
-		// Insert timestamp
-		EndTiming_Internal(m_ActiveProfilingEntry * 2 + 1);
-		
-		m_ProfilingEntries[m_ActiveProfilingEntry].state = ProfilingEntryState::FINISHED;
-		m_ActiveProfilingEntry = kInvalidProfilingEntryIdx;
-	}
-
-	void GraphicsContext::ReadProfilingData()
-	{
-		VAST_ASSERT(m_ActiveProfilingEntry == kInvalidProfilingEntryIdx);
-
-		if (m_ProfilingEntryCount == 0)
-			return;
-
-		const uint64* queryData = ReadTimings_Internal(m_ProfileReadbackBuf[m_FrameId], m_ProfilingEntryCount * 2);
-		const double gpuFrequency = static_cast<double>(GetTimestampFrequency());
-
-		for (uint32 i = 0; i < m_ProfilingEntryCount; ++i)
-		{
-			double time = 0;
-
-			uint64 startTime = queryData[i * 2];
-			uint64 endTime = queryData[i * 2 + 1];
-
-			if (endTime > startTime)
-			{
-				uint64 delta = endTime - startTime;
-				time = (delta / gpuFrequency) * 1000.0;
-			}
-
-			ProfilingEntry& e = m_ProfilingEntries[i];
-			e.deltasHistory[e.currDelta] = time;
-			e.currDelta = (e.currDelta + 1) & ProfilingEntry::kHistorySize;
-			e.state = ProfilingEntryState::IDLE;
-
-			// TODO: We could compute min, max, avg, etc from the history
-			VAST_INFO("'{}' Time: {} ms", e.name, time);
-		}
-	}
-
 	void GraphicsContext::CreateProfilingResources()
 	{
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			m_ProfileReadbackBuf[i] = CreateBuffer(BufferDesc{ .size = (kMaxProfilingEntries * 2) * sizeof(uint64),.usage = ResourceUsage::READBACK });
+			m_TimestampsReadbackBuf[i] = CreateBuffer(BufferDesc{ .size = NUM_TIMESTAMP_QUERIES * sizeof(uint64),.usage = ResourceUsage::READBACK });
 		}
 	}
 	
@@ -356,8 +279,13 @@ namespace vast::gfx
 	{
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			DestroyBuffer(m_ProfileReadbackBuf[i]);
+			DestroyBuffer(m_TimestampsReadbackBuf[i]);
 		}
+	}
+
+	uint64* GraphicsContext::ResolveTimestamps(uint32 count)
+	{
+		return ResolveTimestamps_Internal(m_TimestampsReadbackBuf[m_FrameId], count);
 	}
 
 }

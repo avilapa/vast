@@ -44,17 +44,15 @@ namespace vast::gfx
 			*m_Device, *m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue());
 
 		m_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*m_Device);
-
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			m_UploadCommandLists[i] = MakePtr<DX12UploadCommandList>(*m_Device);
 		}
 
-		CreateTempFrameAllocators();
-
-		m_QueryHeap = MakePtr<DX12QueryHeap>(*m_Device, D3D12_QUERY_HEAP_TYPE_TIMESTAMP, kMaxProfilingEntries * 2);
-
+		m_QueryHeap = MakePtr<DX12QueryHeap>(*m_Device, D3D12_QUERY_HEAP_TYPE_TIMESTAMP, NUM_TIMESTAMP_QUERIES);
 		CreateProfilingResources();
+
+		CreateTempFrameAllocators();
 
 		VAST_SUBSCRIBE_TO_EVENT("gfxctx", WindowResizeEvent, VAST_EVENT_HANDLER_CB(DX12GraphicsContext::OnWindowResizeEvent, WindowResizeEvent));
 	}
@@ -63,15 +61,13 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Graphics Context");
 		WaitForIdle();
-		
-		DestroyProfilingResources();
-
-		m_QueryHeap = nullptr;
 
 		DestroyTempFrameAllocators();
 
-		m_GraphicsCommandList = nullptr;
+		m_QueryHeap = nullptr;
+		DestroyProfilingResources();
 
+		m_GraphicsCommandList = nullptr;
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			m_UploadCommandLists[i] = nullptr;
@@ -133,9 +129,6 @@ namespace vast::gfx
 		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
 		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
-
-		// TODO: Not entirely sure where to put this...
-		ReadProfilingData();
 
 		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
@@ -647,25 +640,20 @@ namespace vast::gfx
 		m_Textures->LookupResource(h).SetName(name);
 	}
 
-	void DX12GraphicsContext::BeginTiming_Internal(uint32 idx)
-	{
-		EndTiming_Internal(idx);
-	}
-	
-	void DX12GraphicsContext::EndTiming_Internal(uint32 idx)
+	void DX12GraphicsContext::InsertTimestamp(uint32 idx)
 	{
 		VAST_ASSERT(m_QueryHeap);
 		m_GraphicsCommandList->EndQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, idx);
 	}
 
-	uint64* DX12GraphicsContext::ReadTimings_Internal(BufferHandle h, uint32 numTimings)
+	uint64* DX12GraphicsContext::ResolveTimestamps_Internal(BufferHandle h, uint32 count)
 	{
 		VAST_ASSERT(m_QueryHeap);
 		DX12Buffer& buf = m_Buffers->LookupResource(h);
-		VAST_ASSERTF(buf.usage == ResourceUsage::READBACK, "This call requires a readback buffer.");
-		m_GraphicsCommandList->ResolveQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, numTimings, buf, 0);
+		VAST_ASSERTF(buf.usage == ResourceUsage::READBACK, "This call requires readback buffer usage.");
+		m_GraphicsCommandList->ResolveQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, count, buf, 0);
 
-		return std::move(reinterpret_cast<uint64*>(buf.data));
+		return reinterpret_cast<uint64*>(buf.data);
 	}
 
 	uint64 DX12GraphicsContext::GetTimestampFrequency()

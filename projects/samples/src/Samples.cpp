@@ -87,12 +87,15 @@ void SamplesApp::Draw()
 	m_ImguiRenderer->EndCommandRecording();
 
 	m_CurrentSample->BeginFrame();
-	m_GraphicsContext->PushProfilingMarker("Sample");
-	m_CurrentSample->Render();
-	m_GraphicsContext->PopProfilingMarker();
-	m_GraphicsContext->PushProfilingMarker("Imgui");
+	{
+		VAST_PROFILE_GPU_SCOPE("Sample", *m_GraphicsContext);
+		m_CurrentSample->Render();
+	}
+
+	VAST_PROFILE_GPU_BEGIN("Imgui", *m_GraphicsContext);
 	m_ImguiRenderer->Render();
-	m_GraphicsContext->PopProfilingMarker();
+	VAST_PROFILE_GPU_END("Imgui", *m_GraphicsContext);
+
 	m_CurrentSample->EndFrame();
 
 	m_Timer.Update();

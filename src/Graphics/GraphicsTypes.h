@@ -10,6 +10,7 @@ namespace vast::gfx
 	constexpr uint32 NUM_TEXTURES = 512;
 	constexpr uint32 NUM_BUFFERS = 512;
 	constexpr uint32 NUM_PIPELINES = 64;
+	constexpr uint32 NUM_TIMESTAMP_QUERIES = 256;
 
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;

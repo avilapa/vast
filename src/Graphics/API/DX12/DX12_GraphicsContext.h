@@ -72,6 +72,9 @@ namespace vast::gfx
 		void SetDebugName(BufferHandle h, const std::string& name);
 		void SetDebugName(TextureHandle h, const std::string& name);
 
+		void InsertTimestamp(uint32 idx) override;
+		uint64 GetTimestampFrequency() override;
+
 	private:
 		void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) override;
 		void UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize) override;
@@ -85,10 +88,7 @@ namespace vast::gfx
 		void UpdatePipeline_Internal(PipelineHandle h) override;
 		void DestroyPipeline_Internal(PipelineHandle h) override;
 
-		void BeginTiming_Internal(uint32 idx) override;
-		void EndTiming_Internal(uint32 idx) override;
-		uint64* ReadTimings_Internal(BufferHandle h, uint32 numTimings) override;
-		uint64 GetTimestampFrequency() override;
+		uint64* ResolveTimestamps_Internal(BufferHandle h, uint32 count) override;
 
 		void SubmitCommandList(DX12CommandList& ctx);
 		void SignalEndOfFrame(const QueueType type);

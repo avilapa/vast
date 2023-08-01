@@ -98,8 +98,10 @@ namespace vast::gfx
 		// Waits for all active GPU work to finish as well as any queued resource destructions.
 		virtual void FlushGPU() = 0;
 
-		void PushProfilingMarker(const std::string& name);
-		void PopProfilingMarker();
+		virtual void InsertTimestamp(uint32 idx) = 0;
+		uint64* ResolveTimestamps(uint32 count);
+
+		virtual uint64 GetTimestampFrequency() = 0;
 
 	protected:
 		uint32 m_FrameId = 0;
@@ -146,41 +148,11 @@ namespace vast::gfx
 		virtual void UpdatePipeline_Internal(PipelineHandle h) = 0;
 		virtual void DestroyPipeline_Internal(PipelineHandle h) = 0;
 
-
-		enum class ProfilingEntryState
-		{
-			IDLE = 0,
-			ACTIVE,
-			FINISHED,
-		};
-
-		struct ProfilingEntry
-		{
-			static const uint32 kHistorySize = 16;
-
-			std::string name;
-			ProfilingEntryState state = ProfilingEntryState::IDLE;
-
-			Array<double, kHistorySize> deltasHistory;
-			uint32 currDelta = 0;
-		};
-
-		static const uint32 kInvalidProfilingEntryIdx = UINT32_MAX;
-		static const uint32 kMaxProfilingEntries = 64;
-		Array<ProfilingEntry, kMaxProfilingEntries> m_ProfilingEntries;
-		uint32 m_ProfilingEntryCount = 0;
-		uint32 m_ActiveProfilingEntry = kInvalidProfilingEntryIdx;
-
-		Array<BufferHandle, NUM_FRAMES_IN_FLIGHT> m_ProfileReadbackBuf;
+		Array<BufferHandle, NUM_FRAMES_IN_FLIGHT> m_TimestampsReadbackBuf;
 
 		void CreateProfilingResources();
 		void DestroyProfilingResources();
 
-		void ReadProfilingData();
-
-		virtual void BeginTiming_Internal(uint32 idx) = 0;
-		virtual void EndTiming_Internal(uint32 idx) = 0;
-		virtual uint64* ReadTimings_Internal(BufferHandle h, uint32 numTimings) = 0;
-		virtual uint64 GetTimestampFrequency() = 0;
+		virtual uint64* ResolveTimestamps_Internal(BufferHandle h, uint32 count) = 0;
 	};
 }
