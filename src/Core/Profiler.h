@@ -5,11 +5,11 @@
 #if VAST_ENABLE_PROFILING
 #define VAST_PROFILE_CPU_SCOPE(n)		vast::Profiler::ScopedCpuTiming  XCAT(_profCpu, __LINE__)(n)
 #define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::BeginCpuTiming(n)
-#define VAST_PROFILE_CPU_END(n)			vast::Profiler::EndCpuTiming(n)
+#define VAST_PROFILE_CPU_END()			vast::Profiler::EndCpuTiming()
 
 #define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::Profiler::ScopedGpuTiming  XCAT(_profGpu, __LINE__)(n, ctx)
 #define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::BeginGpuTiming(n, ctx)
-#define VAST_PROFILE_GPU_END(n, ctx)	vast::Profiler::EndGpuTiming(n, ctx)
+#define VAST_PROFILE_GPU_END(ctx)		vast::Profiler::EndGpuTiming(ctx)
 
 #define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::Profiler::ScopedTrace XCAT(_profTrace, __LINE__)(c, n)
 #define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::Profiler::BeginTrace(c, n)
@@ -44,10 +44,10 @@ namespace vast
 		void EndFrame(gfx::GraphicsContext& ctx);
 
 		void BeginCpuTiming(const char* name);
-		void EndCpuTiming(const char* name);
+		void EndCpuTiming();
 
 		void BeginGpuTiming(const char* name, gfx::GraphicsContext& ctx);
-		void EndGpuTiming(const char* name, gfx::GraphicsContext& ctx);
+		void EndGpuTiming(gfx::GraphicsContext& ctx);
 
 		void BeginTrace(const char* category, const char* name);
 		void EndTrace(const char* category, const char* name);
@@ -60,32 +60,29 @@ namespace vast
 
 		struct ScopedCpuTiming
 		{
-			ScopedCpuTiming(const char* name_) : name(name_)
+			ScopedCpuTiming(const char* name)
 			{
 				BeginCpuTiming(name);
 			}
 
 			~ScopedCpuTiming()
 			{
-				EndCpuTiming(name);
+				EndCpuTiming();
 			}
-
-			const char* name;
 		};
 
 		struct ScopedGpuTiming
 		{
-			ScopedGpuTiming(const char* name_, gfx::GraphicsContext& ctx_) : name(name_), ctx(ctx_)
+			ScopedGpuTiming(const char* name, gfx::GraphicsContext& ctx_) : ctx(ctx_)
 			{
 				BeginGpuTiming(name, ctx);
 			}
 
 			~ScopedGpuTiming()
 			{
-				EndGpuTiming(name, ctx);
+				EndGpuTiming(ctx);
 			}
 
-			const char* name;
 			gfx::GraphicsContext& ctx;
 		};
 

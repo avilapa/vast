@@ -77,9 +77,9 @@ namespace vast
 		(void)name;
 	}
 
-	void Profiler::EndCpuTiming(const char* name)
+	void Profiler::EndCpuTiming()
 	{
-		(void)name;
+
 	}
 
 	void Profiler::BeginGpuTiming(const char* name, gfx::GraphicsContext& ctx)
@@ -109,13 +109,13 @@ namespace vast
 		ctx.InsertTimestamp(idx * 2);
 	}
 
-	void Profiler::EndGpuTiming(const char* name, gfx::GraphicsContext& ctx)
+	void Profiler::EndGpuTiming(gfx::GraphicsContext& ctx)
 	{
-		// Find profile index from name
+		// Find last active profile
 		uint32 idx = kInvalidProfilingEntryIdx;
-		for (uint32 i = 0; i < s_ProfilingEntryCount; ++i)
+		for (uint32 i = s_ProfilingEntryCount; i >= 0; --i)
 		{
-			if (s_ProfilingEntries[i].name == name)
+			if (s_ProfilingEntries[i].state == ProfilingEntry::State::ACTIVE)
 			{
 				idx = i;
 				break;

@@ -95,8 +95,8 @@ void SamplesApp::Draw()
 	}
 	VAST_PROFILE_GPU_BEGIN("Imgui", *m_GraphicsContext);
 	m_ImguiRenderer->Render();
-	VAST_PROFILE_GPU_END("Imgui", *m_GraphicsContext);
-	VAST_PROFILE_GPU_END("GPU Frame", *m_GraphicsContext);
+	VAST_PROFILE_GPU_END(*m_GraphicsContext);
+	VAST_PROFILE_GPU_END(*m_GraphicsContext);
 
 	m_CurrentSample->EndFrame();
 
