@@ -9,7 +9,7 @@
 
 #define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::Profiler::ScopedGpuTiming  XCAT(_profGpu, __LINE__)(n, ctx)
 #define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::BeginGpuTiming(n, ctx)
-#define VAST_PROFILE_GPU_END(ctx)		vast::Profiler::EndGpuTiming(ctx)
+#define VAST_PROFILE_GPU_END(n, ctx)	vast::Profiler::EndGpuTiming(n, ctx)
 
 #define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::Profiler::ScopedTrace XCAT(_profTrace, __LINE__)(c, n)
 #define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::Profiler::BeginTrace(c, n)
@@ -47,7 +47,7 @@ namespace vast
 		void EndCpuTiming(const char* name);
 
 		void BeginGpuTiming(const char* name, gfx::GraphicsContext& ctx);
-		void EndGpuTiming(gfx::GraphicsContext& ctx);
+		void EndGpuTiming(const char* name, gfx::GraphicsContext& ctx);
 
 		void BeginTrace(const char* category, const char* name);
 		void EndTrace(const char* category, const char* name);
@@ -75,16 +75,17 @@ namespace vast
 
 		struct ScopedGpuTiming
 		{
-			ScopedGpuTiming(const char* name, gfx::GraphicsContext& ctx_) : ctx(ctx_)
+			ScopedGpuTiming(const char* name_, gfx::GraphicsContext& ctx_) : name(name_), ctx(ctx_)
 			{
 				BeginGpuTiming(name, ctx);
 			}
 
 			~ScopedGpuTiming()
 			{
-				EndGpuTiming(ctx);
+				EndGpuTiming(name, ctx);
 			}
 
+			const char* name;
 			gfx::GraphicsContext& ctx;
 		};
 

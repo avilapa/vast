@@ -88,14 +88,15 @@ void SamplesApp::Draw()
 	m_ImguiRenderer->EndCommandRecording();
 
 	m_CurrentSample->BeginFrame();
+	VAST_PROFILE_GPU_BEGIN("GPU Frame", *m_GraphicsContext);
 	{
 		VAST_PROFILE_GPU_SCOPE("Sample", *m_GraphicsContext);
 		m_CurrentSample->Render();
 	}
-
 	VAST_PROFILE_GPU_BEGIN("Imgui", *m_GraphicsContext);
 	m_ImguiRenderer->Render();
-	VAST_PROFILE_GPU_END(*m_GraphicsContext);
+	VAST_PROFILE_GPU_END("Imgui", *m_GraphicsContext);
+	VAST_PROFILE_GPU_END("GPU Frame", *m_GraphicsContext);
 
 	m_CurrentSample->EndFrame();
 

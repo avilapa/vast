@@ -31,7 +31,6 @@ namespace vast
 
 	static Array<ProfilingEntry, kMaxProfilingEntries> s_ProfilingEntries;
 	static uint32 s_ProfilingEntryCount = 0;
-	static uint32 s_ActiveProfilingEntry = kInvalidProfilingEntryIdx;
 
 	void Profiler::Init(const char* fileName)
 	{
@@ -40,14 +39,12 @@ namespace vast
 
 	void Profiler::Stop()
 	{
-		mtr_flush(); 
+		mtr_flush();
 		mtr_shutdown();
 	}
 
 	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
 	{
-		VAST_ASSERT(s_ActiveProfilingEntry == kInvalidProfilingEntryIdx);
-
 		if (s_ProfilingEntryCount == 0)
 			return;
 
@@ -87,44 +84,51 @@ namespace vast
 
 	void Profiler::BeginGpuTiming(const char* name, gfx::GraphicsContext& ctx)
 	{
-		// TODO: Currently stacking timings is not supported.
-		VAST_ASSERT(s_ActiveProfilingEntry == kInvalidProfilingEntryIdx);
-
 		// Check if profile name already exists
+		uint32 idx = kInvalidProfilingEntryIdx;
 		for (uint32 i = 0; i < s_ProfilingEntryCount; ++i)
 		{
 			if (s_ProfilingEntries[i].name == name)
 			{
-				s_ActiveProfilingEntry = i;
+				idx = i;
 				break;
 			}
 		}
 
-		if (s_ActiveProfilingEntry == kInvalidProfilingEntryIdx)
+		if (idx == kInvalidProfilingEntryIdx)
 		{
 			// Add new profile
 			VAST_ASSERTF(s_ProfilingEntryCount < kMaxProfilingEntries, "Exceeded max number of unique profiling markers ({}).", kMaxProfilingEntries);
-			s_ActiveProfilingEntry = s_ProfilingEntryCount++;
-			s_ProfilingEntries[s_ActiveProfilingEntry].name = name;
+			idx = s_ProfilingEntryCount++;
+			s_ProfilingEntries[idx].name = name;
 		}
 
-		VAST_ASSERTF(s_ProfilingEntries[s_ActiveProfilingEntry].state == ProfilingEntry::State::IDLE, "Profiling marker '{}' already pushed this frame.", name);
-		s_ProfilingEntries[s_ActiveProfilingEntry].state = ProfilingEntry::State::ACTIVE;
+		VAST_ASSERTF(s_ProfilingEntries[idx].state == ProfilingEntry::State::IDLE, "Profiling marker '{}' already pushed this frame.", name);
+		s_ProfilingEntries[idx].state = ProfilingEntry::State::ACTIVE;
 
-		ctx.InsertTimestamp(s_ActiveProfilingEntry * 2);
+		ctx.InsertTimestamp(idx * 2);
 	}
 
-	void Profiler::EndGpuTiming(gfx::GraphicsContext& ctx)
+	void Profiler::EndGpuTiming(const char* name, gfx::GraphicsContext& ctx)
 	{
-		// TODO: Currently stacking timings is not supported.
-		VAST_ASSERT(s_ActiveProfilingEntry != kInvalidProfilingEntryIdx);
+		// Find profile index from name
+		uint32 idx = kInvalidProfilingEntryIdx;
+		for (uint32 i = 0; i < s_ProfilingEntryCount; ++i)
+		{
+			if (s_ProfilingEntries[i].name == name)
+			{
+				idx = i;
+				break;
+			}
+		}
+		
+		VAST_ASSERT(idx != kInvalidProfilingEntryIdx);
+		VAST_ASSERT(s_ProfilingEntries[idx].state == ProfilingEntry::State::ACTIVE);
 
-		VAST_ASSERT(s_ProfilingEntries[s_ActiveProfilingEntry].state == ProfilingEntry::State::ACTIVE);
+		ctx.InsertTimestamp(idx * 2 + 1);
 
-		ctx.InsertTimestamp(s_ActiveProfilingEntry * 2 + 1);
-
-		s_ProfilingEntries[s_ActiveProfilingEntry].state = ProfilingEntry::State::FINISHED;
-		s_ActiveProfilingEntry = kInvalidProfilingEntryIdx;
+		s_ProfilingEntries[idx].state = ProfilingEntry::State::FINISHED;
+		idx = kInvalidProfilingEntryIdx;
 	}
 
 	void Profiler::BeginTrace(const char* category, const char* name)
