@@ -3,13 +3,13 @@
 #include "Core/Defines.h"
 
 #if VAST_ENABLE_PROFILING
-#define VAST_PROFILE_CPU_SCOPE(n)		vast::Profiler::ScopedCpuTiming  XCAT(_profCpu, __LINE__)(n)
-#define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::BeginCpuTiming(n)
-#define VAST_PROFILE_CPU_END()			vast::Profiler::EndCpuTiming()
+#define VAST_PROFILE_CPU_SCOPE(n)		vast::Profiler::ScopedTiming  XCAT(_profCpu, __LINE__)(n)
+#define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::BeginTiming(n)
+#define VAST_PROFILE_CPU_END()			vast::Profiler::EndTiming()
 
-#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::Profiler::ScopedGpuTiming  XCAT(_profGpu, __LINE__)(n, ctx)
-#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::BeginGpuTiming(n, ctx)
-#define VAST_PROFILE_GPU_END(ctx)		vast::Profiler::EndGpuTiming(ctx)
+#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::Profiler::ScopedTiming  XCAT(_profGpu, __LINE__)(n, ctx)
+#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::BeginTiming(n, ctx)
+#define VAST_PROFILE_GPU_END()			vast::Profiler::EndTiming()
 
 #define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::Profiler::ScopedTrace XCAT(_profTrace, __LINE__)(c, n)
 #define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::Profiler::BeginTrace(c, n)
@@ -37,17 +37,13 @@ namespace vast
 
 	namespace Profiler
 	{
-
 		void Init(const char* fileName);
 		void Stop();
 
 		void EndFrame(gfx::GraphicsContext& ctx);
 
-		void BeginCpuTiming(const char* name);
-		void EndCpuTiming();
-
-		void BeginGpuTiming(const char* name, gfx::GraphicsContext& ctx);
-		void EndGpuTiming(gfx::GraphicsContext& ctx);
+		void BeginTiming(const char* name, gfx::GraphicsContext* ctx = nullptr);
+		void EndTiming();
 
 		void BeginTrace(const char* category, const char* name);
 		void EndTrace(const char* category, const char* name);
@@ -58,32 +54,17 @@ namespace vast
 
 		//
 
-		struct ScopedCpuTiming
+		struct ScopedTiming
 		{
-			ScopedCpuTiming(const char* name)
+			ScopedTiming(const char* name, gfx::GraphicsContext* ctx = nullptr)
 			{
-				BeginCpuTiming(name);
+				BeginTiming(name, ctx);
 			}
 
-			~ScopedCpuTiming()
+			~ScopedTiming()
 			{
-				EndCpuTiming();
+				EndTiming();
 			}
-		};
-
-		struct ScopedGpuTiming
-		{
-			ScopedGpuTiming(const char* name, gfx::GraphicsContext& ctx_) : ctx(ctx_)
-			{
-				BeginGpuTiming(name, ctx);
-			}
-
-			~ScopedGpuTiming()
-			{
-				EndGpuTiming(ctx);
-			}
-
-			gfx::GraphicsContext& ctx;
 		};
 
 		struct ScopedTrace

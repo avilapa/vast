@@ -45,6 +45,18 @@ namespace vast
 			return std::chrono::duration_cast<std::chrono::duration<T, std::milli>>(m_ElapsedTime).count();
 		}
 
+		template<typename T>
+		T GetDeltaMicroseconds() const
+		{
+			return std::chrono::duration_cast<std::chrono::duration<T, std::micro>>(m_DeltaTime).count();
+		}
+
+		template<typename T>
+		T GetElapsedMicroseconds() const
+		{
+			return std::chrono::duration_cast<std::chrono::duration<T, std::micro>>(m_ElapsedTime).count();
+		}
+
 	private:
 		std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::nanoseconds> m_StartTime;
 		std::chrono::nanoseconds m_DeltaTime;

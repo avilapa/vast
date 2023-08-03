@@ -13,24 +13,31 @@ namespace vast
 	static const uint32 kInvalidProfilingEntryIdx = UINT32_MAX;
 	static const uint32 kMaxProfilingEntries = gfx::NUM_TIMESTAMP_QUERIES / 2;
 
+	enum class ProfilingEntryState
+	{
+		IDLE = 0,	// Waiting to start
+		ACTIVE,		// Started timing
+		FINISHED	// Finished timing but not resolved yet
+	};
+
 	struct ProfilingEntry
 	{
 		std::string name;
-
-		enum class State
-		{
-			IDLE = 0,
-			ACTIVE,
-			FINISHED
-		} state = State::IDLE;
+		ProfilingEntryState state = ProfilingEntryState::IDLE;
 
 		static const uint32 kHistorySize = 64;
 		Array<double, kHistorySize> deltasHistory;
 		uint32 currDelta = 0;
+
+		gfx::GraphicsContext* ctx = nullptr;
+		int64 tStart;
+		int64 tEnd;
 	};
 
 	static Array<ProfilingEntry, kMaxProfilingEntries> s_ProfilingEntries;
-	static uint32 s_ProfilingEntryCount = 0;
+	static uint32 s_TotalEntryCount = 0;
+
+	static Timer s_Timer;
 
 	void Profiler::Init(const char* fileName)
 	{
@@ -45,14 +52,13 @@ namespace vast
 
 	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
 	{
-		if (s_ProfilingEntryCount == 0)
+		if (s_TotalEntryCount == 0)
 			return;
 
-		const uint64* queryData = ctx.ResolveTimestamps(s_ProfilingEntryCount * 2);
-
+		const uint64* queryData = ctx.ResolveTimestamps(s_TotalEntryCount * 2);
 		const double gpuFrequency = static_cast<double>(ctx.GetTimestampFrequency());
 
-		for (uint32 i = 0; i < s_ProfilingEntryCount; ++i)
+		for (uint32 i = 0; i < s_TotalEntryCount; ++i)
 		{
 			double time = 0;
 
@@ -68,25 +74,15 @@ namespace vast
 			ProfilingEntry& e = s_ProfilingEntries[i];
 			e.deltasHistory[e.currDelta] = time;
 			e.currDelta = (e.currDelta + 1) % ProfilingEntry::kHistorySize;
-			e.state = ProfilingEntry::State::IDLE;
+			e.state = ProfilingEntryState::IDLE;
 		}
 	}
 
-	void Profiler::BeginCpuTiming(const char* name)
-	{
-		(void)name;
-	}
-
-	void Profiler::EndCpuTiming()
-	{
-
-	}
-
-	void Profiler::BeginGpuTiming(const char* name, gfx::GraphicsContext& ctx)
+	void Profiler::BeginTiming(const char* name, gfx::GraphicsContext* ctx /* = nullptr */)
 	{
 		// Check if profile name already exists
 		uint32 idx = kInvalidProfilingEntryIdx;
-		for (uint32 i = 0; i < s_ProfilingEntryCount; ++i)
+		for (uint32 i = 0; i < s_TotalEntryCount; ++i)
 		{
 			if (s_ProfilingEntries[i].name == name)
 			{
@@ -98,24 +94,38 @@ namespace vast
 		if (idx == kInvalidProfilingEntryIdx)
 		{
 			// Add new profile
-			VAST_ASSERTF(s_ProfilingEntryCount < kMaxProfilingEntries, "Exceeded max number of unique profiling markers ({}).", kMaxProfilingEntries);
-			idx = s_ProfilingEntryCount++;
+			VAST_ASSERTF(s_TotalEntryCount < kMaxProfilingEntries, "Exceeded max number of unique profiling markers ({}).", kMaxProfilingEntries);
+			idx = s_TotalEntryCount++;
 			s_ProfilingEntries[idx].name = name;
+			if (ctx) 
+			s_ProfilingEntries[idx].ctx = ctx;
 		}
 
-		VAST_ASSERTF(s_ProfilingEntries[idx].state == ProfilingEntry::State::IDLE, "Profiling marker '{}' already pushed this frame.", name);
-		s_ProfilingEntries[idx].state = ProfilingEntry::State::ACTIVE;
+		VAST_ASSERTF(ctx == s_ProfilingEntries[idx].ctx);
 
-		ctx.InsertTimestamp(idx * 2);
+		if (s_ProfilingEntries[idx].ctx)
+		{
+			// GPU Timing
+			s_ProfilingEntries[idx].ctx->InsertTimestamp(idx * 2);
+		}
+		else
+		{
+			// CPU Timing
+			s_Timer.Update();
+			s_ProfilingEntries[idx].tStart = s_Timer.GetElapsedMicroseconds<int64>();
+		}
+
+		VAST_ASSERTF(s_ProfilingEntries[idx].state == ProfilingEntryState::IDLE, "Profiling marker '{}' already pushed this frame.", name);
+		s_ProfilingEntries[idx].state = ProfilingEntryState::ACTIVE;
 	}
 
-	void Profiler::EndGpuTiming(gfx::GraphicsContext& ctx)
+	void Profiler::EndTiming()
 	{
 		// Find last active profile
 		uint32 idx = kInvalidProfilingEntryIdx;
-		for (uint32 i = s_ProfilingEntryCount; i >= 0; --i)
+		for (uint32 i = s_TotalEntryCount; i >= 0; --i)
 		{
-			if (s_ProfilingEntries[i].state == ProfilingEntry::State::ACTIVE)
+			if (s_ProfilingEntries[i].state == ProfilingEntryState::ACTIVE)
 			{
 				idx = i;
 				break;
@@ -123,11 +133,21 @@ namespace vast
 		}
 		
 		VAST_ASSERT(idx != kInvalidProfilingEntryIdx);
-		VAST_ASSERT(s_ProfilingEntries[idx].state == ProfilingEntry::State::ACTIVE);
+		VAST_ASSERT(s_ProfilingEntries[idx].state == ProfilingEntryState::ACTIVE);
 
-		ctx.InsertTimestamp(idx * 2 + 1);
+		if (s_ProfilingEntries[idx].ctx)
+		{
+			// GPU Timing
+			s_ProfilingEntries[idx].ctx->InsertTimestamp(idx * 2 + 1);
+		}
+		else
+		{
+			// CPU Timing
+			s_Timer.Update();
+			s_ProfilingEntries[idx].tEnd = s_Timer.GetElapsedMicroseconds<int64>();
+		}
 
-		s_ProfilingEntries[idx].state = ProfilingEntry::State::FINISHED;
+		s_ProfilingEntries[idx].state = ProfilingEntryState::FINISHED;
 		idx = kInvalidProfilingEntryIdx;
 	}
 
@@ -160,7 +180,7 @@ namespace vast
 			ImGui::Text("GPU Profiler");
 			ImGui::Separator();
 
-			for (uint32 i = 0; i < s_ProfilingEntryCount; ++i)
+			for (uint32 i = 0; i < s_TotalEntryCount; ++i)
 			{
 				ProfilingEntry& e = s_ProfilingEntries[i];
 
@@ -182,7 +202,6 @@ namespace vast
 
 				if (numAvgSamples > 0)
 					tAvg /= double(numAvgSamples);
-
 
 				ImGui::Text("%s: %.3fms (%.3fms max)", e.name.c_str(), tAvg, tMax);
 			}

@@ -17,7 +17,7 @@ public:
 
 	virtual void EndFrame() 
 	{
-		vast::Profiler::EndFrame(ctx);
+		vast::Profiler::EndFrame(&ctx);
 		ctx.EndFrame();
 	}
 
