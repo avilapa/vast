@@ -265,6 +265,33 @@ namespace vast::gfx
 		}
 	}
 
+	BufferView GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
+	{
+		VAST_ASSERT(size);
+		VAST_ASSERT(m_TempFrameAllocators[m_FrameId].size);
+
+		uint32 allocSize = size + alignment;
+		uint32 offset = m_TempFrameAllocators[m_FrameId].offset;
+		if (alignment > 0)
+		{
+			offset = AlignU32(offset, alignment);
+		}
+		VAST_ASSERT(offset + size <= m_TempFrameAllocators[m_FrameId].size);
+
+		m_TempFrameAllocators[m_FrameId].offset += allocSize;
+
+		BufferHandle h = m_TempFrameAllocators[m_FrameId].buffer;
+
+		// TODO: We need to attach descriptors to the BufferViews if we want to use them as CBVs, SRVs...
+		return BufferView
+		{
+			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
+			h,
+			(uint8*)(GetBufferData(h) + offset),
+			offset,
+		};
+	}
+
 	//
 
 	void GraphicsContext::CreateProfilingResources()
@@ -272,6 +299,7 @@ namespace vast::gfx
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			m_TimestampsReadbackBuf[i] = CreateBuffer(BufferDesc{ .size = NUM_TIMESTAMP_QUERIES * sizeof(uint64),.usage = ResourceUsage::READBACK });
+			m_TimestampData[i] = reinterpret_cast<const uint64*>(GetBufferData(m_TimestampsReadbackBuf[i]));
 		}
 	}
 	
@@ -283,9 +311,40 @@ namespace vast::gfx
 		}
 	}
 
-	uint64* GraphicsContext::ResolveTimestamps(uint32 count)
+	uint32 GraphicsContext::BeginTimestamp()
 	{
-		return ResolveTimestamps_Internal(m_TimestampsReadbackBuf[m_FrameId], count);
+		BeginTimestamp_Internal(m_TimestampCount * 2);
+		return m_TimestampCount++;
+	}
+
+	void GraphicsContext::EndTimestamp(uint32 timestampIdx)
+	{
+		EndTimestamp_Internal(timestampIdx * 2 + 1);
+	}
+
+	void GraphicsContext::CollectTimestamps()
+	{
+		if (m_TimestampCount == 0)
+			return;
+
+		CollectTimestamps_Internal(m_TimestampsReadbackBuf[m_FrameId], m_TimestampCount * 2);
+		m_TimestampCount = 0;
+	}
+
+	double GraphicsContext::GetTimestampDuration(uint32 timestampIdx)
+	{
+		const uint64* data = m_TimestampData[m_FrameId];
+		VAST_ASSERT(data && m_TimestampFrequency);
+
+		uint64 tStart = data[timestampIdx * 2];
+		uint64 tEnd = data[timestampIdx * 2 + 1];
+
+		if (tEnd > tStart)
+		{
+			return double(tEnd - tStart) / m_TimestampFrequency;
+		}
+
+		return 0.0;
 	}
 
 }

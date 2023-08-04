@@ -19,6 +19,8 @@ namespace vast::gfx
 		uint64 SignalFence();
 		uint64 ExecuteCommandList(ID3D12CommandList* commandList);
 
+		uint64 GetTimestampFrequency();
+
 		ID3D12CommandQueue* GetQueue() { return m_Queue; }
 
 	private:

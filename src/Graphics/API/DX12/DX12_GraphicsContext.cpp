@@ -37,6 +37,7 @@ namespace vast::gfx
 		m_Device = MakePtr<DX12Device>();
 
 		m_CommandQueues[IDX(QueueType::GRAPHICS)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
+		m_TimestampFrequency = double(m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetTimestampFrequency());
 		// TODO: Compute
  		m_CommandQueues[IDX(QueueType::UPLOAD)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_COPY);
 
@@ -129,6 +130,8 @@ namespace vast::gfx
 		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
 		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
+
+		CollectTimestamps();
 
 		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
@@ -628,6 +631,14 @@ namespace vast::gfx
 		return m_Textures->LookupResource(h).isReady;
 	}
 
+	const uint8* DX12GraphicsContext::GetBufferData(const BufferHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		DX12Buffer& buf = m_Buffers->LookupResource(h);
+		VAST_ASSERTF(buf.usage != ResourceUsage::DEFAULT, "Data is not CPU-visible for this Buffer");
+		return buf.data;
+	}
+
 	void DX12GraphicsContext::SetDebugName(BufferHandle h, const std::string& name)
 	{
 		VAST_ASSERT(h.IsValid());
@@ -640,28 +651,24 @@ namespace vast::gfx
 		m_Textures->LookupResource(h).SetName(name);
 	}
 
-	void DX12GraphicsContext::InsertTimestamp(uint32 idx)
+	void DX12GraphicsContext::BeginTimestamp_Internal(uint32 idx)
+	{
+		VAST_ASSERT(m_QueryHeap);
+		m_GraphicsCommandList->BeginQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, idx);
+	}
+
+	void DX12GraphicsContext::EndTimestamp_Internal(uint32 idx)
 	{
 		VAST_ASSERT(m_QueryHeap);
 		m_GraphicsCommandList->EndQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, idx);
 	}
 
-	uint64* DX12GraphicsContext::ResolveTimestamps_Internal(BufferHandle h, uint32 count)
+	void DX12GraphicsContext::CollectTimestamps_Internal(BufferHandle h, uint32 count)
 	{
 		VAST_ASSERT(m_QueryHeap);
 		DX12Buffer& buf = m_Buffers->LookupResource(h);
 		VAST_ASSERTF(buf.usage == ResourceUsage::READBACK, "This call requires readback buffer usage.");
 		m_GraphicsCommandList->ResolveQuery(*m_QueryHeap, D3D12_QUERY_TYPE_TIMESTAMP, 0, count, buf, 0);
-
-		return reinterpret_cast<uint64*>(buf.data);
-	}
-
-	uint64 DX12GraphicsContext::GetTimestampFrequency()
-	{
-		// TODO: Tidy up this function.
-		uint64 gpuFrequency = 0;
-		m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue()->GetTimestampFrequency(&gpuFrequency);
-		return gpuFrequency;
 	}
 
 	void DX12GraphicsContext::OnWindowResizeEvent(const WindowResizeEvent& event)
@@ -677,32 +684,6 @@ namespace vast::gfx
 			// it doesn't even make sense since they will lose sync after the first loop.
 			m_SwapChain->Resize(event.m_WindowSize);
 		}
-	}
-
-	BufferView DX12GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
-	{
-		VAST_ASSERT(size);
-		VAST_ASSERT(m_TempFrameAllocators[m_FrameId].size);
-
-		uint32 allocSize = size + alignment;
-		uint32 offset = m_TempFrameAllocators[m_FrameId].offset;
-		if (alignment > 0)
-		{
-			offset = AlignU32(offset, alignment);
-		}
-		VAST_ASSERT(offset + size <= m_TempFrameAllocators[m_FrameId].size);
-
-		m_TempFrameAllocators[m_FrameId].offset += allocSize;
-
-		DX12Buffer& buf = m_Buffers->LookupResource(m_TempFrameAllocators[m_FrameId].buffer);
-
-		return BufferView
-		{
-			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
-			m_TempFrameAllocators[m_FrameId].buffer,
-			(uint8*)(buf.data + offset),
-			offset,
-		};
 	}
 
 }

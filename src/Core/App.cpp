@@ -11,6 +11,9 @@ namespace vast
 		: m_bRunning(false)
 		, m_Window(nullptr)
 	{
+#if VAST_ENABLE_PROFILING
+		vast::Profiler::Init("vast-profile.json");
+#endif
 		VAST_PROFILE_TRACE_BEGIN("app", "App Startup");
 		(void)argc; (void)argv; // TODO: Process input args.
 
@@ -24,6 +27,9 @@ namespace vast
 	{
 		m_Window = nullptr;
 		VAST_PROFILE_TRACE_END("app", "App Shutdown");
+#if VAST_ENABLE_PROFILING
+		vast::Profiler::Stop();
+#endif
 	}
 
 	void WindowedApp::Run()
@@ -35,15 +41,22 @@ namespace vast
 
 		while (m_bRunning)
 		{
+			VAST_PROFILE_CPU_BEGIN("Frame");
 			{
 				VAST_PROFILE_TRACE_SCOPE("app", "Update");
+				VAST_PROFILE_CPU_SCOPE("Update");
 				m_Window->Update();
 				Update();
 			}
 			{
 				VAST_PROFILE_TRACE_SCOPE("app", "Draw");
+				VAST_PROFILE_CPU_SCOPE("Draw");
 				Draw();
 			}
+			VAST_PROFILE_CPU_END();
+#if VAST_ENABLE_PROFILING
+			vast::Profiler::UpdateProfiles();
+#endif
 		}
 
 		VAST_PROFILE_TRACE_END("app", "App Loop");

@@ -53,9 +53,6 @@ namespace vast::gfx
 		void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) override;
 		void DrawFullscreenTriangle() override;
 
-		// TODO: We need to attach descriptors to the BufferViews if we want to use them as CBVs, SRVs...
-		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) override;
-
 		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
 
 		uint2 GetBackBufferSize() const override;
@@ -69,11 +66,10 @@ namespace vast::gfx
 		bool GetIsReady(const BufferHandle h) override;
 		bool GetIsReady(const TextureHandle h) override;
 
+		const uint8* GetBufferData(const BufferHandle h) override;
+
 		void SetDebugName(BufferHandle h, const std::string& name);
 		void SetDebugName(TextureHandle h, const std::string& name);
-
-		void InsertTimestamp(uint32 idx) override;
-		uint64 GetTimestampFrequency() override;
 
 	private:
 		void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) override;
@@ -88,7 +84,9 @@ namespace vast::gfx
 		void UpdatePipeline_Internal(PipelineHandle h) override;
 		void DestroyPipeline_Internal(PipelineHandle h) override;
 
-		uint64* ResolveTimestamps_Internal(BufferHandle h, uint32 count) override;
+		void BeginTimestamp_Internal(uint32 idx) override;
+		void EndTimestamp_Internal(uint32 idx) override;
+		void CollectTimestamps_Internal(BufferHandle h, uint32 count) override;
 
 		void SubmitCommandList(DX12CommandList& ctx);
 		void SignalEndOfFrame(const QueueType type);

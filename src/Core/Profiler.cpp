@@ -10,35 +10,6 @@
 namespace vast
 {
 
-	static const uint32 kInvalidProfilingEntryIdx = UINT32_MAX;
-	static const uint32 kMaxProfilingEntries = gfx::NUM_TIMESTAMP_QUERIES / 2;
-
-	enum class ProfilingEntryState
-	{
-		IDLE = 0,	// Waiting to start
-		ACTIVE,		// Started timing
-		FINISHED	// Finished timing but not resolved yet
-	};
-
-	struct ProfilingEntry
-	{
-		std::string name;
-		ProfilingEntryState state = ProfilingEntryState::IDLE;
-
-		static const uint32 kHistorySize = 64;
-		Array<double, kHistorySize> deltasHistory;
-		uint32 currDelta = 0;
-
-		gfx::GraphicsContext* ctx = nullptr;
-		int64 tStart;
-		int64 tEnd;
-	};
-
-	static Array<ProfilingEntry, kMaxProfilingEntries> s_ProfilingEntries;
-	static uint32 s_TotalEntryCount = 0;
-
-	static Timer s_Timer;
-
 	void Profiler::Init(const char* fileName)
 	{
 		mtr_init(fileName);
@@ -48,107 +19,6 @@ namespace vast
 	{
 		mtr_flush();
 		mtr_shutdown();
-	}
-
-	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
-	{
-		if (s_TotalEntryCount == 0)
-			return;
-
-		const uint64* queryData = ctx.ResolveTimestamps(s_TotalEntryCount * 2);
-		const double gpuFrequency = static_cast<double>(ctx.GetTimestampFrequency());
-
-		for (uint32 i = 0; i < s_TotalEntryCount; ++i)
-		{
-			double time = 0;
-
-			uint64 startTime = queryData[i * 2];
-			uint64 endTime = queryData[i * 2 + 1];
-
-			if (endTime > startTime)
-			{
-				uint64 delta = endTime - startTime;
-				time = (delta / gpuFrequency) * 1000.0;
-			}
-
-			ProfilingEntry& e = s_ProfilingEntries[i];
-			e.deltasHistory[e.currDelta] = time;
-			e.currDelta = (e.currDelta + 1) % ProfilingEntry::kHistorySize;
-			e.state = ProfilingEntryState::IDLE;
-		}
-	}
-
-	void Profiler::BeginTiming(const char* name, gfx::GraphicsContext* ctx /* = nullptr */)
-	{
-		// Check if profile name already exists
-		uint32 idx = kInvalidProfilingEntryIdx;
-		for (uint32 i = 0; i < s_TotalEntryCount; ++i)
-		{
-			if (s_ProfilingEntries[i].name == name)
-			{
-				idx = i;
-				break;
-			}
-		}
-
-		if (idx == kInvalidProfilingEntryIdx)
-		{
-			// Add new profile
-			VAST_ASSERTF(s_TotalEntryCount < kMaxProfilingEntries, "Exceeded max number of unique profiling markers ({}).", kMaxProfilingEntries);
-			idx = s_TotalEntryCount++;
-			s_ProfilingEntries[idx].name = name;
-			if (ctx) 
-			s_ProfilingEntries[idx].ctx = ctx;
-		}
-
-		VAST_ASSERTF(ctx == s_ProfilingEntries[idx].ctx);
-
-		if (s_ProfilingEntries[idx].ctx)
-		{
-			// GPU Timing
-			s_ProfilingEntries[idx].ctx->InsertTimestamp(idx * 2);
-		}
-		else
-		{
-			// CPU Timing
-			s_Timer.Update();
-			s_ProfilingEntries[idx].tStart = s_Timer.GetElapsedMicroseconds<int64>();
-		}
-
-		VAST_ASSERTF(s_ProfilingEntries[idx].state == ProfilingEntryState::IDLE, "Profiling marker '{}' already pushed this frame.", name);
-		s_ProfilingEntries[idx].state = ProfilingEntryState::ACTIVE;
-	}
-
-	void Profiler::EndTiming()
-	{
-		// Find last active profile
-		uint32 idx = kInvalidProfilingEntryIdx;
-		for (uint32 i = s_TotalEntryCount; i >= 0; --i)
-		{
-			if (s_ProfilingEntries[i].state == ProfilingEntryState::ACTIVE)
-			{
-				idx = i;
-				break;
-			}
-		}
-		
-		VAST_ASSERT(idx != kInvalidProfilingEntryIdx);
-		VAST_ASSERT(s_ProfilingEntries[idx].state == ProfilingEntryState::ACTIVE);
-
-		if (s_ProfilingEntries[idx].ctx)
-		{
-			// GPU Timing
-			s_ProfilingEntries[idx].ctx->InsertTimestamp(idx * 2 + 1);
-		}
-		else
-		{
-			// CPU Timing
-			s_Timer.Update();
-			s_ProfilingEntries[idx].tEnd = s_Timer.GetElapsedMicroseconds<int64>();
-		}
-
-		s_ProfilingEntries[idx].state = ProfilingEntryState::FINISHED;
-		idx = kInvalidProfilingEntryIdx;
 	}
 
 	void Profiler::BeginTrace(const char* category, const char* name)
@@ -161,7 +31,161 @@ namespace vast
 		MTR_END(category, name);
 	}
 
-	//
+	struct StatHistory
+	{
+		static const uint32 kHistorySize = 64;
+		Array<double, kHistorySize> deltasHistory;
+		uint32 currDelta = 0;
+
+		double tMax;
+		double tAvg;
+
+		void RecordStat(double t)
+		{
+			deltasHistory[currDelta] = t;
+			currDelta = (currDelta + 1) % StatHistory::kHistorySize;
+
+			tAvg = 0;
+			tMax = 0;
+			uint32 validSamples = 0;
+			for (double v : deltasHistory)
+			{
+				if (v > 0.0)
+				{ 
+					++validSamples;
+					tAvg += v;
+					if (v > tMax)
+					{
+						tMax = v;
+					}
+				}
+			}
+
+			if (validSamples > 0)
+			{
+				tAvg /= double(validSamples);
+			}
+		}
+	};
+
+	enum class ProfileState
+	{
+		IDLE = 0,
+		ACTIVE,
+		FINISHED,
+	};
+
+	struct ProfileBlock
+	{
+		std::string name;
+		ProfileState state = ProfileState::IDLE;
+
+		gfx::GraphicsContext* ctx = nullptr;
+		uint32 timestampIdx = 0;
+
+		int64 tStart = 0;
+		int64 tEnd = 0;
+
+		StatHistory cpuStats;
+		StatHistory gpuStats;
+	};
+
+	static const uint32 kMaxProfiles = gfx::NUM_TIMESTAMP_QUERIES / 2;
+	static Array<ProfileBlock, kMaxProfiles> s_Profiles;
+	static uint32 s_ProfileCount = 0;
+	static Timer s_Timer;
+
+	static ProfileBlock& FindOrAddProfile(const char* name, bool& bFound)
+	{
+		for (uint32 i = 0; i < s_ProfileCount; ++i)
+		{
+			if (s_Profiles[i].name == name)
+			{
+				bFound = true;
+				return s_Profiles[i];
+			}
+		}
+		VAST_ASSERTF(s_ProfileCount < kMaxProfiles, "Exceeded max number of profiles ({}).", kMaxProfiles);
+		bFound = false;
+		return s_Profiles[s_ProfileCount++];
+	}
+
+	void Profiler::PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx /* = nullptr */)
+	{
+		bool bFound;
+		ProfileBlock& p = FindOrAddProfile(name, bFound);
+		if (!bFound)
+		{
+			p.name = name;
+			p.ctx = ctx;
+		}
+		VAST_ASSERTF(ctx == p.ctx, "Changing execution context of an existing profile is not allowed.");
+		VAST_ASSERTF(p.state == ProfileState::IDLE, "A profile of this name already exists or has already been pushed this frame.")
+
+		// CPU Timing
+		s_Timer.Update();
+		p.tStart = s_Timer.GetElapsedMicroseconds<int64>();
+
+		if (ctx)
+		{
+			// GPU Timing
+			p.timestampIdx = p.ctx->BeginTimestamp();
+		}
+
+		p.state = ProfileState::ACTIVE;
+	}
+
+	static ProfileBlock* FindLastActiveEntry()
+	{
+		VAST_ASSERT(s_ProfileCount > 0);
+		for (int32 i = (s_ProfileCount - 1); i >= 0; --i)
+		{
+			if (s_Profiles[i].state == ProfileState::ACTIVE)
+			{
+				return &s_Profiles[i];
+			}
+		}
+
+		VAST_ASSERTF(0, "Active profile not found.");
+		return nullptr;
+	}
+
+	void Profiler::PopProfilingMarker()
+	{
+		if (ProfileBlock* p = FindLastActiveEntry())
+		{
+			// CPU Timing
+			s_Timer.Update();
+			p->tEnd = s_Timer.GetElapsedMicroseconds<int64>();
+
+			if (p->ctx)
+			{
+				// GPU Timing
+				p->ctx->EndTimestamp(p->timestampIdx);
+			}
+			p->state = ProfileState::FINISHED;
+		}
+	}
+
+	void Profiler::UpdateProfiles()
+	{
+		if (s_ProfileCount == 0)
+			return;
+
+		for (uint32 i = 0; i < s_ProfileCount; ++i)
+		{
+			ProfileBlock& p = s_Profiles[i];
+			VAST_ASSERTF(p.state == ProfileState::FINISHED, "Attempted to update a profile that is still active.")
+
+			p.cpuStats.RecordStat(double(p.tEnd - p.tStart) / 1000.0);
+			if (p.ctx)
+			{
+				p.gpuStats.RecordStat(p.ctx->GetTimestampDuration(p.timestampIdx) * 1000.0);
+			}
+
+			p.state = ProfileState::IDLE;
+		}
+	}
 
 	void Profiler::OnGUI()
 	{
@@ -177,33 +201,31 @@ namespace vast
 		ImGui::SetNextWindowBgAlpha(0.35f);
 		if (ImGui::Begin("Profiler", 0, window_flags))
 		{
-			ImGui::Text("GPU Profiler");
+
+			ImGui::Text("CPU Profiler");
 			ImGui::Separator();
 
-			for (uint32 i = 0; i < s_TotalEntryCount; ++i)
+			for (uint32 i = 0; i < s_ProfileCount; ++i)
 			{
-				ProfilingEntry& e = s_ProfilingEntries[i];
+				ProfileBlock& p = s_Profiles[i];
+				StatHistory& s = s_Profiles[i].cpuStats;
 
-				double tMax = 0.0;
-				double tAvg = 0.0;
-				uint32 numAvgSamples = 0;
-				for (uint32 j = 0; j < ProfilingEntry::kHistorySize; ++j)
-				{
-					double t = e.deltasHistory[j];
+				ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
+			}
 
-					if (t <= 0.0)
-						continue;
+			ImGui::Text("\nGPU Profiler");
+			ImGui::Separator();
 
-					if (t > tMax)
-						tMax = t;
-					tAvg += t;
-					++numAvgSamples;
-				}
+			for (uint32 i = 0; i < s_ProfileCount; ++i)
+			{
+				ProfileBlock& p = s_Profiles[i];
 
-				if (numAvgSamples > 0)
-					tAvg /= double(numAvgSamples);
+				if (!p.ctx)
+					continue;
 
-				ImGui::Text("%s: %.3fms (%.3fms max)", e.name.c_str(), tAvg, tMax);
+				StatHistory& s = s_Profiles[i].gpuStats;
+
+				ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
 			}
 		}
 		ImGui::End();

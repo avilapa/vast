@@ -98,4 +98,12 @@ namespace vast::gfx
 		return SignalFence();
 	}
 
+	uint64 DX12CommandQueue::GetTimestampFrequency()
+	{
+		VAST_ASSERT(m_CommandType == D3D12_COMMAND_LIST_TYPE_DIRECT || m_CommandType == D3D12_COMMAND_LIST_TYPE_COMPUTE);
+		uint64 gpuFrequency;
+		m_Queue->GetTimestampFrequency(&gpuFrequency);
+		return gpuFrequency;
+	}
+
 }

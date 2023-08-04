@@ -3,15 +3,16 @@
 #include "Core/Defines.h"
 
 #if VAST_ENABLE_PROFILING
-#define VAST_PROFILE_CPU_SCOPE(n)		vast::Profiler::ScopedTiming  XCAT(_profCpu, __LINE__)(n)
-#define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::BeginTiming(n)
-#define VAST_PROFILE_CPU_END()			vast::Profiler::EndTiming()
+#define VAST_PROFILE_CPU_SCOPE(n)		vast::Profiler::ProfileScope XCAT(_profCpu, __LINE__)(n)
+#define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::PushProfilingMarker(n)
+#define VAST_PROFILE_CPU_END()			vast::Profiler::PopProfilingMarker()
 
-#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::Profiler::ScopedTiming  XCAT(_profGpu, __LINE__)(n, ctx)
-#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::BeginTiming(n, ctx)
-#define VAST_PROFILE_GPU_END()			vast::Profiler::EndTiming()
+#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::Profiler::ProfileScope XCAT(_profGpu, __LINE__)(n, ctx)
+#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::PushProfilingMarker(n, ctx)
+#define VAST_PROFILE_GPU_END()			vast::Profiler::PopProfilingMarker()
+// TODO: Single profile macro, select cpu/gpu
 
-#define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::Profiler::ScopedTrace XCAT(_profTrace, __LINE__)(c, n)
+#define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::Profiler::TraceScope XCAT(_profTrace, __LINE__)(c, n)
 #define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::Profiler::BeginTrace(c, n)
 #define VAST_PROFILE_TRACE_END(c, n)	vast::Profiler::EndTrace(c, n)
 #else
@@ -40,41 +41,37 @@ namespace vast
 		void Init(const char* fileName);
 		void Stop();
 
-		void EndFrame(gfx::GraphicsContext& ctx);
-
-		void BeginTiming(const char* name, gfx::GraphicsContext* ctx = nullptr);
-		void EndTiming();
-
 		void BeginTrace(const char* category, const char* name);
 		void EndTrace(const char* category, const char* name);
 
-		//
+		void PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx = nullptr);
+		void PopProfilingMarker();
+		void UpdateProfiles();
+		// TODO: Flush data
 
 		void OnGUI();
 
-		//
-
-		struct ScopedTiming
+		struct ProfileScope
 		{
-			ScopedTiming(const char* name, gfx::GraphicsContext* ctx = nullptr)
+			ProfileScope(const char* name, gfx::GraphicsContext* ctx = nullptr)
 			{
-				BeginTiming(name, ctx);
+				PushProfilingMarker(name, ctx);
 			}
 
-			~ScopedTiming()
+			~ProfileScope()
 			{
-				EndTiming();
+				PopProfilingMarker();
 			}
 		};
 
-		struct ScopedTrace
+		struct TraceScope
 		{
-			ScopedTrace(const char* category_, const char* name_) : category(category_), name(name_)
+			TraceScope(const char* category_, const char* name_) : category(category_), name(name_)
 			{
 				BeginTrace(category, name);
 			}
 
-			~ScopedTrace()
+			~TraceScope()
 			{
 				EndTrace(category, name);
 			}

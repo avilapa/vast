@@ -26,5 +26,4 @@ private:
 	Ptr<class ISample> m_CurrentSample;
 	uint32 m_CurrentSampleIdx;
 	bool m_SampleInitialized;
-	Timer m_Timer;
 };

@@ -53,7 +53,7 @@ namespace vast::gfx
 
 		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of
 		// the frame and automatically invalidated after that.
-		virtual BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0) = 0;
+		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0);
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
 		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
 
@@ -95,13 +95,15 @@ namespace vast::gfx
 		virtual bool GetIsReady(const BufferHandle h) = 0;
 		virtual bool GetIsReady(const TextureHandle h) = 0;
 
+		virtual const uint8* GetBufferData(const BufferHandle h) = 0;
+
 		// Waits for all active GPU work to finish as well as any queued resource destructions.
 		virtual void FlushGPU() = 0;
 
-		virtual void InsertTimestamp(uint32 idx) = 0;
-		uint64* ResolveTimestamps(uint32 count);
-
-		virtual uint64 GetTimestampFrequency() = 0;
+		uint32 BeginTimestamp();
+		void EndTimestamp(uint32 timestampIdx);
+		// Call after EndFrame() and before the next BeginFrame() to collect data on the frame that just ended.
+		double GetTimestampDuration(uint32 timestampIdx);
 
 	protected:
 		uint32 m_FrameId = 0;
@@ -148,11 +150,20 @@ namespace vast::gfx
 		virtual void UpdatePipeline_Internal(PipelineHandle h) = 0;
 		virtual void DestroyPipeline_Internal(PipelineHandle h) = 0;
 
-		Array<BufferHandle, NUM_FRAMES_IN_FLIGHT> m_TimestampsReadbackBuf;
+		double m_TimestampFrequency = 0;
 
 		void CreateProfilingResources();
 		void DestroyProfilingResources();
+		void CollectTimestamps();
 
-		virtual uint64* ResolveTimestamps_Internal(BufferHandle h, uint32 count) = 0;
+		virtual void BeginTimestamp_Internal(uint32 idx) = 0;
+		virtual void EndTimestamp_Internal(uint32 idx) = 0;
+		virtual void CollectTimestamps_Internal(BufferHandle h, uint32 count) = 0;
+
+	private:
+		uint32 m_TimestampCount = 0;
+		Array<BufferHandle, NUM_FRAMES_IN_FLIGHT> m_TimestampsReadbackBuf;
+		Array<const uint64*, NUM_FRAMES_IN_FLIGHT> m_TimestampData;
+
 	};
 }

@@ -88,20 +88,15 @@ void SamplesApp::Draw()
 	m_ImguiRenderer->EndCommandRecording();
 
 	m_CurrentSample->BeginFrame();
-	VAST_PROFILE_GPU_BEGIN("GPU Frame", m_GraphicsContext.get());
 	{
 		VAST_PROFILE_GPU_SCOPE("Sample", m_GraphicsContext.get());
 		m_CurrentSample->Render();
 	}
-	VAST_PROFILE_GPU_BEGIN("Imgui", m_GraphicsContext.get());
-	m_ImguiRenderer->Render();
-	VAST_PROFILE_GPU_END(m_GraphicsContext.get());
-	VAST_PROFILE_GPU_END(m_GraphicsContext.get());
-
+	{
+		VAST_PROFILE_GPU_SCOPE("Imgui", m_GraphicsContext.get());
+		m_ImguiRenderer->Render();
+	}
 	m_CurrentSample->EndFrame();
-
-	m_Timer.Update();
-	VAST_INFO("Frame time: {:.3f} ms", m_Timer.GetDeltaMilliseconds<float>());
 }
 
 void SamplesApp::DrawSamplesEditorUI()
