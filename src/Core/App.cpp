@@ -41,6 +41,9 @@ namespace vast
 
 		while (m_bRunning)
 		{
+#if VAST_ENABLE_PROFILING
+			vast::Profiler::FlushProfiles_Internal();
+#endif
 			VAST_PROFILE_CPU_BEGIN("Frame");
 			{
 				VAST_PROFILE_TRACE_SCOPE("app", "Update");
@@ -55,7 +58,7 @@ namespace vast
 			}
 			VAST_PROFILE_CPU_END();
 #if VAST_ENABLE_PROFILING
-			vast::Profiler::UpdateProfiles();
+			vast::Profiler::UpdateProfiles_Internal();
 #endif
 		}
 

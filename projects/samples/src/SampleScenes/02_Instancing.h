@@ -203,6 +203,7 @@ public:
 
 	void Render() override
 	{
+		VAST_PROFILE_GPU_BEGIN("Update Buffers", &ctx);
 		if (m_bViewChanged)
 		{
 			m_CubeCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
@@ -212,6 +213,8 @@ public:
 
 		// Upload the instance buffer with the model matrices to render this frame.
 		ctx.UpdateBuffer(m_CubeInstBuf, &m_InstanceData, sizeof(InstanceData) * s_NumInstances);
+		VAST_PROFILE_GPU_END();
+		VAST_PROFILE_GPU_BEGIN("Main Render Pass", &ctx);
 
 		// Select the PSO and depth targets for the current depth buffer mode.
 		auto pso = m_CubeInstPso[DepthBufferMode::STANDARD];
@@ -238,6 +241,9 @@ public:
 		}
 		ctx.EndRenderPass();
 
+		VAST_PROFILE_GPU_END();
+		VAST_PROFILE_GPU_BEGIN("BackBuffer Pass", &ctx);
+
 		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
 		{
 			uint32 srvIndex = ctx.GetBindlessIndex(m_ColorRT);
@@ -245,6 +251,8 @@ public:
 			ctx.DrawFullscreenTriangle();
 		}
 		ctx.EndRenderPass();
+
+		VAST_PROFILE_GPU_END();
 	}
 
 	void OnWindowResizeEvent(const WindowResizeEvent& event) override

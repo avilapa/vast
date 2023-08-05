@@ -58,6 +58,7 @@ void SamplesApp::Update()
 			// Note: Flushing the GPU is not strictly necessary, but it ensures all resources used in the
 			// current scene are destroyed before loading a new scene.
 			m_GraphicsContext->FlushGPU();
+			Profiler::FlushProfiles();
 		}
 
 		VAST_WARNING("[Samples] Loading sample scene '{}'", s_SampleSceneNames[m_CurrentSampleIdx]);

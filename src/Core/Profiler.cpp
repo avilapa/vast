@@ -88,12 +88,16 @@ namespace vast
 
 		StatHistory cpuStats;
 		StatHistory gpuStats;
+
+		ProfileBlock* parent = nullptr;
+		uint32 treeDepth = 0;
 	};
 
 	static const uint32 kMaxProfiles = gfx::NUM_TIMESTAMP_QUERIES / 2;
 	static Array<ProfileBlock, kMaxProfiles> s_Profiles;
 	static uint32 s_ProfileCount = 0;
 	static Timer s_Timer;
+	static bool s_bProfilesNeedFlush = false;
 
 	static ProfileBlock& FindOrAddProfile(const char* name, bool& bFound)
 	{
@@ -110,6 +114,29 @@ namespace vast
 		return s_Profiles[s_ProfileCount++];
 	}
 
+	static ProfileBlock* FindLastActiveEntry()
+	{
+		VAST_ASSERT(s_ProfileCount > 0);
+		for (int32 i = (s_ProfileCount - 1); i >= 0; --i)
+		{
+			// TODO: Should we check that it executes on the same context as well?
+			if (s_Profiles[i].state == ProfileState::ACTIVE)
+			{
+				return &s_Profiles[i];
+			}
+		}
+		return nullptr;
+	}
+
+	static uint32 FindTreeDepth(const ProfileBlock* p, uint32 currDepth = 0)
+	{
+		if (p && p->parent)
+		{
+			currDepth = FindTreeDepth(p->parent, ++currDepth);
+		}
+		return currDepth;
+	}
+
 	void Profiler::PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx /* = nullptr */)
 	{
 		bool bFound;
@@ -120,7 +147,7 @@ namespace vast
 			p.ctx = ctx;
 		}
 		VAST_ASSERTF(ctx == p.ctx, "Changing execution context of an existing profile is not allowed.");
-		VAST_ASSERTF(p.state == ProfileState::IDLE, "A profile of this name already exists or has already been pushed this frame.")
+		VAST_ASSERTF(p.state == ProfileState::IDLE, "A profile of this name already exists or has already been pushed this frame.");
 
 		// CPU Timing
 		s_Timer.Update();
@@ -132,22 +159,11 @@ namespace vast
 			p.timestampIdx = p.ctx->BeginTimestamp();
 		}
 
+		// Find Tree Position
+		p.parent = FindLastActiveEntry();
+		p.treeDepth = FindTreeDepth(&p);
+
 		p.state = ProfileState::ACTIVE;
-	}
-
-	static ProfileBlock* FindLastActiveEntry()
-	{
-		VAST_ASSERT(s_ProfileCount > 0);
-		for (int32 i = (s_ProfileCount - 1); i >= 0; --i)
-		{
-			if (s_Profiles[i].state == ProfileState::ACTIVE)
-			{
-				return &s_Profiles[i];
-			}
-		}
-
-		VAST_ASSERTF(0, "Active profile not found.");
-		return nullptr;
 	}
 
 	void Profiler::PopProfilingMarker()
@@ -165,9 +181,13 @@ namespace vast
 			}
 			p->state = ProfileState::FINISHED;
 		}
+		else
+		{
+			VAST_ASSERTF(0, "Active profile not found.");
+		}
 	}
 
-	void Profiler::UpdateProfiles()
+	void Profiler::UpdateProfiles_Internal()
 	{
 		if (s_ProfileCount == 0)
 			return;
@@ -187,9 +207,49 @@ namespace vast
 		}
 	}
 
+	void Profiler::FlushProfiles()
+	{
+		s_bProfilesNeedFlush = true;
+	}
+
+	void Profiler::FlushProfiles_Internal()
+	{
+		if (s_bProfilesNeedFlush)
+		{
+			for (uint32 i = 0; i < s_ProfileCount; ++i)
+			{
+				s_Profiles[i] = ProfileBlock{};
+			}
+			s_ProfileCount = 0;
+			s_bProfilesNeedFlush = false;
+		}
+	}
+
+	static void TreeNodeOnGUI(ProfileBlock& p, uint32 idx)
+	{
+		if (ImGui::TreeNodeEx(p.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Bullet))
+		{
+			ImGui::SameLine();
+			ImGui::Text("CPU: %.3fms (%.3fms max)", p.cpuStats.tAvg, p.cpuStats.tMax);
+			if (p.ctx)
+			{
+				//ImGui::Text("GPU: %.3fms (%.3fms max)", p.gpuStats.tAvg, p.gpuStats.tMax);
+			}
+			for (uint32 i = idx; i < s_ProfileCount; ++i)
+			{
+				ProfileBlock& next = s_Profiles[i];
+				if (next.parent == &p)
+				{
+					TreeNodeOnGUI(next, i);
+				}
+			}
+			ImGui::TreePop();
+		}
+	}
+
 	void Profiler::OnGUI()
 	{
- 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_AlwaysAutoResize
+		ImGuiWindowFlags window_flags = ImGuiWindowFlags_AlwaysAutoResize
 			| ImGuiWindowFlags_NoDecoration
 			| ImGuiWindowFlags_NoSavedSettings 
 			| ImGuiWindowFlags_NoFocusOnAppearing 
@@ -197,10 +257,34 @@ namespace vast
 		const float pad = 10.0f;
 		const ImGuiViewport* v = ImGui::GetMainViewport();
 		ImGui::SetNextWindowPos(ImVec2(v->WorkPos.x + v->WorkSize.x - pad, v->WorkPos.y + pad), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
-
-		ImGui::SetNextWindowBgAlpha(0.35f);
+		ImGui::SetNextWindowBgAlpha(0.75f);
 		if (ImGui::Begin("Profiler", 0, window_flags))
 		{
+			ImGui::BeginTable("Profiling", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+
+			ImGui::TableSetupColumn("Name"/*,		ImGuiTableColumnFlags_WidthFixed, 70.0f*/);
+			ImGui::TableSetupColumn("CPU Time", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+			ImGui::TableSetupColumn("GPU Time", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+			ImGui::TableHeadersRow();
+
+			for (uint32 i = 0; i < s_ProfileCount; ++i)
+			{
+				ImGui::TableNextRow();
+				ProfileBlock& p = s_Profiles[i];
+				ImGui::TableNextColumn();
+				std::string indent(p.treeDepth * 2, ' ');
+				ImGui::Text("%s", (/*indent + */p.name).c_str());
+				ImGui::TableNextColumn();
+				ImGui::Text("%.3fms (%.3fms max)", p.cpuStats.tAvg, p.cpuStats.tMax);
+				ImGui::TableNextColumn();
+				if (p.ctx)
+				{
+					ImGui::Text("%.3fms (%.3fms max)", p.gpuStats.tAvg, p.gpuStats.tMax);
+				}
+			}
+			ImGui::EndTable();
+
+			ImGui::Text("\n\n");
 
 			ImGui::Text("CPU Profiler");
 			ImGui::Separator();
@@ -227,6 +311,12 @@ namespace vast
 
 				ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
 			}
+
+			ImGui::Text("\n\n");
+
+			if (s_ProfileCount > 0)
+				TreeNodeOnGUI(s_Profiles[0], 0);
+
 		}
 		ImGui::End();
 	}
