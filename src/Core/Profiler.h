@@ -36,29 +36,27 @@ namespace vast
 		class GraphicsContext;
 	}
 
-	namespace Profiler
+	class Profiler
 	{
-		void BeginTrace(const char* category, const char* name);
-		void EndTrace(const char* category, const char* name);
+		friend class WindowedApp;
+	public:
+		static void BeginTrace(const char* category, const char* name);
+		static void EndTrace(const char* category, const char* name);
 
-		void PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx = nullptr);
-		void PopProfilingMarker();
+		static void PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx = nullptr);
+		static void PopProfilingMarker();
 
-		void FlushProfiles();
+		static void FlushProfiles();
 
+		static void OnGUI();
 
-		void OnGUI();
+	private:
+		static void Init(const char* fileName);
+		static void Stop();
 
-		// TODO: Turn this into a class with static members?
-		// Private members
-
-		void Init(const char* fileName);
-		void Stop();
-
-		void UpdateProfiles_Internal();
-		void FlushProfiles_Internal();
-
-	}
+		static void UpdateProfiles_Internal();
+		static void FlushProfiles_Internal();
+	};
 
 	struct ProfileScope
 	{
