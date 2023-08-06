@@ -40,9 +40,6 @@ namespace vast
 	{
 		friend class WindowedApp;
 	public:
-		static void BeginTrace(const char* category, const char* name);
-		static void EndTrace(const char* category, const char* name);
-
 		static void PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx = nullptr);
 		static void PopProfilingMarker();
 
@@ -50,12 +47,15 @@ namespace vast
 
 		static void OnGUI();
 
+		static void BeginTrace(const char* category, const char* name);
+		static void EndTrace(const char* category, const char* name);
+
 	private:
 		static void Init(const char* fileName);
 		static void Stop();
 
-		static void UpdateProfiles_Internal();
-		static void FlushProfiles_Internal();
+		static void BeginFrame();
+		static void EndFrame(gfx::GraphicsContext& ctx);
 	};
 
 	struct ProfileScope

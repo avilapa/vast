@@ -21,7 +21,6 @@ private:
 
 	void DrawSamplesEditorUI();
 
-	Ptr<gfx::GraphicsContext> m_GraphicsContext;
 	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
 	Ptr<class ISample> m_CurrentSample;
 	uint32 m_CurrentSampleIdx;

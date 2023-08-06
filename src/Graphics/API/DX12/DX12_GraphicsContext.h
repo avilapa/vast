@@ -28,9 +28,6 @@ namespace vast::gfx
 		DX12GraphicsContext(const GraphicsParams& params);
 		~DX12GraphicsContext();
 
-		void BeginFrame() override;
-		void EndFrame() override;
-
 		void FlushGPU() override;
 
 		void BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) override;
@@ -72,6 +69,9 @@ namespace vast::gfx
 		void SetDebugName(TextureHandle h, const std::string& name);
 
 	private:
+		void BeginFrame_Internal() override;
+		void EndFrame_Internal() override;
+
 		void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) override;
 		void UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize) override;
 		void DestroyBuffer_Internal(BufferHandle h) override;

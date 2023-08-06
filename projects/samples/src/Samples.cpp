@@ -27,17 +27,18 @@ static_assert(NELEM(s_SampleSceneNames) == IDX(SampleScenes::COUNT));
 
 SamplesApp::SamplesApp(int argc, char** argv) 
 	: WindowedApp(argc, argv)
-	, m_GraphicsContext(nullptr)
 	, m_CurrentSample(nullptr)
 	, m_CurrentSampleIdx(0)
 	, m_SampleInitialized(false)
 {
+	m_Window = Window::Create();
+
 	gfx::GraphicsParams params;
 	params.swapChainSize = GetWindow().GetSize();
 	params.swapChainFormat = gfx::TexFormat::RGBA8_UNORM;
 	params.backBufferFormat = gfx::TexFormat::RGBA8_UNORM;
-
 	m_GraphicsContext = gfx::GraphicsContext::Create(params);
+
 	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
 }
 
@@ -45,7 +46,6 @@ SamplesApp::~SamplesApp()
 {
 	m_CurrentSample = nullptr;
 	m_ImguiRenderer = nullptr;
-	m_GraphicsContext = nullptr;
 }
 
 void SamplesApp::Update()

@@ -95,22 +95,12 @@ namespace vast::gfx
 		DestroyHandlePools();
 	}
 
-	void DX12GraphicsContext::BeginFrame()
+	void DX12GraphicsContext::BeginFrame_Internal()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Begin Frame");
-		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
-		m_bHasFrameBegun = true;
-
-		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
-
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][m_FrameId]);
 		}
-
-		ProcessDestructions(m_FrameId);
-
-		m_TempFrameAllocators[m_FrameId].Reset();
 
 		m_UploadCommandLists[m_FrameId]->ResolveProcessedUploads();
 		m_UploadCommandLists[m_FrameId]->Reset(m_FrameId);
@@ -118,11 +108,8 @@ namespace vast::gfx
 		m_GraphicsCommandList->Reset(m_FrameId);
 	}
 
-	void DX12GraphicsContext::EndFrame()
+	void DX12GraphicsContext::EndFrame_Internal()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "End Frame");
-		VAST_ASSERTF(m_bHasFrameBegun, "No frame is currently running.");
-
 		m_UploadCommandLists[m_FrameId]->ProcessUploads();
 		SubmitCommandList(*m_UploadCommandLists[m_FrameId]);
 		SignalEndOfFrame(QueueType::UPLOAD);
@@ -131,13 +118,10 @@ namespace vast::gfx
 		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
 		m_GraphicsCommandList->FlushBarriers();
 
-		CollectTimestamps();
-
 		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
 
 		SignalEndOfFrame(QueueType::GRAPHICS);
-		m_bHasFrameBegun = false;
 	}
 
 	void DX12GraphicsContext::FlushGPU()

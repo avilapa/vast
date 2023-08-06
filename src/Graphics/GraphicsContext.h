@@ -24,8 +24,8 @@ namespace vast::gfx
 		static Ptr<GraphicsContext> Create(const GraphicsParams& params = GraphicsParams());
 		virtual ~GraphicsContext() = default;
 
-		virtual void BeginFrame() = 0;
-		virtual void EndFrame() = 0;
+		void BeginFrame();
+		void EndFrame();
 
 		virtual bool IsInFrame() const;
 
@@ -104,12 +104,15 @@ namespace vast::gfx
 		void EndTimestamp(uint32 timestampIdx);
 		// Call after EndFrame() and before the next BeginFrame() to collect data on the frame that just ended.
 		double GetTimestampDuration(uint32 timestampIdx);
+		double GetLastFrameDuration();
 
 	protected:
 		uint32 m_FrameId = 0;
 
-		bool m_bHasFrameBegun = false;
 		bool m_bHasRenderPassBegun = false;
+
+		virtual void BeginFrame_Internal() = 0;
+		virtual void EndFrame_Internal() = 0;
 
 		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles = nullptr;
 		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles = nullptr;
@@ -150,7 +153,7 @@ namespace vast::gfx
 		virtual void UpdatePipeline_Internal(PipelineHandle h) = 0;
 		virtual void DestroyPipeline_Internal(PipelineHandle h) = 0;
 
-		double m_TimestampFrequency = 0;
+		double m_TimestampFrequency = 0.0;
 
 		void CreateProfilingResources();
 		void DestroyProfilingResources();
@@ -161,7 +164,10 @@ namespace vast::gfx
 		virtual void CollectTimestamps_Internal(BufferHandle h, uint32 count) = 0;
 
 	private:
+		bool m_bHasFrameBegun = false;
+
 		uint32 m_TimestampCount = 0;
+		uint32 m_GpuFrameTimestampIdx = 0;
 		Array<BufferHandle, NUM_FRAMES_IN_FLIGHT> m_TimestampsReadbackBuf;
 		Array<const uint64*, NUM_FRAMES_IN_FLIGHT> m_TimestampData;
 

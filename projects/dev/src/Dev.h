@@ -22,7 +22,6 @@ private:
 	void CreateCubeResources();
 	void CreateSphereResources();
 
-	Ptr<gfx::GraphicsContext> m_GraphicsContext;
 	Ptr<class SimpleRenderer> m_Renderer;
 
 	gfx::PipelineHandle m_TrianglePso;

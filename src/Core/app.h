@@ -18,8 +18,6 @@ VAST_DEFINE_MAIN(RunApp);
 
 namespace vast
 {
-	class Window;
-
 	class IApp
 	{
 	public:
@@ -27,6 +25,13 @@ namespace vast
 		virtual ~IApp() = default;
 		virtual void Run() = 0;
 	};
+
+	class Window;
+
+	namespace gfx
+	{
+		class GraphicsContext;
+	}
 
 	class WindowedApp : public IApp
 	{
@@ -36,15 +41,18 @@ namespace vast
 
 		void Run() override;
 
+		Window& GetWindow() const;
+		gfx::GraphicsContext& GetGraphicsContext() const;
+
 	protected:
 		virtual void Update() = 0;
 		virtual void Draw() = 0;
 		void Quit();
 
-		Window& GetWindow() const;
+		Ptr<Window> m_Window;
+		Ptr<gfx::GraphicsContext> m_GraphicsContext;
 
 	private:
 		bool m_bRunning;
-		Ptr<Window> m_Window;
 	};
 }

@@ -10,27 +10,6 @@
 namespace vast
 {
 
-	void Profiler::Init(const char* fileName)
-	{
-		mtr_init(fileName);
-	}
-
-	void Profiler::Stop()
-	{
-		mtr_flush();
-		mtr_shutdown();
-	}
-
-	void Profiler::BeginTrace(const char* category, const char* name)
-	{
-		MTR_BEGIN(category, name);
-	}
-
-	void Profiler::EndTrace(const char* category, const char* name)
-	{
-		MTR_END(category, name);
-	}
-
 	struct StatHistory
 	{
 		static const uint32 kHistorySize = 64;
@@ -51,7 +30,7 @@ namespace vast
 			for (double v : deltasHistory)
 			{
 				if (v > 0.0)
-				{ 
+				{
 					++validSamples;
 					tAvg += v;
 					if (v > tMax)
@@ -93,11 +72,21 @@ namespace vast
 		uint32 treeDepth = 0;
 	};
 
+	//
+
 	static const uint32 kMaxProfiles = gfx::NUM_TIMESTAMP_QUERIES / 2;
 	static Array<ProfileBlock, kMaxProfiles> s_Profiles;
 	static uint32 s_ProfileCount = 0;
+
 	static Timer s_Timer;
 	static bool s_bProfilesNeedFlush = false;
+
+	static int64 s_tFrameStart;
+	static StatHistory s_FrameProfile;
+	static StatHistory s_CpuProfile;
+	static StatHistory s_GpuProfile;
+
+	//
 
 	static ProfileBlock& FindOrAddProfile(const char* name, bool& bFound)
 	{
@@ -109,7 +98,7 @@ namespace vast
 				return s_Profiles[i];
 			}
 		}
-		VAST_ASSERTF(s_ProfileCount < kMaxProfiles, "Exceeded max number of profiles ({}).", kMaxProfiles);
+		VAST_ASSERTF(s_ProfileCount < s_Profiles.size(), "Exceeded max number of profiles ({}).", s_Profiles.size());
 		bFound = false;
 		return s_Profiles[s_ProfileCount++];
 	}
@@ -137,6 +126,8 @@ namespace vast
 		return currDepth;
 	}
 
+	//
+
 	void Profiler::PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx /* = nullptr */)
 	{
 		bool bFound;
@@ -159,7 +150,7 @@ namespace vast
 			p.timestampIdx = p.ctx->BeginTimestamp();
 		}
 
-		// Find Tree Position
+		// Find tree position
 		p.parent = FindLastActiveEntry();
 		p.treeDepth = FindTreeDepth(&p);
 
@@ -187,11 +178,40 @@ namespace vast
 		}
 	}
 
-	void Profiler::UpdateProfiles_Internal()
+	void Profiler::FlushProfiles()
 	{
-		if (s_ProfileCount == 0)
-			return;
+		s_bProfilesNeedFlush = true;
+	}
 
+	void Profiler::BeginFrame()
+	{
+		s_Timer.Update();
+		s_tFrameStart = s_Timer.GetElapsedMicroseconds<int64>();
+	}
+
+
+	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
+	{
+		s_Timer.Update();
+		int64 tFrameEnd = s_Timer.GetElapsedMicroseconds<int64>();
+		// Update frame stats
+		s_FrameProfile.RecordStat(double(tFrameEnd - s_tFrameStart) / 1000.0);
+		s_GpuProfile.RecordStat(ctx.GetLastFrameDuration() * 1000.0);
+
+		if (s_bProfilesNeedFlush)
+		{
+			for (uint32 i = 0; i < s_ProfileCount; ++i)
+			{
+				s_Profiles[i] = ProfileBlock{};
+			}
+			s_ProfileCount = 0;
+			s_bProfilesNeedFlush = false;
+
+			// Note: Disregard updating profiles if user signaled a flush.
+			return;
+		}
+
+		// Update profiles stats
 		for (uint32 i = 0; i < s_ProfileCount; ++i)
 		{
 			ProfileBlock& p = s_Profiles[i];
@@ -207,23 +227,7 @@ namespace vast
 		}
 	}
 
-	void Profiler::FlushProfiles()
-	{
-		s_bProfilesNeedFlush = true;
-	}
-
-	void Profiler::FlushProfiles_Internal()
-	{
-		if (s_bProfilesNeedFlush)
-		{
-			for (uint32 i = 0; i < s_ProfileCount; ++i)
-			{
-				s_Profiles[i] = ProfileBlock{};
-			}
-			s_ProfileCount = 0;
-			s_bProfilesNeedFlush = false;
-		}
-	}
+	//
 
 	static void TreeNodeOnGUI(ProfileBlock& p, uint32 idx)
 	{
@@ -260,6 +264,12 @@ namespace vast
 		ImGui::SetNextWindowBgAlpha(0.75f);
 		if (ImGui::Begin("Profiler", 0, window_flags))
 		{
+			ImGui::Text("Frame: %.3fms (%.3fms max)", s_FrameProfile.tAvg, s_FrameProfile.tMax);
+			ImGui::Text("CPU: %.3fms (%.3fms max)", s_CpuProfile.tAvg, s_CpuProfile.tMax);
+			ImGui::Text("GPU: %.3fms (%.3fms max)", s_GpuProfile.tAvg, s_GpuProfile.tMax);
+
+			ImGui::Text("\n\n");
+
 			ImGui::BeginTable("Profiling", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
 
 			ImGui::TableSetupColumn("Name"/*,		ImGuiTableColumnFlags_WidthFixed, 70.0f*/);
@@ -319,6 +329,29 @@ namespace vast
 
 		}
 		ImGui::End();
+	}
+
+	//
+
+	void Profiler::BeginTrace(const char* category, const char* name)
+	{
+		MTR_BEGIN(category, name);
+	}
+
+	void Profiler::EndTrace(const char* category, const char* name)
+	{
+		MTR_END(category, name);
+	}
+
+	void Profiler::Init(const char* fileName)
+	{
+		mtr_init(fileName);
+	}
+
+	void Profiler::Stop()
+	{
+		mtr_flush();
+		mtr_shutdown();
 	}
 
 }

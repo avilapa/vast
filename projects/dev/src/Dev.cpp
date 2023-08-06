@@ -250,20 +250,18 @@ private:
 
 Dev::Dev(int argc, char** argv) 
 	: WindowedApp(argc, argv)
-	, m_GraphicsContext(nullptr)
 {
+	m_Window = Window::Create();
 	VAST_SUBSCRIBE_TO_EVENT("dev", DebugActionEvent, VAST_EVENT_HANDLER_EXP(GetWindow().SetSize(uint2(700, 650))));
 
-	auto windowSize = GetWindow().GetSize();
-
 	GraphicsParams params;
-	params.swapChainSize = windowSize;
+	params.swapChainSize = GetWindow().GetSize();
 	params.swapChainFormat = TexFormat::RGBA8_UNORM;
 	params.backBufferFormat = TexFormat::RGBA8_UNORM;
 
 	m_GraphicsContext = GraphicsContext::Create(params);
 
-	GraphicsContext& ctx = *m_GraphicsContext;
+	GraphicsContext& ctx = GetGraphicsContext();
 	m_Renderer = MakePtr<SimpleRenderer>(ctx);
 
 	// Create triangle PSO and vertex buffer (to be bound bindlessly via push constants).
@@ -290,7 +288,7 @@ Dev::Dev(int argc, char** argv)
 
 void Dev::CreateTriangleResources()
 {
-	GraphicsContext& ctx = *m_GraphicsContext;
+	GraphicsContext& ctx = GetGraphicsContext();
 
 	PipelineDesc trianglePipelineDesc =
 	{
@@ -308,7 +306,7 @@ void Dev::CreateTriangleResources()
 
 void Dev::CreateCubeResources()
 {
-	GraphicsContext& ctx = *m_GraphicsContext;
+	GraphicsContext& ctx = GetGraphicsContext();
 
 	BufferDesc vtxBufDesc = AllocVertexBufferDesc(sizeof(s_CubeVertexData), sizeof(s_CubeVertexData[0]));
 	m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
@@ -328,7 +326,7 @@ void Dev::CreateCubeResources()
 
 void Dev::CreateSphereResources()
 {
-	GraphicsContext& ctx = *m_GraphicsContext;
+	GraphicsContext& ctx = GetGraphicsContext();
 
 	ConstructUVSphere(1.2f, 18, 36, s_SphereVertexData, s_SphereIndexData);
 
@@ -354,7 +352,7 @@ void Dev::CreateSphereResources()
 
 Dev::~Dev()
 {
-	GraphicsContext& ctx = *m_GraphicsContext;
+	GraphicsContext& ctx = GetGraphicsContext();
 
 	ctx.DestroyPipeline(m_TrianglePso);
 	ctx.DestroyPipeline(m_MeshPso);
@@ -368,7 +366,6 @@ Dev::~Dev()
 	ctx.DestroyBuffer(m_SphereCbvBuf);
 
 	m_Renderer = nullptr;
-	m_GraphicsContext = nullptr;
 }
 
 void Dev::Update()
@@ -383,7 +380,7 @@ void Dev::Update()
 
 void Dev::Draw()
 {
-	GraphicsContext& ctx = *m_GraphicsContext;
+	GraphicsContext& ctx = GetGraphicsContext();
 
 	m_Renderer->BeginFrame();
 	OnGUI();
@@ -448,6 +445,8 @@ void Dev::Draw()
 void Dev::OnGUI()
 {
 	ImGui::ShowDemoWindow();
+
+	Profiler::OnGUI();
 
 	if (ImGui::Begin("vast UI", 0, ImGuiWindowFlags_AlwaysAutoResize))
 	{

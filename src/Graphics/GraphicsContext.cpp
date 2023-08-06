@@ -32,6 +32,37 @@ namespace vast::gfx
 
 	//
 
+	void GraphicsContext::BeginFrame()
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Begin Frame");
+		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
+		m_bHasFrameBegun = true;
+
+		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
+
+		// TODO: Figure out where the profiling for destructions should go (cpu/gpu?)
+		ProcessDestructions(m_FrameId);
+
+		m_TempFrameAllocators[m_FrameId].Reset();
+
+		BeginFrame_Internal();
+
+		m_GpuFrameTimestampIdx = BeginTimestamp();
+	}
+
+	void GraphicsContext::EndFrame()
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "End Frame");
+		VAST_ASSERTF(m_bHasFrameBegun, "No frame is currently running.");
+
+		EndTimestamp(m_GpuFrameTimestampIdx);
+		CollectTimestamps();
+
+		EndFrame_Internal();
+
+		m_bHasFrameBegun = false;
+	}
+
 	bool GraphicsContext::IsInFrame() const
 	{
 		return m_bHasFrameBegun;
@@ -345,6 +376,11 @@ namespace vast::gfx
 		}
 
 		return 0.0;
+	}
+
+	double GraphicsContext::GetLastFrameDuration()
+	{
+		return GetTimestampDuration(m_GpuFrameTimestampIdx);
 	}
 
 }
