@@ -13,14 +13,16 @@ namespace vast
 		, m_Window(nullptr)
 		, m_GraphicsContext(nullptr)
 	{
-#if VAST_ENABLE_PROFILING
-		vast::Profiler::Init("vast-profile.json");
-#endif
-		VAST_PROFILE_TRACE_BEGIN("app", "App Startup");
-
+		TraceLogger::Init("vast-profile.json");
 		(void)argc; (void)argv; // TODO: Process input args.
 
 		Log::Init();
+
+#if VAST_ENABLE_PROFILING
+		Profiler::Init();
+#endif
+
+		VAST_PROFILE_TRACE_BEGIN("app", "App Startup");
 
 		VAST_SUBSCRIBE_TO_EVENT("windowedapp", WindowCloseEvent, VAST_EVENT_HANDLER_CB(WindowedApp::Quit));
 	}
@@ -32,9 +34,7 @@ namespace vast
 		m_Window = nullptr;
 
 		VAST_PROFILE_TRACE_END("app", "App Shutdown");
-#if VAST_ENABLE_PROFILING
-		vast::Profiler::Stop();
-#endif
+		TraceLogger::Stop();
 	}
 
 	void WindowedApp::Run()
@@ -50,7 +50,7 @@ namespace vast
 		while (m_bRunning)
 		{
 #if VAST_ENABLE_PROFILING
-			vast::Profiler::BeginFrame();
+			Profiler::BeginFrame();
 #endif
 			{
 				VAST_PROFILE_TRACE_SCOPE("app", "Update");
@@ -64,7 +64,7 @@ namespace vast
 				Draw();
 			}
 #if VAST_ENABLE_PROFILING
-			vast::Profiler::EndFrame(ctx);
+			Profiler::EndFrame(ctx);
 #endif
 		}
 

@@ -11,10 +11,6 @@
 #define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::PushProfilingMarker(n, ctx)
 #define VAST_PROFILE_GPU_END()			vast::Profiler::PopProfilingMarker()
 // TODO: Single profile macro, select cpu/gpu
-
-#define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::TraceScope XCAT(_profTrace, __LINE__)(c, n)
-#define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::Profiler::BeginTrace(c, n)
-#define VAST_PROFILE_TRACE_END(c, n)	vast::Profiler::EndTrace(c, n)
 #else
 #define VAST_PROFILE_CPU_SCOPE(n)	
 #define VAST_PROFILE_CPU_BEGIN(n)	
@@ -23,7 +19,13 @@
 #define VAST_PROFILE_GPU_SCOPE(n, ctx)
 #define VAST_PROFILE_GPU_BEGIN(n, ctx)
 #define VAST_PROFILE_GPU_END(n, ctx)
+#endif
 
+#if VAST_ENABLE_TRACING
+#define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::TraceScope XCAT(_profTrace, __LINE__)(c, n)
+#define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::TraceLogger::BeginTrace(c, n)
+#define VAST_PROFILE_TRACE_END(c, n)	vast::TraceLogger::EndTrace(c, n)
+#else
 #define VAST_PROFILE_TRACE_SCOPE(c, n)
 #define VAST_PROFILE_TRACE_BEGIN(c, n)
 #define VAST_PROFILE_TRACE_END(c, n)
@@ -46,13 +48,8 @@ namespace vast
 		static void FlushProfiles();
 
 		static void OnGUI();
-
-		static void BeginTrace(const char* category, const char* name);
-		static void EndTrace(const char* category, const char* name);
-
 	private:
-		static void Init(const char* fileName);
-		static void Stop();
+		static void Init();
 
 		static void BeginFrame();
 		static void EndFrame(gfx::GraphicsContext& ctx);
@@ -71,16 +68,29 @@ namespace vast
 		}
 	};
 
+	class TraceLogger
+	{
+		friend class WindowedApp;
+	public:
+		static void BeginTrace(const char* category, const char* name);
+		static void EndTrace(const char* category, const char* name);
+
+	private:
+		static void Init(const char* fileName);
+		static void Stop();
+
+	};
+
 	struct TraceScope
 	{
 		TraceScope(const char* category_, const char* name_) : category(category_), name(name_)
 		{
-			Profiler::BeginTrace(category, name);
+			TraceLogger::BeginTrace(category, name);
 		}
 
 		~TraceScope()
 		{
-			Profiler::EndTrace(category, name);
+			TraceLogger::EndTrace(category, name);
 		}
 
 		const char* category;

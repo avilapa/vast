@@ -79,6 +79,7 @@ namespace vast
 	static uint32 s_ProfileCount = 0;
 
 	static Timer s_Timer;
+	static bool s_bShowProfiler = false;
 	static bool s_bProfilesNeedFlush = false;
 
 	static int64 s_tFrameStart;
@@ -189,7 +190,6 @@ namespace vast
 		s_tFrameStart = s_Timer.GetElapsedMicroseconds<int64>();
 	}
 
-
 	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
 	{
 		s_Timer.Update();
@@ -227,6 +227,11 @@ namespace vast
 		}
 	}
 
+	void Profiler::Init()
+	{
+		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
+	}
+
 	//
 
 	static void TreeNodeOnGUI(ProfileBlock& p, uint32 idx)
@@ -253,6 +258,9 @@ namespace vast
 
 	void Profiler::OnGUI()
 	{
+		if (!s_bShowProfiler)
+			return;
+
 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_AlwaysAutoResize
 			| ImGuiWindowFlags_NoDecoration
 			| ImGuiWindowFlags_NoSavedSettings 
@@ -333,25 +341,29 @@ namespace vast
 
 	//
 
-	void Profiler::BeginTrace(const char* category, const char* name)
+	void TraceLogger::BeginTrace(const char* category, const char* name)
 	{
 		MTR_BEGIN(category, name);
 	}
 
-	void Profiler::EndTrace(const char* category, const char* name)
+	void TraceLogger::EndTrace(const char* category, const char* name)
 	{
 		MTR_END(category, name);
 	}
 
-	void Profiler::Init(const char* fileName)
+	void TraceLogger::Init(const char* fileName)
 	{
+#if VAST_ENABLE_TRACING
 		mtr_init(fileName);
+#endif
 	}
 
-	void Profiler::Stop()
+	void TraceLogger::Stop()
 	{
+#if VAST_ENABLE_TRACING
 		mtr_flush();
 		mtr_shutdown();
+#endif
 	}
 
 }
