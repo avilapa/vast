@@ -229,6 +229,7 @@ namespace vast
 
 	void Profiler::Init()
 	{
+		VAST_LOG_INFO("[profiler] Initializing Profiler...");
 		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
 	}
 

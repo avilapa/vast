@@ -33,7 +33,7 @@ namespace vast::gfx
 		, m_SamplerRenderPassDescriptorHeap(nullptr)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Device");
-		VAST_INFO("[gfx] [dx12] Starting graphics device creation.");
+		VAST_LOG_TRACE("[gfx] [dx12] Starting graphics device creation.");
 
 #ifdef VAST_DEBUG
 		{
@@ -43,14 +43,14 @@ namespace vast::gfx
 			{
 				debugController->EnableDebugLayer();
 				DX12SafeRelease(debugController);
-				VAST_INFO("[gfx] [dx12] Debug layer enabled.");
+				VAST_LOG_WARNING("[gfx] [dx12] Debug layer enabled.");
 			}
 		}
 #endif // VAST_DEBUG
 
 		{
 			VAST_PROFILE_TRACE_SCOPE("Device", "Create DXGI Factory");
-			VAST_INFO("[gfx] [dx12] Creating DXGI factory.");
+			VAST_LOG_TRACE("[gfx] [dx12] Creating DXGI factory.");
 			UINT createFactoryFlags = 0;
 #ifdef VAST_DEBUG
 			createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
@@ -84,19 +84,19 @@ namespace vast::gfx
 			// Check the logs and verify that D3D12SDKPath is correct.
 			VAST_ASSERTF(bestAdapterMemory != 0, "Failed to find an adapter.");
 
-			VAST_INFO("[gfx] [dx12] GPU adapter found with index {}.", bestAdapterIndex);
+			VAST_LOG_TRACE("[gfx] [dx12] GPU adapter found with index {}.", bestAdapterIndex);
 			m_DXGIFactory->EnumAdapters1(bestAdapterIndex, &adapter);
 		}
 
 		{
 			VAST_PROFILE_TRACE_SCOPE("Device", "Create Device");
-			VAST_INFO("[gfx] [dx12] Creating device.");
+			VAST_LOG_TRACE("[gfx] [dx12] Creating device.");
 			DX12Check(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_Device)));
 		}
 
 		{
 			VAST_PROFILE_TRACE_SCOPE("Device", "Create Memory Allocator");
-			VAST_INFO("[gfx] [dx12] Creating allocator.");
+			VAST_LOG_TRACE("[gfx] [dx12] Creating memory allocator.");
 			D3D12MA::ALLOCATOR_DESC desc = {};
 			desc.Flags = D3D12MA::ALLOCATOR_FLAG_NONE;
 			desc.pDevice = m_Device;
@@ -105,14 +105,14 @@ namespace vast::gfx
 		}
 
 		{
-			VAST_INFO("[gfx] [dx12] Creating shader compiler.");
+			VAST_LOG_TRACE("[gfx] [dx12] Creating shader manager.");
 			m_ShaderManager = MakePtr<DX12ShaderManager>();
 		}
 
 		DX12SafeRelease(adapter);
 
 #ifdef VAST_DEBUG
-		VAST_INFO("[gfx] [dx12] Enabling debug messages.");
+		VAST_LOG_TRACE("[gfx] [dx12] Enabling debug messages.");
 		ID3D12InfoQueue* infoQueue;
 		if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&infoQueue))))
 		{
@@ -138,7 +138,7 @@ namespace vast::gfx
 		}
 #endif // VAST_DEBUG
 
-		VAST_INFO("[gfx] [dx12] Creating descriptor heaps.");
+		VAST_LOG_TRACE("[gfx] [dx12] Creating descriptor heaps.");
 		m_RTVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
 			NUM_RTV_STAGING_DESCRIPTORS);
 		m_DSVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 
@@ -165,7 +165,7 @@ namespace vast::gfx
 	DX12Device::~DX12Device()
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Graphics Device");
-		VAST_INFO("[gfx] [dx12] Starting graphics device destruction.");
+		VAST_LOG_TRACE("[gfx] [dx12] Starting graphics device destruction.");
 
 		m_RTVStagingDescriptorHeap = nullptr;
 		m_DSVStagingDescriptorHeap = nullptr;

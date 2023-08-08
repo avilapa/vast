@@ -22,13 +22,13 @@ namespace vast
 
 		s_Logger = std::make_shared<spdlog::logger>("vast", begin(logSinks), end(logSinks));
 		spdlog::register_logger(s_Logger);
-		VAST_INFO("[log] Hello there! Logger initialized successfully.");
-		VAST_INFO("[log] Created output file '{}'", logOutputFileName);
+		VAST_LOG_INFO("[log] Hello there! Logger initialized successfully.");
+		VAST_LOG_TRACE("[log] Created output file '{}'", logOutputFileName);
 
 		// TODO: Expose these options
 		spdlog::level::level_enum logLevel = spdlog::level::trace;
 		s_Logger->set_level(spdlog::level::trace);
-		VAST_INFO("[log] Logging level set to'{}'", spdlog::level::to_string_view(logLevel));
+		VAST_LOG_TRACE("[log] Logging level set to'{}'", spdlog::level::to_string_view(logLevel));
 		s_Logger->flush_on(spdlog::level::trace);
 #endif // VAST_ENABLE_LOGGING
 	}	

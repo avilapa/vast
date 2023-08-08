@@ -73,7 +73,7 @@ namespace vast
 		SetForegroundWindow(m_Handle);
 		SetFocus(m_Handle);
 		ShowCursor(true);
-		VAST_INFO("[window] Window '{}' created successfully with resolution {}x{}.", params.name, params.size.x, params.size.y);
+		VAST_LOG_TRACE("[window] [win32] New window '{}' created successfully with resolution {}x{}.", params.name, params.size.x, params.size.y);
 	}
 
 	WindowImpl_Win32::~WindowImpl_Win32()
@@ -101,7 +101,7 @@ namespace vast
 
 	void WindowImpl_Win32::SetSize(uint2 newSize)
 	{
-		VAST_ASSERTF(newSize.x != 0 && newSize.y != 0, "Attempted to set innvalid window size.");
+		VAST_ASSERTF(newSize.x != 0 && newSize.y != 0, "Attempted to set invalid window size.");
 		uint2 windowSize = GetFullWindowSize(newSize);
 	
 		// Remove WS_MAXIMIZE style
@@ -126,6 +126,7 @@ namespace vast
 
 	void WindowImpl_Win32::SetName(const std::string& name)
 	{
+		VAST_LOG_TRACE("[window] [win32] Renaming window to '{}' (was '{}').", GetName(), name);
 		SetWindowText(m_Handle, name.c_str());
 	}
 
@@ -184,7 +185,7 @@ namespace vast
 
 		if (newSize.x != m_WindowSize.x || newSize.y != m_WindowSize.y)
 		{
-			VAST_WARNING("[window] Resizing window to {}, {} (was {}, {})", newSize.x, newSize.y, m_WindowSize.x, m_WindowSize.y);
+			VAST_LOG_WARNING("[window] [win32] Resizing window to {}x{} (was {}x{}).", newSize.x, newSize.y, m_WindowSize.x, m_WindowSize.y);
 			m_WindowSize = newSize;
 			WindowResizeEvent event(m_WindowSize);
 			VAST_FIRE_EVENT(WindowResizeEvent, event);

@@ -21,7 +21,7 @@ namespace vast::gfx
 		, m_Device(device)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create SwapChain");
-		VAST_INFO("[gfx] [dx12] Creating swapchain.");
+		VAST_LOG_TRACE("[gfx] [dx12] Creating swapchain.");
 
 		VAST_ASSERTF(m_Size.x != 0 && m_Size.y != 0, "Failed to create swapchain. Invalid swapchain size.");
 
@@ -60,7 +60,7 @@ namespace vast::gfx
 			m_BackBuffers[i] = nullptr;
 		}
 
-		VAST_INFO("[gfx] [dx12] Destroying swapchain.");
+		VAST_LOG_TRACE("[gfx] [dx12] Destroying swapchain.");
 		DX12SafeRelease(m_SwapChain);
 	}
 
@@ -100,7 +100,7 @@ namespace vast::gfx
 	void DX12SwapChain::CreateBackBuffers()
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create BackBuffers");
-		VAST_INFO("[gfx] [dx12] Creating backbuffers.");
+		VAST_LOG_TRACE("[gfx] [dx12] Creating backbuffers.");
 
 		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
 		{
@@ -118,7 +118,7 @@ namespace vast::gfx
 	void DX12SwapChain::DestroyBackBuffers()
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy BackBuffers");
-		VAST_INFO("[gfx] [dx12] Destroying backbuffers.");
+		VAST_LOG_TRACE("[gfx] [dx12] Destroying backbuffers.");
 
 		for (uint32 i = 0; i < NUM_BACK_BUFFERS; ++i)
 		{

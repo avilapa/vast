@@ -81,14 +81,14 @@ namespace vast::gfx
 
 #if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
 			// TODO: Vertex Buffer state will print as Constant Buffer since they share the state after cross translation.
-			VAST_TRACE("[barrier] Added new barrier transition for resource '{}' ({} -> {})",
+			VAST_LOG_TRACE("[barrier] Added new barrier transition for resource '{}' ({} -> {})",
 				resource.GetName(),
 				std::string(g_ResourceStateNames[CountBits(IDX(TranslateFromDX12(oldState)))]),
 				std::string(g_ResourceStateNames[CountBits(IDX(TranslateFromDX12(newState)))]));
 
 			if (newState == D3D12_RESOURCE_STATE_GENERIC_READ)
 			{
-				VAST_WARNING("[barrier] [dx12] 'D3D12_RESOURCE_STATE_GENERIC_READ' state should be avoided where possible.");
+				VAST_LOG_WARNING("[barrier] [dx12] 'D3D12_RESOURCE_STATE_GENERIC_READ' state should be avoided where possible.");
 			}
 #endif
 		}
@@ -118,7 +118,7 @@ namespace vast::gfx
 
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush Barriers");
 #if VAST_ENABLE_LOGGING_RESOURCE_BARRIERS
-		VAST_TRACE("[barrier] Flushing {} cached barrier transitions...", m_NumQueuedBarriers);
+		VAST_LOG_TRACE("[barrier] Flushing {} cached barrier transitions...", m_NumQueuedBarriers);
 #endif
 		m_CommandList->ResourceBarrier(m_NumQueuedBarriers, m_ResourceBarrierQueue.data());
 		m_NumQueuedBarriers = 0;

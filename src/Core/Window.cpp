@@ -11,7 +11,7 @@ namespace vast
 {
 	Ptr<Window> Window::Create(const WindowParams& params /* = WindowParams() */)
 	{
-		VAST_INFO("[window] Creating window.");
+		VAST_LOG_INFO("[window] Initializing Window...");
 #ifdef VAST_PLATFORM_WINDOWS
 		return MakePtr<WindowImpl_Win32>(params);
 #else

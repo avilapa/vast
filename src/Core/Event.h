@@ -84,7 +84,7 @@ namespace vast
 			const SubscriberKey key = std::make_pair(eventIdx, subscriberIdx);
 
 			SubscribeToEvent(key, std::move(func));
-			VAST_TRACE("[events] {} registered new subscriber ({}).", T::GetName(), (GetSubscriberCount(eventIdx)));
+			VAST_LOG_TRACE("[events] {} registered new '{}' subscriber (Count: {}).", T::GetName(), subscriberIdx, GetSubscriberCount(eventIdx));
 		}
 
 		template<typename T>
@@ -94,14 +94,14 @@ namespace vast
 			const SubscriberKey key = std::make_pair(eventIdx, subscriberIdx);
 
 			UnsubscribeFromEevent(key);
-			VAST_TRACE("[events] {} deregistered a subscriber ({}).", T::GetName(), (GetSubscriberCount(eventIdx)));
+			VAST_LOG_TRACE("[events] {} deregistered '{}' subscriber (Count: {}).", T::GetName(), subscriberIdx, GetSubscriberCount(eventIdx));
 		}
 
 		template<typename T>
 		static void FireEvent(IEvent& data)
 		{
 			const uint32 eventIdx = static_cast<uint32>(T::GetType());
-			VAST_TRACE("[events] {} fired. Executing {} subscriber callbacks...", T::GetName(), GetSubscriberCount(eventIdx));
+			VAST_LOG_TRACE("[events] {} fired. Executing {} subscriber callbacks...", T::GetName(), GetSubscriberCount(eventIdx));
 			FireEvent(eventIdx, data);
 		}
 

@@ -14,7 +14,7 @@
 	{																					\
 		if(!(expr))																		\
 		{																				\
-			VAST_ERROR("Assert '{}' FAILED ({}, line {}). " fmt,						\
+			VAST_LOG_ERROR("Assert '{}' FAILED ({}, line {}). " fmt,					\
 				STR(expr),																\
 				std::filesystem::path(__FILE__).filename().string().c_str(),			\
 				__VA_ARGS__);															\

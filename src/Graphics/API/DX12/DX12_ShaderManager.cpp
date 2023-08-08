@@ -113,10 +113,10 @@ namespace vast::gfx
 		VAST_ASSERT(shader->key.compare(MakeShaderKey(desc.shaderName, desc.entryPoint)) == 0);
 		if (CompileShader(desc, shader.get()))
 		{
-			VAST_WARNING("Successfully reloaded shader '{}' ({}).", desc.shaderName, desc.entryPoint);
+			VAST_LOG_WARNING("Successfully reloaded shader '{}' ({}).", desc.shaderName, desc.entryPoint);
 			return true;
 		}
-		VAST_WARNING("Failed to reload shader '{}' ({}) due to a compile error.", desc.shaderName, desc.entryPoint);
+		VAST_LOG_WARNING("Failed to reload shader '{}' ({}) due to a compile error.", desc.shaderName, desc.entryPoint);
 		return false;
 	}
 
@@ -186,7 +186,7 @@ namespace vast::gfx
 
 		if (errors != nullptr && errors->GetStringLength() != 0)
 		{
-			VAST_CRITICAL("Shader compilation error in:\n{}", errors->GetStringPointer());
+			VAST_LOG_CRITICAL("Shader compilation error in:\n{}", errors->GetStringPointer());
 		}
 		DX12SafeRelease(errors);
 

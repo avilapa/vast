@@ -78,7 +78,6 @@ namespace vast
 	private:
 		static void Init(const char* fileName);
 		static void Stop();
-
 	};
 
 	struct TraceScope

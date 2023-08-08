@@ -13,16 +13,14 @@ namespace vast
 		, m_Window(nullptr)
 		, m_GraphicsContext(nullptr)
 	{
-		TraceLogger::Init("vast-profile.json");
 		(void)argc; (void)argv; // TODO: Process input args.
 
-		Log::Init();
-
-#if VAST_ENABLE_PROFILING
-		Profiler::Init();
-#endif
-
+		// Initialize Trace Logger first so that we can profile initialization.
+		TraceLogger::Init("vast-profile.json");
 		VAST_PROFILE_TRACE_BEGIN("app", "App Startup");
+		// Initialize Log next because all our systems make use of it to log progress.
+		Log::Init();
+		Profiler::Init();
 
 		VAST_SUBSCRIBE_TO_EVENT("windowedapp", WindowCloseEvent, VAST_EVENT_HANDLER_CB(WindowedApp::Quit));
 	}
@@ -74,7 +72,7 @@ namespace vast
 
 	void WindowedApp::Quit()
 	{
-		VAST_WARNING("Quitting application.");
+		VAST_LOG_WARNING("Quitting application.");
 		m_bRunning = false;
 	}
 

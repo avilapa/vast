@@ -32,6 +32,7 @@ namespace vast
 		for (const auto& [key, callback] : s_EventsSubscribers[eventIdx])
 		{
 			VAST_PROFILE_TRACE_SCOPE("event", "Event Handler");
+			VAST_LOG_TRACE("[events] - Executing '{}' callback.", key.second);
 			callback(data);
 		}
 	}

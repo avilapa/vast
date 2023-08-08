@@ -25,11 +25,11 @@ namespace vast::gfx
 			}
 			else
 			{
-				VAST_WARNING("[resource] Overriding shader resource proxy '{}' value (was '{}', now is '{}'.", shaderResourceName, proxyIdx.idx, m_Map[shaderResourceName].idx);
+				VAST_LOG_WARNING("[resource] Overriding shader resource proxy '{}' value (was '{}', now is '{}'.", shaderResourceName, proxyIdx.idx, m_Map[shaderResourceName].idx);
 			}
 		}
 		m_Map[shaderResourceName] = proxyIdx;
-		VAST_INFO("[resource] Registered new shader resource proxy '{}' in {}.", shaderResourceName, m_ShaderName);
+		VAST_LOG_TRACE("[resource] Registered new shader resource proxy '{}' in {}.", shaderResourceName, m_ShaderName);
 	}
 
 	bool ShaderResourceProxyTable::IsRegistered(const std::string& shaderResourceName)
