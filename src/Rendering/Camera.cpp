@@ -11,16 +11,10 @@ namespace vast::gfx
 
 	float4x4 Camera::ComputeProjectionMatrix(float fovY, float aspectRatio, float zNear, float zFar, bool bReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
 	{
-		if (bReverseZ)
-		{
-			// To use reverse-z we need to swap the near and far planes of the camera
-			float temp = zNear;
-			zNear = zFar;
-			zFar = temp;
-		}
-
 		hlslpp::frustum frustum = hlslpp::frustum::field_of_view_y(fovY, aspectRatio, zNear, zFar);
-		return float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero));
+		hlslpp::zdirection::t zdirection = bReverseZ ? hlslpp::zdirection::t::reverse : hlslpp::zdirection::t::forward;
+
+		return float4x4::perspective(hlslpp::projection(frustum, hlslpp::zclip::t::zero, zdirection, hlslpp::zplane::t::finite));
 	}
 
 	float4x4 Camera::ComputeViewProjectionMatrix(const float4x4& view, const float4x4& proj)
