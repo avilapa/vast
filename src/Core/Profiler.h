@@ -48,6 +48,8 @@ namespace vast
 		static void FlushProfiles();
 
 		static void OnGUI();
+		static void DrawTextMinimal();
+		static float GetTextMinimalLength();
 	private:
 		static void Init();
 

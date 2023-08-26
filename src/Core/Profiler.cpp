@@ -69,6 +69,7 @@ namespace vast
 		StatHistory gpuStats;
 
 		ProfileBlock* parent = nullptr;
+		uint32 childCount = 0;
 		uint32 treeDepth = 0;
 	};
 
@@ -152,7 +153,10 @@ namespace vast
 		}
 
 		// Find tree position
-		p.parent = FindLastActiveEntry();
+		if (p.parent = FindLastActiveEntry())
+		{
+			p.parent->childCount++;
+		}
 		p.treeDepth = FindTreeDepth(&p);
 
 		p.state = ProfileState::ACTIVE;
@@ -235,26 +239,77 @@ namespace vast
 
 	//
 
-	static void TreeNodeOnGUI(ProfileBlock& p, uint32 idx)
+	static void DrawNestedProfilesTable()
 	{
-		if (ImGui::TreeNodeEx(p.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Bullet))
+		ImGui::BeginTable("Profiling", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+
+		ImGui::TableSetupColumn("Name");
+		ImGui::TableSetupColumn("CPU Time");
+		ImGui::TableSetupColumn("GPU Time");
+		ImGui::TableHeadersRow();
+
+		uint32 currTreeDepth = 0;
+		for (uint32 i = 0; i < s_ProfileCount; ++i)
 		{
-			ImGui::SameLine();
-			ImGui::Text("CPU: %.3fms (%.3fms max)", p.cpuStats.tAvg, p.cpuStats.tMax);
-			if (p.ctx)
+			ProfileBlock& p = s_Profiles[i];
+
+			// Check if we moved up on the tree
+			if (currTreeDepth > 0 && p.treeDepth < currTreeDepth)
 			{
-				//ImGui::Text("GPU: %.3fms (%.3fms max)", p.gpuStats.tAvg, p.gpuStats.tMax);
-			}
-			for (uint32 i = idx; i < s_ProfileCount; ++i)
-			{
-				ProfileBlock& next = s_Profiles[i];
-				if (next.parent == &p)
+				uint32 diff = currTreeDepth - p.treeDepth;
+				while (diff-- > 0)
 				{
-					TreeNodeOnGUI(next, i);
+					ImGui::TreePop();
 				}
 			}
-			ImGui::TreePop();
+			currTreeDepth = p.treeDepth;
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			if (p.childCount > 0)
+			{
+				ImGuiTreeNodeFlags f = ImGuiTreeNodeFlags_DefaultOpen
+									 | ImGuiTreeNodeFlags_SpanFullWidth;
+
+				if (!ImGui::TreeNodeEx(p.name.c_str(), f))
+				{
+					// If parent is closed, skip all children and their children...
+					for (uint32 j = (i + 1); j < s_ProfileCount; ++j)
+					{
+						if (s_Profiles[j].treeDepth > currTreeDepth)
+						{
+							++i;
+						}
+					}
+				}
+			}
+			else
+			{
+				ImGuiTreeNodeFlags f = ImGuiTreeNodeFlags_Leaf
+									 | ImGuiTreeNodeFlags_Bullet
+									 | ImGuiTreeNodeFlags_NoTreePushOnOpen
+									 | ImGuiTreeNodeFlags_SpanFullWidth;
+
+				ImGui::TreeNodeEx(p.name.c_str(), f);
+			}
+			ImGui::TableNextColumn();
+			ImGui::Text("%.3fms", p.cpuStats.tAvg);
+			ImGui::TableNextColumn();
+			if (p.ctx)
+			{
+				ImGui::Text("%.3fms", p.gpuStats.tAvg);
+			}
 		}
+
+		if (currTreeDepth > 0)
+		{
+			while (currTreeDepth-- > 0)
+			{
+				ImGui::TreePop();
+			}
+		}
+
+		ImGui::EndTable();
 	}
 
 	void Profiler::OnGUI()
@@ -262,82 +317,88 @@ namespace vast
 		if (!s_bShowProfiler)
 			return;
 
-		ImGuiWindowFlags window_flags = ImGuiWindowFlags_AlwaysAutoResize
-			| ImGuiWindowFlags_NoDecoration
-			| ImGuiWindowFlags_NoSavedSettings 
-			| ImGuiWindowFlags_NoFocusOnAppearing 
-			| ImGuiWindowFlags_NoNav;
-		const float pad = 10.0f;
-		const ImGuiViewport* v = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(ImVec2(v->WorkPos.x + v->WorkSize.x - pad, v->WorkPos.y + pad), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
-		ImGui::SetNextWindowBgAlpha(0.75f);
-		if (ImGui::Begin("Profiler", 0, window_flags))
+		static bool s_bWindowAutoResize = true;
+		static bool s_bWindowAllowMoving = false;
+
+		if (!s_bWindowAllowMoving)
 		{
-			ImGui::Text("Frame: %.3fms (%.3fms max)", s_FrameProfile.tAvg, s_FrameProfile.tMax);
-			ImGui::Text("CPU: %.3fms (%.3fms max)", s_CpuProfile.tAvg, s_CpuProfile.tMax);
-			ImGui::Text("GPU: %.3fms (%.3fms max)", s_GpuProfile.tAvg, s_GpuProfile.tMax);
-
-			ImGui::Text("\n\n");
-
-			ImGui::BeginTable("Profiling", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
-
-			ImGui::TableSetupColumn("Name"/*,		ImGuiTableColumnFlags_WidthFixed, 70.0f*/);
-			ImGui::TableSetupColumn("CPU Time", ImGuiTableColumnFlags_WidthFixed, 160.0f);
-			ImGui::TableSetupColumn("GPU Time", ImGuiTableColumnFlags_WidthFixed, 160.0f);
-			ImGui::TableHeadersRow();
-
-			for (uint32 i = 0; i < s_ProfileCount; ++i)
-			{
-				ImGui::TableNextRow();
-				ProfileBlock& p = s_Profiles[i];
-				ImGui::TableNextColumn();
-				std::string indent(p.treeDepth * 2, ' ');
-				ImGui::Text("%s", (/*indent + */p.name).c_str());
-				ImGui::TableNextColumn();
-				ImGui::Text("%.3fms (%.3fms max)", p.cpuStats.tAvg, p.cpuStats.tMax);
-				ImGui::TableNextColumn();
-				if (p.ctx)
-				{
-					ImGui::Text("%.3fms (%.3fms max)", p.gpuStats.tAvg, p.gpuStats.tMax);
-				}
-			}
-			ImGui::EndTable();
-
-			ImGui::Text("\n\n");
-
-			ImGui::Text("CPU Profiler");
-			ImGui::Separator();
-
-			for (uint32 i = 0; i < s_ProfileCount; ++i)
-			{
-				ProfileBlock& p = s_Profiles[i];
-				StatHistory& s = s_Profiles[i].cpuStats;
-
-				ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
-			}
-
-			ImGui::Text("\nGPU Profiler");
-			ImGui::Separator();
-
-			for (uint32 i = 0; i < s_ProfileCount; ++i)
-			{
-				ProfileBlock& p = s_Profiles[i];
-
-				if (!p.ctx)
-					continue;
-
-				StatHistory& s = s_Profiles[i].gpuStats;
-
-				ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
-			}
-
-			ImGui::Text("\n\n");
-
-			if (s_ProfileCount > 0)
-				TreeNodeOnGUI(s_Profiles[0], 0);
-
+			const float pad = 10.0f;
+			const ImGuiViewport* v = ImGui::GetMainViewport();
+			ImGui::SetNextWindowPos(ImVec2(v->WorkPos.x + v->WorkSize.x - pad, v->WorkPos.y + pad), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
 		}
+
+		ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoSavedSettings;
+		if (s_bWindowAutoResize) windowFlags |= ImGuiWindowFlags_AlwaysAutoResize;
+
+		if (!ImGui::Begin("Profiler", 0, windowFlags))
+		{
+			ImGui::End();
+			return;
+		}
+
+		ImGui::Text("Frame: %.3f ms (CPU: %.3f ms, GPU: %.3f ms)", s_FrameProfile.tAvg, s_CpuProfile.tAvg, s_GpuProfile.tAvg);
+
+		if (ImGui::BeginTabBar("##ProfilerTabBar"))
+		{
+			if (ImGui::BeginTabItem("GPU Timings"))
+			{
+				for (uint32 i = 0; i < s_ProfileCount; ++i)
+				{
+					ProfileBlock& p = s_Profiles[i];
+
+					if (!p.ctx)
+						continue;
+
+					StatHistory& s = s_Profiles[i].gpuStats;
+
+					ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
+				}
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("CPU Timings"))
+			{
+				for (uint32 i = 0; i < s_ProfileCount; ++i)
+				{
+					ProfileBlock& p = s_Profiles[i];
+					StatHistory& s = s_Profiles[i].cpuStats;
+
+					ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
+				}
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Nested View"))
+			{
+				DrawNestedProfilesTable();
+				ImGui::EndTabItem();
+			}
+			
+			if (ImGui::BeginTabItem("Settings"))
+			{
+				if (ImGui::TreeNode("Window"))
+				{
+					ImGui::Checkbox("Auto-resize enabled", &s_bWindowAutoResize);
+					ImGui::Checkbox("Allow moving", &s_bWindowAllowMoving);
+					ImGui::TreePop();
+				}
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+
 		ImGui::End();
+	}
+
+	void Profiler::DrawTextMinimal()
+	{
+		ImGui::Text("Frame: %.3f ms (GPU: %.3f ms)", s_FrameProfile.tAvg, s_GpuProfile.tAvg);
+	}
+	
+	float Profiler::GetTextMinimalLength()
+	{
+		return ImGui::CalcTextSize("Frame: 0.000f ms (GPU: 0.000f ms)").x;
 	}
 
 	//

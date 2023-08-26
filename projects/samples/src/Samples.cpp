@@ -117,6 +117,11 @@ void SamplesApp::DrawSamplesEditorUI()
 
 			ImGui::EndMenu();
 		}
+
+		ImGui::SameLine(ImGui::GetWindowSize().x - Profiler::GetTextMinimalLength() - ImGui::GetStyle().ItemSpacing.x);
+		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (ImGui::GetTextLineHeightWithSpacing() - ImGui::GetTextLineHeight()) / 2);
+		Profiler::DrawTextMinimal();
+
 		ImGui::EndMainMenuBar();
 	}
 }
