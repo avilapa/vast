@@ -18,14 +18,17 @@ namespace vast
 		Array<double, kHistorySize> deltasHistory;
 		uint32 currDelta = 0;
 
-		double tMax;
-		double tAvg;
+		double tMax = 0;
+		double tAvg = 0;
 
 		void RecordStat(double t)
 		{
 			deltasHistory[currDelta] = t;
 			currDelta = (currDelta + 1) % StatHistory::kHistorySize;
+		}
 
+		void UpdateStats()
+		{
 			tAvg = 0;
 			tMax = 0;
 			uint32 validSamples = 0;
@@ -193,6 +196,8 @@ namespace vast
 
 	// General
 	static int64 s_tFrameStart;
+	static float s_tLastStatsUpdate;
+	static float s_StatUpdateFrequencySeconds = 0.1;
 	static StatHistory s_FrameStats;
 	static bool s_bShowProfiler = false;
 	static bool s_bProfilesNeedFlush = false;
@@ -240,10 +245,22 @@ namespace vast
 	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
 	{
 		s_Timer.Update();
-		int64 tFrameEnd = s_Timer.GetElapsedMicroseconds<int64>();
+
 		// Update frame stats
+		int64 tFrameEnd = s_Timer.GetElapsedMicroseconds<int64>();
 		s_FrameStats.RecordStat(double(tFrameEnd - s_tFrameStart) / 1000.0);
 		s_GpuStats.RecordStat(ctx.GetLastFrameDuration() * 1000.0);
+
+		bool bStatsNeedUpdateThisFrame = false;
+		float tCurrStatsUpdateSeconds = s_Timer.GetElapsedSeconds<float>();
+		if ((tCurrStatsUpdateSeconds - s_tLastStatsUpdate) >= s_StatUpdateFrequencySeconds)
+		{
+			bStatsNeedUpdateThisFrame = true;
+			s_tLastStatsUpdate = tCurrStatsUpdateSeconds;
+
+			s_FrameStats.UpdateStats();
+			s_GpuStats.UpdateStats();
+		}
 
 		if (s_bProfilesNeedFlush)
 		{
@@ -265,7 +282,7 @@ namespace vast
 			return;
 		}
 
-		auto UpdateProfilesStats = [](auto& profiles, const uint32 profileCount, bool bIsGPU)
+		auto UpdateProfilesStats = [&](auto& profiles, const uint32 profileCount, bool bIsGPU)
 		{
 			for (uint32 i = 0; i < profileCount; ++i)
 			{
@@ -280,6 +297,11 @@ namespace vast
 				else
 				{
 					p.stats.RecordStat(double(p.tEnd - p.tBegin) / 1000.0);
+				}
+
+				if (bStatsNeedUpdateThisFrame)
+				{
+					p.stats.UpdateStats();
 				}
 
 				p.state = ProfileBlock::State::IDLE;
@@ -478,8 +500,9 @@ namespace vast
 					ImGui::TreePop();
 				}
 
-				if (ImGui::TreeNodeEx("Timings Table", ImGuiTreeNodeFlags_DefaultOpen))
+				if (ImGui::TreeNodeEx("Display", ImGuiTreeNodeFlags_DefaultOpen))
 				{
+					ImGui::SliderFloat("Time update frequency (seconds)", &s_StatUpdateFrequencySeconds, 0.0f, 1.0f);
 					ImGui::Checkbox("Display Totals at each level", &s_bDisplayTotals);
 					ImGui::TreePop();
 				}
