@@ -7,6 +7,8 @@
 #include "minitrace/minitrace.h"
 #include "imgui/imgui.h"
 
+#include <queue>
+
 namespace vast
 {
 
@@ -144,7 +146,8 @@ namespace vast
 		}
 
 		// Find tree position
-		if (p.parent = FindLastActiveEntry(profiles, profileCount))
+		p.parent = FindLastActiveEntry(profiles, profileCount);
+		if (p.parent)
 		{
 			p.parent->childCount++;
 		}
@@ -181,16 +184,16 @@ namespace vast
 	// CPU Profiles
 	static Array<ProfileBlock, 128> s_CpuProfiles;
 	static uint32 s_CpuProfileCount = 0;
-	static StatHistory s_CpuProfile;
+	static StatHistory s_CpuStats;
 
 	// GPU Profiles
 	static Array<ProfileBlock, (gfx::NUM_TIMESTAMP_QUERIES / 2)> s_GpuProfiles;
 	static uint32 s_GpuProfileCount = 0;
-	static StatHistory s_GpuProfile;
+	static StatHistory s_GpuStats;
 
 	// General
 	static int64 s_tFrameStart;
-	static StatHistory s_FrameProfile;
+	static StatHistory s_FrameStats;
 	static bool s_bShowProfiler = false;
 	static bool s_bProfilesNeedFlush = false;
 
@@ -239,8 +242,8 @@ namespace vast
 		s_Timer.Update();
 		int64 tFrameEnd = s_Timer.GetElapsedMicroseconds<int64>();
 		// Update frame stats
-		s_FrameProfile.RecordStat(double(tFrameEnd - s_tFrameStart) / 1000.0);
-		s_GpuProfile.RecordStat(ctx.GetLastFrameDuration() * 1000.0);
+		s_FrameStats.RecordStat(double(tFrameEnd - s_tFrameStart) / 1000.0);
+		s_GpuStats.RecordStat(ctx.GetLastFrameDuration() * 1000.0);
 
 		if (s_bProfilesNeedFlush)
 		{
@@ -289,9 +292,55 @@ namespace vast
 
 	//
 
+	static bool s_bWindowAutoResize = true;
+	static bool s_bWindowAllowMoving = false;
+	static bool s_bDisplayTotals = true;
+
+	//
+
 	template<typename ProfileBlockArray>
-	static void DrawNestedProfilesTable(ProfileBlockArray& profiles, const uint32 profileCount)
+	static void DrawNestedProfilesTable(ProfileBlockArray& profiles, const uint32 profileCount, const StatHistory& total)
 	{
+		const ImGuiTreeNodeFlags treeBranchFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_DefaultOpen;
+		const ImGuiTreeNodeFlags treeLeafFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+
+		struct BranchStats
+		{
+			double totalAvg;
+			double untrackedAvg;
+		};
+		std::queue<BranchStats> branchStats;
+		BranchStats rootStats = { 0.0, 0.0 };
+
+		auto DrawBranchStats = [](const BranchStats& branch)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+			ImGui::TreeNodeEx("Total", treeLeafFlags);
+			ImGui::TableNextColumn();
+			ImGui::Text("%.3f ms", branch.totalAvg);
+			ImGui::PopStyleColor();
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("Untracked (Avg): %.3f", branch.untrackedAvg);
+			}
+		};
+
+		auto DoTreePops = [&](uint32 diff)
+		{
+			while (diff-- > 0)
+			{
+				if (s_bDisplayTotals)
+				{
+					// Display total average time at the end of children
+					DrawBranchStats(branchStats.front());
+					branchStats.pop();
+				}
+				ImGui::TreePop();
+			}
+		};
+
 		ImGui::BeginTable("Profiling", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
 
 		ImGui::TableSetupColumn("Name");
@@ -307,10 +356,7 @@ namespace vast
 			if (currTreeDepth > 0 && p.treeDepth < currTreeDepth)
 			{
 				uint32 diff = currTreeDepth - p.treeDepth;
-				while (diff-- > 0)
-				{
-					ImGui::TreePop();
-				}
+				DoTreePops(diff);
 			}
 			currTreeDepth = p.treeDepth;
 
@@ -318,10 +364,32 @@ namespace vast
 			ImGui::TableNextColumn();
 			if (p.childCount > 0)
 			{
-				ImGuiTreeNodeFlags f = ImGuiTreeNodeFlags_DefaultOpen
-									 | ImGuiTreeNodeFlags_SpanFullWidth;
+				bool bOpen = ImGui::TreeNodeEx(p.name.c_str(), treeBranchFlags);
 
-				if (!ImGui::TreeNodeEx(p.name.c_str(), f))
+				if (bOpen)
+				{
+					if (s_bDisplayTotals)
+					{
+						// Sum up averages for current tree depth
+						double currTotalAvg = 0;
+						uint32 currChildrenTreeDepth = p.treeDepth + 1;
+						for (uint32 j = (i + 1); j < profileCount; ++j)
+						{
+							ProfileBlock& child = profiles[j];
+							if (child.treeDepth == currChildrenTreeDepth)
+							{
+								currTotalAvg += child.stats.tAvg;
+							}
+							else if (child.treeDepth <= currTreeDepth) // TODO: Check childCount?
+							{
+								break;
+							}
+						}
+						double currUntrackedAvg = std::max(0.0, p.stats.tAvg - currTotalAvg);
+						branchStats.push({ currTotalAvg, currUntrackedAvg });
+					}
+				}
+				else
 				{
 					// If parent is closed, skip all children and their children...
 					for (uint32 j = (i + 1); j < profileCount; ++j)
@@ -335,23 +403,23 @@ namespace vast
 			}
 			else
 			{
-				ImGuiTreeNodeFlags f = ImGuiTreeNodeFlags_Leaf
-									 | ImGuiTreeNodeFlags_Bullet
-									 | ImGuiTreeNodeFlags_NoTreePushOnOpen
-									 | ImGuiTreeNodeFlags_SpanFullWidth;
-
-				ImGui::TreeNodeEx(p.name.c_str(), f);
+				ImGui::TreeNodeEx(p.name.c_str(), treeLeafFlags);
 			}
+
 			ImGui::TableNextColumn();
-			ImGui::Text("%.3fms", p.stats.tAvg);
+			ImGui::Text("%.3f ms", p.stats.tAvg);
+			if (currTreeDepth == 0)
+			{
+				rootStats.totalAvg += p.stats.tAvg;
+			}
 		}
 
-		if (currTreeDepth > 0)
+		// Pop any unpopped indentation and draw totals
+		DoTreePops(currTreeDepth);
+		if (s_bDisplayTotals)
 		{
-			while (currTreeDepth-- > 0)
-			{
-				ImGui::TreePop();
-			}
+			rootStats.untrackedAvg = std::max(0.0, total.tAvg - rootStats.totalAvg);
+			DrawBranchStats(rootStats);
 		}
 
 		ImGui::EndTable();
@@ -361,9 +429,6 @@ namespace vast
 	{
 		if (!s_bShowProfiler)
 			return;
-
-		static bool s_bWindowAutoResize = true;
-		static bool s_bWindowAllowMoving = false;
 
 		if (!s_bWindowAllowMoving)
 		{
@@ -381,28 +446,41 @@ namespace vast
 			return;
 		}
 
-		ImGui::Text("Frame: %.3f ms (CPU: %.3f ms, GPU: %.3f ms)", s_FrameProfile.tAvg, s_CpuProfile.tAvg, s_GpuProfile.tAvg);
+		ImGui::Text("Frame: %.3f ms (CPU: %.3f ms, GPU: %.3f ms)", s_FrameStats.tAvg, s_CpuStats.tAvg, s_GpuStats.tAvg);
 
 		if (ImGui::BeginTabBar("##ProfilerTabBar"))
 		{
-			if (ImGui::BeginTabItem("GPU Timings"))
-			{
-				DrawNestedProfilesTable(s_GpuProfiles, s_GpuProfileCount);
-				ImGui::EndTabItem();
-			}
 
 			if (ImGui::BeginTabItem("CPU Timings"))
 			{
-				DrawNestedProfilesTable(s_CpuProfiles, s_CpuProfileCount);
+				ImGui::Text("CPU Avg: %.3f ms", s_CpuStats.tAvg);
+				ImGui::Text("CPU Max: %.3f ms", s_CpuStats.tMax);
+
+				DrawNestedProfilesTable(s_CpuProfiles, s_CpuProfileCount, s_CpuStats);
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("GPU Timings"))
+			{
+				ImGui::Text("GPU Avg: %.3f ms", s_GpuStats.tAvg);
+				ImGui::Text("GPU Max: %.3f ms", s_GpuStats.tMax);
+
+				DrawNestedProfilesTable(s_GpuProfiles, s_GpuProfileCount, s_GpuStats);
 				ImGui::EndTabItem();
 			}
 			
 			if (ImGui::BeginTabItem("Settings"))
 			{
-				if (ImGui::TreeNode("Window"))
+				if (ImGui::TreeNodeEx("Window", ImGuiTreeNodeFlags_DefaultOpen))
 				{
 					ImGui::Checkbox("Auto-resize enabled", &s_bWindowAutoResize);
 					ImGui::Checkbox("Allow moving", &s_bWindowAllowMoving);
+					ImGui::TreePop();
+				}
+
+				if (ImGui::TreeNodeEx("Timings Table", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					ImGui::Checkbox("Display Totals at each level", &s_bDisplayTotals);
 					ImGui::TreePop();
 				}
 				ImGui::EndTabItem();
@@ -416,7 +494,7 @@ namespace vast
 
 	void Profiler::DrawTextMinimal()
 	{
-		ImGui::Text("Frame: %.3f ms (GPU: %.3f ms)", s_FrameProfile.tAvg, s_GpuProfile.tAvg);
+		ImGui::Text("Frame: %.3f ms (GPU: %.3f ms)", s_FrameStats.tAvg, s_GpuStats.tAvg);
 	}
 	
 	float Profiler::GetTextMinimalLength()
