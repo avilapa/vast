@@ -47,73 +47,64 @@ namespace vast
 		}
 	};
 
-	enum class ProfileState
-	{
-		IDLE = 0,
-		ACTIVE,
-		FINISHED,
-	};
+
 
 	struct ProfileBlock
 	{
 		std::string name;
-		ProfileState state = ProfileState::IDLE;
 
-		gfx::GraphicsContext* ctx = nullptr;
-		uint32 timestampIdx = 0;
-
-		int64 tStart = 0;
-		int64 tEnd = 0;
-
-		StatHistory cpuStats;
-		StatHistory gpuStats;
+		enum class State
+		{
+			IDLE = 0,
+			ACTIVE,
+			FINISHED,
+		} state = State::IDLE;
 
 		ProfileBlock* parent = nullptr;
 		uint32 childCount = 0;
 		uint32 treeDepth = 0;
+
+		StatHistory stats;
+
+		// CPU specific
+		int64 tBegin = 0;
+		int64 tEnd = 0;
+		// GPU specific
+		gfx::GraphicsContext* ctx = nullptr;
+		uint32 timestampIdx = 0;
 	};
 
 	//
 
-	static const uint32 kMaxProfiles = gfx::NUM_TIMESTAMP_QUERIES / 2;
-	static Array<ProfileBlock, kMaxProfiles> s_Profiles;
-	static uint32 s_ProfileCount = 0;
-
 	static Timer s_Timer;
-	static bool s_bShowProfiler = false;
-	static bool s_bProfilesNeedFlush = false;
-
-	static int64 s_tFrameStart;
-	static StatHistory s_FrameProfile;
-	static StatHistory s_CpuProfile;
-	static StatHistory s_GpuProfile;
 
 	//
 
-	static ProfileBlock& FindOrAddProfile(const char* name, bool& bFound)
+	template<typename ProfileBlockArray>
+	static ProfileBlock& FindOrAddProfile(ProfileBlockArray& profiles, uint32& profileCount, const char* name, bool& bFound)
 	{
-		for (uint32 i = 0; i < s_ProfileCount; ++i)
+		for (uint32 i = 0; i < profileCount; ++i)
 		{
-			if (s_Profiles[i].name == name)
+			if (profiles[i].name == name)
 			{
 				bFound = true;
-				return s_Profiles[i];
+				return profiles[i];
 			}
 		}
-		VAST_ASSERTF(s_ProfileCount < s_Profiles.size(), "Exceeded max number of profiles ({}).", s_Profiles.size());
+		VAST_ASSERTF(profileCount < profiles.size(), "Exceeded max number of profiles ({}).", profiles.size());
 		bFound = false;
-		return s_Profiles[s_ProfileCount++];
+		return profiles[profileCount++];
 	}
 
-	static ProfileBlock* FindLastActiveEntry()
+	template<typename ProfileBlockArray>
+	static ProfileBlock* FindLastActiveEntry(ProfileBlockArray& profiles, const uint32 profileCount)
 	{
-		VAST_ASSERT(s_ProfileCount > 0);
-		for (int32 i = (s_ProfileCount - 1); i >= 0; --i)
+		VAST_ASSERT(profileCount > 0);
+		for (int32 i = (profileCount - 1); i >= 0; --i)
 		{
-			// TODO: Should we check that it executes on the same context as well?
-			if (s_Profiles[i].state == ProfileState::ACTIVE)
+			if (profiles[i].state == ProfileBlock::State::ACTIVE)
 			{
-				return &s_Profiles[i];
+				return &profiles[i];
 			}
 		}
 		return nullptr;
@@ -128,54 +119,56 @@ namespace vast
 		return currDepth;
 	}
 
-	//
-
-	void Profiler::PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx /* = nullptr */)
+	template<typename ProfileBlockArray>
+	static void PushProfilingMarker_Internal(ProfileBlockArray& profiles, uint32& profileCount, const char* name, gfx::GraphicsContext* ctx, bool bIsGPU)
 	{
 		bool bFound;
-		ProfileBlock& p = FindOrAddProfile(name, bFound);
+		ProfileBlock& p = FindOrAddProfile(profiles, profileCount, name, bFound);
 		if (!bFound)
 		{
 			p.name = name;
 			p.ctx = ctx;
 		}
-		VAST_ASSERTF(ctx == p.ctx, "Changing execution context of an existing profile is not allowed.");
-		VAST_ASSERTF(p.state == ProfileState::IDLE, "A profile of this name already exists or has already been pushed this frame.");
+		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", p.name);
+		VAST_ASSERTF((p.ctx != nullptr) == bIsGPU, "Mismatched profiling context not allowed.");
 
-		// CPU Timing
-		s_Timer.Update();
-		p.tStart = s_Timer.GetElapsedMicroseconds<int64>();
-
-		if (ctx)
+		if (p.ctx)
 		{
-			// GPU Timing
+			VAST_ASSERT(p.ctx);
 			p.timestampIdx = p.ctx->BeginTimestamp();
+		}
+		else
+		{
+			s_Timer.Update();
+			p.tBegin = s_Timer.GetElapsedMicroseconds<int64>();
 		}
 
 		// Find tree position
-		if (p.parent = FindLastActiveEntry())
+		if (p.parent = FindLastActiveEntry(profiles, profileCount))
 		{
 			p.parent->childCount++;
 		}
 		p.treeDepth = FindTreeDepth(&p);
 
-		p.state = ProfileState::ACTIVE;
+		p.state = ProfileBlock::State::ACTIVE;
 	}
 
-	void Profiler::PopProfilingMarker()
+	template<typename ProfileBlockArray>
+	static void PopProfilingMarker_Internal(ProfileBlockArray& profiles, const uint32 profileCount, bool bIsGPU)
 	{
-		if (ProfileBlock* p = FindLastActiveEntry())
+		if (ProfileBlock* p = FindLastActiveEntry(profiles, profileCount))
 		{
-			// CPU Timing
-			s_Timer.Update();
-			p->tEnd = s_Timer.GetElapsedMicroseconds<int64>();
-
+			VAST_ASSERTF((p->ctx != nullptr) == bIsGPU, "Mismatched profiling context not allowed.");
 			if (p->ctx)
 			{
-				// GPU Timing
 				p->ctx->EndTimestamp(p->timestampIdx);
 			}
-			p->state = ProfileState::FINISHED;
+			else
+			{
+				s_Timer.Update();
+				p->tEnd = s_Timer.GetElapsedMicroseconds<int64>();
+			}
+			p->state = ProfileBlock::State::FINISHED;
 		}
 		else
 		{
@@ -183,9 +176,56 @@ namespace vast
 		}
 	}
 
+	//
+
+	// CPU Profiles
+	static Array<ProfileBlock, 128> s_CpuProfiles;
+	static uint32 s_CpuProfileCount = 0;
+	static StatHistory s_CpuProfile;
+
+	// GPU Profiles
+	static Array<ProfileBlock, (gfx::NUM_TIMESTAMP_QUERIES / 2)> s_GpuProfiles;
+	static uint32 s_GpuProfileCount = 0;
+	static StatHistory s_GpuProfile;
+
+	// General
+	static int64 s_tFrameStart;
+	static StatHistory s_FrameProfile;
+	static bool s_bShowProfiler = false;
+	static bool s_bProfilesNeedFlush = false;
+
+	//
+
+	void Profiler::PushProfilingMarkerCPU(const char* name)
+	{
+		PushProfilingMarker_Internal(s_CpuProfiles, s_CpuProfileCount, name, nullptr, false);
+	}
+
+	void Profiler::PushProfilingMarkerGPU(const char* name, gfx::GraphicsContext* ctx)
+	{
+		VAST_ASSERT(ctx);
+		PushProfilingMarker_Internal(s_GpuProfiles, s_GpuProfileCount, name, ctx, true);
+	}
+
+	void Profiler::PopProfilingMarkerCPU()
+	{
+		PopProfilingMarker_Internal(s_CpuProfiles, s_CpuProfileCount, false);
+	}
+
+	void Profiler::PopProfilingMarkerGPU()
+	{
+		PopProfilingMarker_Internal(s_GpuProfiles, s_GpuProfileCount, true);
+	}
+
 	void Profiler::FlushProfiles()
 	{
 		s_bProfilesNeedFlush = true;
+	}
+
+	void Profiler::Init()
+	{
+		VAST_LOG_INFO("[profiler] Initializing Profiler...");
+		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
 	}
 
 	void Profiler::BeginFrame()
@@ -204,54 +244,64 @@ namespace vast
 
 		if (s_bProfilesNeedFlush)
 		{
-			for (uint32 i = 0; i < s_ProfileCount; ++i)
+			auto ResetProfiles = [](auto& profiles, uint32& profileCount)
 			{
-				s_Profiles[i] = ProfileBlock{};
-			}
-			s_ProfileCount = 0;
+				for (uint32 i = 0; i < profileCount; ++i)
+				{
+					profiles[i] = ProfileBlock{};
+				}
+				profileCount = 0;
+			};
+
+			ResetProfiles(s_CpuProfiles, s_CpuProfileCount);
+			ResetProfiles(s_GpuProfiles, s_GpuProfileCount);
+
 			s_bProfilesNeedFlush = false;
 
 			// Note: Disregard updating profiles if user signaled a flush.
 			return;
 		}
 
-		// Update profiles stats
-		for (uint32 i = 0; i < s_ProfileCount; ++i)
+		auto UpdateProfilesStats = [](auto& profiles, const uint32 profileCount, bool bIsGPU)
 		{
-			ProfileBlock& p = s_Profiles[i];
-			VAST_ASSERTF(p.state == ProfileState::FINISHED, "Attempted to update a profile that is still active.")
-
-			p.cpuStats.RecordStat(double(p.tEnd - p.tStart) / 1000.0);
-			if (p.ctx)
+			for (uint32 i = 0; i < profileCount; ++i)
 			{
-				p.gpuStats.RecordStat(p.ctx->GetTimestampDuration(p.timestampIdx) * 1000.0);
+				ProfileBlock& p = profiles[i];
+				VAST_ASSERTF(p.state == ProfileBlock::State::FINISHED, "Attempted to update a profile that is still active.");
+				VAST_ASSERTF((p.ctx != nullptr) == bIsGPU, "Mismatched profiling context not allowed.");
+
+				if (p.ctx)
+				{
+					p.stats.RecordStat(p.ctx->GetTimestampDuration(p.timestampIdx) * 1000.0);
+				}
+				else
+				{
+					p.stats.RecordStat(double(p.tEnd - p.tBegin) / 1000.0);
+				}
+
+				p.state = ProfileBlock::State::IDLE;
 			}
+		};
 
-			p.state = ProfileState::IDLE;
-		}
-	}
-
-	void Profiler::Init()
-	{
-		VAST_LOG_INFO("[profiler] Initializing Profiler...");
-		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
+		UpdateProfilesStats(s_CpuProfiles, s_CpuProfileCount, false);
+		UpdateProfilesStats(s_GpuProfiles, s_GpuProfileCount, true);
 	}
 
 	//
 
-	static void DrawNestedProfilesTable()
+	template<typename ProfileBlockArray>
+	static void DrawNestedProfilesTable(ProfileBlockArray& profiles, const uint32 profileCount)
 	{
-		ImGui::BeginTable("Profiling", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
+		ImGui::BeginTable("Profiling", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg);
 
 		ImGui::TableSetupColumn("Name");
-		ImGui::TableSetupColumn("CPU Time");
-		ImGui::TableSetupColumn("GPU Time");
+		ImGui::TableSetupColumn("Time");
 		ImGui::TableHeadersRow();
 
 		uint32 currTreeDepth = 0;
-		for (uint32 i = 0; i < s_ProfileCount; ++i)
+		for (uint32 i = 0; i < profileCount; ++i)
 		{
-			ProfileBlock& p = s_Profiles[i];
+			ProfileBlock& p = profiles[i];
 
 			// Check if we moved up on the tree
 			if (currTreeDepth > 0 && p.treeDepth < currTreeDepth)
@@ -274,9 +324,9 @@ namespace vast
 				if (!ImGui::TreeNodeEx(p.name.c_str(), f))
 				{
 					// If parent is closed, skip all children and their children...
-					for (uint32 j = (i + 1); j < s_ProfileCount; ++j)
+					for (uint32 j = (i + 1); j < profileCount; ++j)
 					{
-						if (s_Profiles[j].treeDepth > currTreeDepth)
+						if (profiles[j].treeDepth > currTreeDepth)
 						{
 							++i;
 						}
@@ -293,12 +343,7 @@ namespace vast
 				ImGui::TreeNodeEx(p.name.c_str(), f);
 			}
 			ImGui::TableNextColumn();
-			ImGui::Text("%.3fms", p.cpuStats.tAvg);
-			ImGui::TableNextColumn();
-			if (p.ctx)
-			{
-				ImGui::Text("%.3fms", p.gpuStats.tAvg);
-			}
+			ImGui::Text("%.3fms", p.stats.tAvg);
 		}
 
 		if (currTreeDepth > 0)
@@ -342,35 +387,13 @@ namespace vast
 		{
 			if (ImGui::BeginTabItem("GPU Timings"))
 			{
-				for (uint32 i = 0; i < s_ProfileCount; ++i)
-				{
-					ProfileBlock& p = s_Profiles[i];
-
-					if (!p.ctx)
-						continue;
-
-					StatHistory& s = s_Profiles[i].gpuStats;
-
-					ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
-				}
+				DrawNestedProfilesTable(s_GpuProfiles, s_GpuProfileCount);
 				ImGui::EndTabItem();
 			}
 
 			if (ImGui::BeginTabItem("CPU Timings"))
 			{
-				for (uint32 i = 0; i < s_ProfileCount; ++i)
-				{
-					ProfileBlock& p = s_Profiles[i];
-					StatHistory& s = s_Profiles[i].cpuStats;
-
-					ImGui::Text("%s: %.3fms (%.3fms max)", p.name.c_str(), s.tAvg, s.tMax);
-				}
-				ImGui::EndTabItem();
-			}
-
-			if (ImGui::BeginTabItem("Nested View"))
-			{
-				DrawNestedProfilesTable();
+				DrawNestedProfilesTable(s_CpuProfiles, s_CpuProfileCount);
 				ImGui::EndTabItem();
 			}
 			

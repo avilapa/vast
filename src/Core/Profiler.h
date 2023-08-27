@@ -3,13 +3,13 @@
 #include "Core/Defines.h"
 
 #if VAST_ENABLE_PROFILING
-#define VAST_PROFILE_CPU_SCOPE(n)		vast::ProfileScope XCAT(_profCpu, __LINE__)(n)
-#define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::PushProfilingMarker(n)
-#define VAST_PROFILE_CPU_END()			vast::Profiler::PopProfilingMarker()
+#define VAST_PROFILE_CPU_SCOPE(n)		vast::ProfileScopeCPU XCAT(_profCpu, __LINE__)(n)
+#define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::PushProfilingMarkerCPU(n)
+#define VAST_PROFILE_CPU_END()			vast::Profiler::PopProfilingMarkerCPU()
 
-#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::ProfileScope XCAT(_profGpu, __LINE__)(n, ctx)
-#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::PushProfilingMarker(n, ctx)
-#define VAST_PROFILE_GPU_END()			vast::Profiler::PopProfilingMarker()
+#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::ProfileScopeGPU XCAT(_profGpu, __LINE__)(n, ctx)
+#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::PushProfilingMarkerGPU(n, ctx)
+#define VAST_PROFILE_GPU_END()			vast::Profiler::PopProfilingMarkerGPU()
 // TODO: Single profile macro, select cpu/gpu
 #else
 #define VAST_PROFILE_CPU_SCOPE(n)	
@@ -42,8 +42,10 @@ namespace vast
 	{
 		friend class WindowedApp;
 	public:
-		static void PushProfilingMarker(const char* name, gfx::GraphicsContext* ctx = nullptr);
-		static void PopProfilingMarker();
+		static void PushProfilingMarkerCPU(const char* name);
+		static void PushProfilingMarkerGPU(const char* name, gfx::GraphicsContext* ctx);
+		static void PopProfilingMarkerCPU();
+		static void PopProfilingMarkerGPU();
 
 		static void FlushProfiles();
 
@@ -57,16 +59,29 @@ namespace vast
 		static void EndFrame(gfx::GraphicsContext& ctx);
 	};
 
-	struct ProfileScope
+	struct ProfileScopeCPU
 	{
-		ProfileScope(const char* name, gfx::GraphicsContext* ctx = nullptr)
+		ProfileScopeCPU(const char* name)
 		{
-			Profiler::PushProfilingMarker(name, ctx);
+			Profiler::PushProfilingMarkerCPU(name);
 		}
 
-		~ProfileScope()
+		~ProfileScopeCPU()
 		{
-			Profiler::PopProfilingMarker();
+			Profiler::PopProfilingMarkerCPU();
+		}
+	};
+
+	struct ProfileScopeGPU
+	{
+		ProfileScopeGPU(const char* name, gfx::GraphicsContext* ctx)
+		{
+			Profiler::PushProfilingMarkerGPU(name, ctx);
+		}
+
+		~ProfileScopeGPU()
+		{
+			Profiler::PopProfilingMarkerGPU();
 		}
 	};
 
