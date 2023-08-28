@@ -8,6 +8,7 @@
 #include "imgui/imgui.h"
 
 #include <queue>
+#include <deque>
 
 namespace vast
 {
@@ -15,24 +16,24 @@ namespace vast
 	struct StatHistory
 	{
 		static const uint32 kHistorySize = 64;
-		Array<double, kHistorySize> deltasHistory;
-		uint32 currDelta = 0;
+		Array<double, kHistorySize> history;
 
 		double tMax = 0;
 		double tAvg = 0;
+		double tLast = 0;
 
-		void RecordStat(double t)
+		void RecordTimeLast(double t)
 		{
-			deltasHistory[currDelta] = t;
-			currDelta = (currDelta + 1) % StatHistory::kHistorySize;
+			history[currSample] = tLast = t;
+			currSample = (currSample + 1) % StatHistory::kHistorySize;
 		}
 
-		void UpdateStats()
+		void UpdateAverages()
 		{
 			tAvg = 0;
 			tMax = 0;
 			uint32 validSamples = 0;
-			for (double v : deltasHistory)
+			for (double v : history)
 			{
 				if (v > 0.0)
 				{
@@ -50,9 +51,48 @@ namespace vast
 				tAvg /= double(validSamples);
 			}
 		}
+
+	private:
+		uint32 currSample = 0;
 	};
 
+	struct PlotHistory
+	{
+		static const uint32 kHistorySize = 512;
+		Array<float, kHistorySize> history;
 
+		float tMin = FLT_MAX;
+		float tMax = 0;
+
+		void RecordTimeLast(float tLast)
+		{
+			// Shift plot data to the left and update last entry.
+			memmove(history.data(), history.data() + 1, sizeof(float) * (kHistorySize - 1));
+			history[kHistorySize - 1] = tLast;
+
+			if (tLast > tMax)
+				tMax = tLast;
+			if (tLast < tMin)
+				tMin = tLast;
+		}
+
+		void ResetMinMax()
+		{
+			tMin = FLT_MAX;
+			tMax = 0;
+			uint32 validSamples = 0;
+			for (float v : history)
+			{
+				if (v > 0.0)
+				{
+					if (v > tMax)
+						tMax = v;
+					if (v < tMin)
+						tMin = v;
+				}
+			}
+		}
+	};
 
 	struct ProfileBlock
 	{
@@ -188,17 +228,24 @@ namespace vast
 	static Array<ProfileBlock, 128> s_CpuProfiles;
 	static uint32 s_CpuProfileCount = 0;
 	static StatHistory s_CpuStats;
+	static PlotHistory s_CpuPlot;
 
 	// GPU Profiles
 	static Array<ProfileBlock, (gfx::NUM_TIMESTAMP_QUERIES / 2)> s_GpuProfiles;
 	static uint32 s_GpuProfileCount = 0;
 	static StatHistory s_GpuStats;
+	static PlotHistory s_GpuPlot;
 
 	// General
+	static float s_tLastStatsUpdate = 0.0f;
+	static float s_StatUpdateFrequencySeconds = 0.1f;
+	static float s_tLastPlotsMaxReset = 0.0f;
+	static float s_PlotMaxResetFrequencySeconds = 5.0f;
+
 	static int64 s_tFrameStart;
-	static float s_tLastStatsUpdate;
-	static float s_StatUpdateFrequencySeconds = 0.1;
 	static StatHistory s_FrameStats;
+	static PlotHistory s_FramePlot;
+
 	static bool s_bShowProfiler = false;
 	static bool s_bProfilesNeedFlush = false;
 
@@ -246,22 +293,39 @@ namespace vast
 	{
 		s_Timer.Update();
 
-		// Update frame stats
-		int64 tFrameEnd = s_Timer.GetElapsedMicroseconds<int64>();
-		s_FrameStats.RecordStat(double(tFrameEnd - s_tFrameStart) / 1000.0);
-		s_GpuStats.RecordStat(ctx.GetLastFrameDuration() * 1000.0);
-
-		bool bStatsNeedUpdateThisFrame = false;
-		float tCurrStatsUpdateSeconds = s_Timer.GetElapsedSeconds<float>();
-		if ((tCurrStatsUpdateSeconds - s_tLastStatsUpdate) >= s_StatUpdateFrequencySeconds)
+		// Record global stats, and update plots (if user interface is showing)
 		{
-			bStatsNeedUpdateThisFrame = true;
-			s_tLastStatsUpdate = tCurrStatsUpdateSeconds;
-
-			s_FrameStats.UpdateStats();
-			s_GpuStats.UpdateStats();
+			double durationMs = double(s_Timer.GetElapsedMicroseconds<int64>() - s_tFrameStart) / 1000.0;
+			s_FrameStats.RecordTimeLast(durationMs);
+			if (s_bShowProfiler) s_FramePlot.RecordTimeLast(static_cast<float>(durationMs));
+		}
+		{
+			double durationMs = ctx.GetLastFrameDuration() * 1000.0;
+			s_GpuStats.RecordTimeLast(durationMs);
+			if (s_bShowProfiler) s_GpuPlot.RecordTimeLast(static_cast<float>(durationMs));
 		}
 
+		float tTimeNowSeconds = s_Timer.GetElapsedSeconds<float>();
+		// Check if we should update stats this frame (i.e. recompute averages).
+		bool bStatsNeedUpdateThisFrame = false;
+		if ((tTimeNowSeconds - s_tLastStatsUpdate) >= s_StatUpdateFrequencySeconds)
+		{
+			bStatsNeedUpdateThisFrame = true;
+			s_tLastStatsUpdate = tTimeNowSeconds;
+
+			s_FrameStats.UpdateAverages();
+			s_GpuStats.UpdateAverages();
+		}
+		// Check if we should reset min/max value on plots this frame.
+		if (s_bShowProfiler && (tTimeNowSeconds - s_tLastPlotsMaxReset) >= s_PlotMaxResetFrequencySeconds)
+		{
+			s_tLastPlotsMaxReset = tTimeNowSeconds;
+
+			s_FramePlot.ResetMinMax();
+			s_GpuPlot.ResetMinMax();
+		}
+
+		// Reset user profiles if needed.
 		if (s_bProfilesNeedFlush)
 		{
 			auto ResetProfiles = [](auto& profiles, uint32& profileCount)
@@ -278,10 +342,11 @@ namespace vast
 
 			s_bProfilesNeedFlush = false;
 
-			// Note: Disregard updating profiles if user signaled a flush.
+			// Disregard updating profiles if user signaled a flush.
 			return;
 		}
 
+		// Record and update (if needed) user profile stats
 		auto UpdateProfilesStats = [&](auto& profiles, const uint32 profileCount, bool bIsGPU)
 		{
 			for (uint32 i = 0; i < profileCount; ++i)
@@ -292,16 +357,16 @@ namespace vast
 
 				if (p.ctx)
 				{
-					p.stats.RecordStat(p.ctx->GetTimestampDuration(p.timestampIdx) * 1000.0);
+					p.stats.RecordTimeLast(p.ctx->GetTimestampDuration(p.timestampIdx) * 1000.0);
 				}
 				else
 				{
-					p.stats.RecordStat(double(p.tEnd - p.tBegin) / 1000.0);
+					p.stats.RecordTimeLast(double(p.tEnd - p.tBegin) / 1000.0);
 				}
 
 				if (bStatsNeedUpdateThisFrame)
 				{
-					p.stats.UpdateStats();
+					p.stats.UpdateAverages();
 				}
 
 				p.state = ProfileBlock::State::IDLE;
@@ -447,6 +512,14 @@ namespace vast
 		ImGui::EndTable();
 	}
 
+	static void DrawPlotHistory(const PlotHistory& plot, double avg, double max)
+	{
+		char overlay[64];
+		sprintf_s(overlay, "avg %0.3f ms (max %0.3f ms)", avg, max);
+		float availableWidth = ImGui::GetContentRegionAvail().x;
+		ImGui::PlotLines("", plot.history.data(), static_cast<int>(plot.kHistorySize), 0, overlay, plot.tMin, plot.tMax, ImVec2(availableWidth, 80.0f));
+	}
+
 	void Profiler::OnGUI()
 	{
 		if (!s_bShowProfiler)
@@ -472,21 +545,26 @@ namespace vast
 
 		if (ImGui::BeginTabBar("##ProfilerTabBar"))
 		{
-
+			if (ImGui::BeginTabItem("Frame Timings"))
+			{
+				DrawPlotHistory(s_FramePlot, s_FrameStats.tAvg, s_FrameStats.tMax);
+				ImGui::Separator();
+				// TODO: FPS
+				ImGui::EndTabItem();
+			}
+			
 			if (ImGui::BeginTabItem("CPU Timings"))
 			{
-				ImGui::Text("CPU Avg: %.3f ms", s_CpuStats.tAvg);
-				ImGui::Text("CPU Max: %.3f ms", s_CpuStats.tMax);
-
+				DrawPlotHistory(s_CpuPlot, s_CpuStats.tAvg, s_CpuStats.tMax);
+				ImGui::Separator();
 				DrawNestedProfilesTable(s_CpuProfiles, s_CpuProfileCount, s_CpuStats);
 				ImGui::EndTabItem();
 			}
 
 			if (ImGui::BeginTabItem("GPU Timings"))
 			{
-				ImGui::Text("GPU Avg: %.3f ms", s_GpuStats.tAvg);
-				ImGui::Text("GPU Max: %.3f ms", s_GpuStats.tMax);
-
+				DrawPlotHistory(s_GpuPlot, s_GpuStats.tAvg, s_GpuStats.tMax);
+				ImGui::Separator();
 				DrawNestedProfilesTable(s_GpuProfiles, s_GpuProfileCount, s_GpuStats);
 				ImGui::EndTabItem();
 			}
