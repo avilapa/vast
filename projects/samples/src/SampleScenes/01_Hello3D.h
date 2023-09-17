@@ -8,20 +8,18 @@ using namespace vast::gfx;
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Hello 3D
  * --------
- * This sample renders a rotating textured cube onto the screen. The cube vertex buffer is static
- * this time around and resident in VRAM instead of in the CPU. We render the cube to intermediate
+ * This sample renders a rotating cube to the screen. The cube vertex buffer is static this time 
+ * around and it gets uploaded to VRAM instead of in the CPU. We render the cube to intermediate
  * color and depth targets and then gamma correct the color target when rendering it to the back
- * buffer on a second render pass. The cube has a color texture loaded from the assets folder. Both
- * the vertex buffer and the texture are accessed bindlessly in the shader, with the necessary heap
- * indices stored in a constant buffer alongside the model view and projection matrices used for 
- * rendering. This sample also show how to handle events such as a window resize event.
+ * buffer on a second render pass. The vertex buffer is accessed bindlessly in the shader, with the 
+ * necessary heap indices stored in a constant buffer alongside the camera and world matrices used 
+ * for rendering. This sample also shows how to handle events such as a window resize event.
  *
  * All code for this sample is contained within this file plus the shader files 'cube.hlsl' and
  * 'fullscreen.hlsl' containing code for rendering the cube and gamma correcting the color result
  * to the back buffer respectively.
  *
- * Topics: full-screen triangle, render targets and depth target, texture loading, constant buffer,
- *         camera matrices, clear color
+ * Topics: indexed rendering, camera, constant buffers, full-screen triangle pass, clear color
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 class Hello3D final : public ISample
@@ -32,23 +30,18 @@ private:
 	TextureHandle m_DepthRT;
 
 	PipelineHandle m_CubePso;
-	TextureHandle m_CubeColorTex;
 	BufferHandle m_CubeVtxBuf;
-	BufferHandle m_CubeCbvBuf; ShaderResourceProxy m_CubeCbvBufProxy;
+	BufferHandle m_CubeIdxBuf;
+
+	BufferHandle m_CubeCbvBuf; 
+	ShaderResourceProxy m_CubeCbvBufProxy;
 
 	struct CubeCB
 	{
 		float4x4 viewProjMatrix;
 		float4x4 modelMatrix;
 		uint32 vtxBufIdx;
-		uint32 colTexIdx;
 	} m_CubeCB;
-
-	struct Vtx3fPos2fUv
-	{
-		s_float3 pos;
-		s_float2 uv;
-	};
 
 public:
 	Hello3D(GraphicsContext& ctx_) : ISample(ctx_)
@@ -80,64 +73,47 @@ public:
 		// Locate the constant buffer slot in the shader to bind our CBVs
 		m_CubeCbvBufProxy = ctx.LookupShaderResource(m_CubePso, "ObjectConstantBuffer");
 
-		Array<Vtx3fPos2fUv, 36> cubeVertexData =
+		// Create the cube vertex buffer with bindless access.
+		Array<s_float3, 8> cubeVertexData =
 		{ {
-			// Top
-			{{ 1.0f,-1.0f, 1.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f }},
-			// Bottom
-			{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }},
-			// Left
-			{{-1.0f,-1.0f,-1.0f }, { 1.0f, 1.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }},
-			// Front
-			{{-1.0f,-1.0f, 1.0f }, { 1.0f, 1.0f }},
-			{{-1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f }},
-			// Right
-			{{ 1.0f,-1.0f, 1.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f }},
-			{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f }},
-			// Back
-			{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 1.0f }},
-			{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{-1.0f,-1.0f,-1.0f }, { 0.0f, 1.0f }},
-			{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f }},
-			{{-1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f }},
+			{-1.0f,  1.0f,  1.0f },
+			{ 1.0f,  1.0f,  1.0f },
+			{-1.0f, -1.0f,  1.0f },
+			{ 1.0f, -1.0f,  1.0f },
+			{-1.0f,  1.0f, -1.0f },
+			{ 1.0f,  1.0f, -1.0f },
+			{-1.0f, -1.0f, -1.0f },
+			{ 1.0f, -1.0f, -1.0f },
 		} };
 
-		// Create the cube vertex buffer with bindless access.
 		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(cubeVertexData), sizeof(cubeVertexData[0]));
 		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
 
-		// Load a texture from file to be used on the cube
-		m_CubeColorTex = ctx.LoadTextureFromFile("image.tga");
+		// Create the index buffer.
+		Array<uint16, 36> cubeIndexData =
+		{ {
+			0, 1, 2,
+			1, 3, 2,
+			4, 6, 5,
+			5, 6, 7,
+			0, 2, 4,
+			4, 2, 6,
+			1, 5, 3,
+			5, 7, 3,
+			0, 4, 1,
+			4, 5, 1,
+			2, 3, 6,
+			6, 3, 7,
+		} };
+
+		uint32 numIndices = static_cast<uint32>(cubeIndexData.size());
+		auto idxBufDesc = AllocIndexBufferDesc(numIndices);
+		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &cubeIndexData, numIndices * sizeof(uint16));
 
 		// Create a constant buffer and fill it with the necessary data for rendering the cube.
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
 		m_CubeCB.modelMatrix = float4x4::identity();
 		m_CubeCB.vtxBufIdx = ctx.GetBindlessIndex(m_CubeVtxBuf);
-		m_CubeCB.colTexIdx = ctx.GetBindlessIndex(m_CubeColorTex);
 
 		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
 		
@@ -152,8 +128,8 @@ public:
 		ctx.DestroyPipeline(m_CubePso);
 		ctx.DestroyTexture(m_ColorRT);
 		ctx.DestroyTexture(m_DepthRT);
-		ctx.DestroyTexture(m_CubeColorTex);
 		ctx.DestroyBuffer(m_CubeVtxBuf);
+		ctx.DestroyBuffer(m_CubeIdxBuf);
 		ctx.DestroyBuffer(m_CubeCbvBuf);
 
 		VAST_UNSUBSCRIBE_FROM_EVENT("hello3d", WindowResizeEvent);
@@ -161,7 +137,7 @@ public:
 
 	void Update() override
 	{
-		// Rotate the cube model matrix slowly.
+		// Rotate the cube transform slowly.
 		static float rotation = 0.0f;
 		rotation += 0.001f;
 		m_CubeCB.modelMatrix = float4x4::rotation_y(rotation);
@@ -178,12 +154,12 @@ public:
 		// to render the cube.
 		ctx.BeginRenderPass(m_CubePso, RenderPassTargets{.rt = { colorTargetDesc }, .ds = depthTargetDesc });
 		{
-			if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeColorTex))
+			if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeIdxBuf))
 			{
-				// Bind our constant buffer containing the bindless indices to the vertex buffer
-				// and the color texture.
+				// Bind our constant buffer containing the bindless indices to the vertex buffer.
 				ctx.SetConstantBufferView(m_CubeCbvBuf, m_CubeCbvBufProxy);
-				ctx.Draw(36);
+				ctx.SetIndexBuffer(m_CubeIdxBuf, 0, IndexBufFormat::R16_UINT);
+				ctx.DrawIndexed(36);
 			}
 		}
 		ctx.EndRenderPass();

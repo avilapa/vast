@@ -16,7 +16,7 @@ struct VertexOutput
     float3 col : COLOR;
 };
 
-VertexOutput VS_Main(uint vtxId : SV_VertexID)
+VertexOutput VS_Main(uint vtxId : SV_VERTEXID)
 {
     ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[TriangleVtxBufIdx];
     VertexInput vtx = vtxBuf.Load<VertexInput>(vtxId * sizeof(VertexInput));
