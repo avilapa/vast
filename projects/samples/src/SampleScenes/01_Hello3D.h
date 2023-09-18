@@ -19,7 +19,7 @@ using namespace vast::gfx;
  * 'fullscreen.hlsl' containing code for rendering the cube and gamma correcting the color result
  * to the back buffer respectively.
  *
- * Topics: indexed rendering, camera, constant buffers, full-screen triangle pass, clear color
+ * Topics: indexed rendering, camera matrices, constant buffers, full-screen triangle pass
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 class Hello3D final : public ISample

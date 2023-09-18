@@ -157,6 +157,7 @@ namespace vast::gfx
 		std::wstring sourcePath = SHADER_SOURCE_PATH + shaderName;
 		IDxcBlobEncoding* sourceBlobEncoding = nullptr;
 		DX12Check(m_DxcUtils->LoadFile(sourcePath.c_str(), nullptr, &sourceBlobEncoding));
+		VAST_ASSERTF(sourceBlobEncoding, "Cannot find specified shader path.");
 
 		const DxcBuffer sourceBuffer
 		{

@@ -73,11 +73,11 @@ namespace vast::gfx
 		void EndFrame_Internal() override;
 
 		void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) override;
-		void UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize) override;
+		void UpdateBuffer_Internal(BufferHandle h, const void* srcMem, size_t srcSize) override;
 		void DestroyBuffer_Internal(BufferHandle h) override;
 
 		void CreateTexture_Internal(TextureHandle h, const TextureDesc& desc) override;
-		void UpdateTexture_Internal(TextureHandle h, void* srcMem) override;
+		void UpdateTexture_Internal(TextureHandle h, const void* srcMem) override;
 		void DestroyTexture_Internal(TextureHandle h) override;
 
 		void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) override;

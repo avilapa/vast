@@ -75,7 +75,7 @@ namespace vast::gfx
 
 	//
 
-	BufferHandle GraphicsContext::CreateBuffer(const BufferDesc& desc, void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
+	BufferHandle GraphicsContext::CreateBuffer(const BufferDesc& desc, const void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Buffer");
 		BufferHandle h = m_BufferHandles->AllocHandle();
@@ -87,7 +87,7 @@ namespace vast::gfx
 		return h;
 	}
 
-	TextureHandle GraphicsContext::CreateTexture(const TextureDesc& desc, void* initialData /*= nullptr*/)
+	TextureHandle GraphicsContext::CreateTexture(const TextureDesc& desc, const void* initialData /*= nullptr*/)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Texture");
 		TextureHandle h = m_TextureHandles->AllocHandle();

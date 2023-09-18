@@ -4,6 +4,7 @@
 #include "SampleScenes/00_HelloTriangle.h"
 #include "SampleScenes/01_Hello3D.h"
 #include "SampleScenes/02_Instancing.h"
+#include "SampleScenes/03_Textures.h"
 
 #include "Rendering/ImguiRenderer.h"
 #include "imgui/imgui.h"
@@ -15,6 +16,7 @@ enum class SampleScenes
 	HELLO_TRIANGLE,
 	HELLO_3D,
 	INSTANCING,
+	TEXTURES,
 	COUNT,
 };
 static const char* s_SampleSceneNames[]
@@ -22,6 +24,7 @@ static const char* s_SampleSceneNames[]
 	"Hello Triangle",
 	"Hello 3D",
 	"Instancing",
+	"Textures",
 };
 static_assert(NELEM(s_SampleSceneNames) == IDX(SampleScenes::COUNT));
 
@@ -69,6 +72,7 @@ void SamplesApp::Update()
 		case IDX(SampleScenes::HELLO_TRIANGLE): m_CurrentSample = MakePtr<HelloTriangle>(*m_GraphicsContext); break;
 		case IDX(SampleScenes::HELLO_3D):		m_CurrentSample = MakePtr<Hello3D>(*m_GraphicsContext); break;
 		case IDX(SampleScenes::INSTANCING):		m_CurrentSample = MakePtr<Instancing>(*m_GraphicsContext); break;
+		case IDX(SampleScenes::TEXTURES):		m_CurrentSample = MakePtr<Textures>(*m_GraphicsContext); break;
 		default: return;
 		}
 

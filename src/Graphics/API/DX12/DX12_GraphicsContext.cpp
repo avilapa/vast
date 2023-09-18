@@ -422,7 +422,7 @@ namespace vast::gfx
 		buf.SetName("Unnamed Buffer");
 	}
 
-	void DX12GraphicsContext::UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize)
+	void DX12GraphicsContext::UpdateBuffer_Internal(BufferHandle h, const void* srcMem, size_t srcSize)
 	{
 		VAST_ASSERT(srcMem && srcSize);
 		DX12Buffer& buf = m_Buffers->LookupResource(h);
@@ -470,7 +470,7 @@ namespace vast::gfx
 		tex.SetName("Unnamed Texture");
 	}
 
-	void DX12GraphicsContext::UpdateTexture_Internal(TextureHandle h, void* srcMem)
+	void DX12GraphicsContext::UpdateTexture_Internal(TextureHandle h, const void* srcMem)
 	{
 		VAST_ASSERT(srcMem);
 		DX12Texture& tex = m_Textures->LookupResource(h);

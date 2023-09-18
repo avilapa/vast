@@ -40,8 +40,8 @@ namespace vast::gfx
 
 		// - GPU Resources --------------------------------------------------------------------- //
 
-		BufferHandle CreateBuffer(const BufferDesc& desc, void* initialData = nullptr, const size_t dataSize = 0);
-		TextureHandle CreateTexture(const TextureDesc& desc, void* initialData = nullptr);
+		BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr, const size_t dataSize = 0);
+		TextureHandle CreateTexture(const TextureDesc& desc, const void* initialData = nullptr);
 		PipelineHandle CreatePipeline(const PipelineDesc& h);
 
 		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
@@ -142,11 +142,11 @@ namespace vast::gfx
 		void DestroyTempFrameAllocators();
 
 		virtual void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) = 0;
-		virtual void UpdateBuffer_Internal(BufferHandle h, void* srcMem, size_t srcSize) = 0;
+		virtual void UpdateBuffer_Internal(BufferHandle h, const void* srcMem, size_t srcSize) = 0;
 		virtual void DestroyBuffer_Internal(BufferHandle h) = 0;
 
 		virtual void CreateTexture_Internal(TextureHandle h, const TextureDesc& desc) = 0;
-		virtual void UpdateTexture_Internal(TextureHandle h, void* srcMem) = 0;
+		virtual void UpdateTexture_Internal(TextureHandle h, const void* srcMem) = 0;
 		virtual void DestroyTexture_Internal(TextureHandle h) = 0;
 
 		virtual void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) = 0;
