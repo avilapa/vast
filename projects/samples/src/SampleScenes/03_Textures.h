@@ -75,7 +75,7 @@ public:
 		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
 
 		// Create perspective camera
-		float3 cameraPos = float3(0.0f, 1.5f, -5.0f);
+		float3 cameraPos = float3(0.0f, 1.0f, -5.0f);
 		m_Camera = MakePtr<PerspectiveCamera>(cameraPos, float3(0, 0, 0), float3(0, 1, 0), ctx.GetBackBufferAspectRatio(), DEG_TO_RAD(45.0f));
 
 		// Create skybox object
@@ -166,7 +166,7 @@ public:
 		{
 			Vector<Vtx3fPos3fNormal2fUv> sphereVertexData;
 			Vector<uint16> sphereIndexData;
-			ConstructUVSphere(1.3f, 18, 36, sphereVertexData, sphereIndexData);
+			ConstructUVSphere(1.5f, 18, 36, sphereVertexData, sphereIndexData);
 
 			const uint32 vtxSize = static_cast<uint32>(sphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
 			const uint32 numIndices = static_cast<uint32>(sphereIndexData.size());
@@ -219,7 +219,6 @@ public:
 
 	void Update() override
 	{
-		//m_Camera->SetTransform(hlslpp::mul(m_Camera->GetTransform(), float4x4::rotation_y(0.001f)));
 		m_TexturedDrawables[0].cb.modelMatrix = hlslpp::mul(float4x4::rotation_y(0.001f), m_TexturedDrawables[0].cb.modelMatrix);
 		m_TexturedDrawables[1].cb.modelMatrix = hlslpp::mul(float4x4::rotation_y(0.001f), m_TexturedDrawables[1].cb.modelMatrix);
 	}

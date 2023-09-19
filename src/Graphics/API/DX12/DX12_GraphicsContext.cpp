@@ -176,11 +176,16 @@ namespace vast::gfx
 	// Render Passes
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	DX12RenderPassData DX12GraphicsContext::SetupBackBufferRenderPassBarrierTransitions(LoadOp loadOp, StoreOp storeOp)
+	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
 	{
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_ASSERT(m_Pipelines && h.IsValid());
+		m_GraphicsCommandList->SetPipeline(&m_Pipelines->LookupResource(h));
+
 		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
 		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
+		// Setup backbuffer transitions
 		// Note: No need for an end barrier since we only present once at the end of the frame.
 		DX12RenderPassData rpd;
 		rpd.rtCount = 1;
@@ -189,12 +194,29 @@ namespace vast::gfx
 		rpd.rtDesc[0].BeginningAccess.Clear.ClearValue = backBuffer.clearValue;
 		rpd.rtDesc[0].EndingAccess.Type = TranslateToDX12(storeOp);
 
-		return rpd;
+		BeginRenderPass_Internal(rpd);
+		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize());
 	}
 
-	DX12RenderPassData DX12GraphicsContext::SetupCommonRenderPassBarrierTransitions(const DX12Pipeline& pipeline, RenderPassTargets targets)
+	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Setup Barriers (RT)");
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_ASSERT(m_Pipelines && h.IsValid());
+		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
+		m_GraphicsCommandList->SetPipeline(&pipeline);
+
+#ifdef VAST_DEBUG
+		// Validate user bindings against PSO.
+		uint32 rtCount = 0;
+		for (uint32 i = 0; i < MAX_RENDERTARGETS; ++i)
+		{
+			if (targets.rt[i].h.IsValid())
+				rtCount++;
+		}
+		VAST_ASSERT(rtCount == pipeline.desc.NumRenderTargets);
+#endif
+
+		// Set up transitions
 		DX12RenderPassData rpd;
 		rpd.rtCount = pipeline.desc.NumRenderTargets;
 		for (uint32 i = 0; i < rpd.rtCount; ++i)
@@ -239,7 +261,11 @@ namespace vast::gfx
 				rpd.dsDesc.StencilEndingAccess = rpd.dsDesc.DepthEndingAccess;
 			}
 		}
-		return rpd;
+
+		BeginRenderPass_Internal(rpd);
+
+		DX12Texture& rt = m_Textures->LookupResource(targets.rt[0].h);
+		m_GraphicsCommandList->SetDefaultViewportAndScissor(uint2(rt.resource->GetDesc().Width, rt.resource->GetDesc().Height));
 	}
 
 	void DX12GraphicsContext::BeginRenderPass_Internal(const DX12RenderPassData& rpd)
@@ -249,49 +275,6 @@ namespace vast::gfx
 		VAST_ASSERTF(!m_bHasRenderPassBegun, "A render pass is already running.");
 		m_GraphicsCommandList->BeginRenderPass(rpd);
 		m_bHasRenderPassBegun = true;
-
-		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize()); // TODO: This shouldn't be here!
-	}
-
-	void DX12GraphicsContext::BeginRenderPassToBackBuffer_Internal(DX12Pipeline& pipeline, LoadOp loadOp, StoreOp storeOp)
-	{
-		m_GraphicsCommandList->SetPipeline(&pipeline);
-
-		DX12RenderPassData rdp = SetupBackBufferRenderPassBarrierTransitions(loadOp, storeOp);
-		BeginRenderPass_Internal(rdp);
-	}
-
-	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
-	{
-		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
-		VAST_ASSERT(m_Pipelines && h.IsValid());
-		BeginRenderPassToBackBuffer_Internal(m_Pipelines->LookupResource(h), loadOp, storeOp);
-	}
-
-	void DX12GraphicsContext::ValidateRenderPassTargets(const DX12Pipeline& pipeline, RenderPassTargets targets) const
-	{
-		// Validate user bindings against PSO.
-		uint32 rtCount = 0;
-		for (uint32 i = 0; i < MAX_RENDERTARGETS; ++i)
-		{
-			if (targets.rt[i].h.IsValid())
-				rtCount++;
-		}
-		VAST_ASSERT(rtCount == pipeline.desc.NumRenderTargets);
-	}
-
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets)
-	{
-		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
-		VAST_ASSERT(m_Pipelines && h.IsValid());
-		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
-		m_GraphicsCommandList->SetPipeline(&pipeline);
-
-#ifdef VAST_DEBUG
-		ValidateRenderPassTargets(pipeline, targets);
-#endif
-		DX12RenderPassData rdp = SetupCommonRenderPassBarrierTransitions(pipeline, targets);
-		BeginRenderPass_Internal(rdp);
 	}
 
 	void DX12GraphicsContext::EndRenderPass()

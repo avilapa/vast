@@ -3,7 +3,7 @@ cbuffer PushConstants : register(PushConstantRegister)
 	uint RenderTargetIdx;
 };
 
-struct VertexOutput
+struct VertexOutputFS
 {
 	float4 pos : SV_POSITION;
 	float2 uv  : TEXCOORD0;
@@ -20,11 +20,11 @@ float4 MakeFullscreenTriangle(int vtxId)
     return vtx;
 }
 
-VertexOutput VS_Main(uint vtxId : SV_VertexID)
+VertexOutputFS VS_Main(uint vtxId : SV_VertexID)
 {
     float4 vtx = MakeFullscreenTriangle(vtxId);
 
-    VertexOutput OUT;
+    VertexOutputFS OUT;
     OUT.pos = float4(vtx.xy, 0, 1);
     OUT.uv = vtx.zw;
 
@@ -36,7 +36,7 @@ float3 sRGBtoLinear(float3 col)
     return pow(col, 1.0 / 2.2);
 }
 
-float4 PS_Main(VertexOutput IN) : SV_TARGET
+float4 PS_Main(VertexOutputFS IN) : SV_TARGET
 {
     Texture2D<float4> rt = ResourceDescriptorHeap[RenderTargetIdx];
     SamplerState rtSampler = SamplerDescriptorHeap[PointClampSampler]; 

@@ -92,11 +92,7 @@ namespace vast::gfx
 		void SignalEndOfFrame(const QueueType type);
 		void WaitForIdle();
 
-		DX12RenderPassData SetupCommonRenderPassBarrierTransitions(const DX12Pipeline& pipeline, RenderPassTargets targets);
-		DX12RenderPassData SetupBackBufferRenderPassBarrierTransitions(LoadOp loadOp, StoreOp storeOp);
 		void BeginRenderPass_Internal(const DX12RenderPassData& rpd);
-		void BeginRenderPassToBackBuffer_Internal(DX12Pipeline& pipeline, LoadOp loadOp, StoreOp storeOp);
-		void ValidateRenderPassTargets(const DX12Pipeline& pipeline, RenderPassTargets targets) const;
 
 		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
