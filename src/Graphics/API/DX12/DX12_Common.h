@@ -187,7 +187,11 @@ namespace vast::gfx
 		switch (v)
 		{
 		case TexFormat::UNKNOWN:				return DXGI_FORMAT_UNKNOWN;
+		case TexFormat::RGBA32_FLOAT:			return DXGI_FORMAT_R32G32B32A32_FLOAT;
+		case TexFormat::RGBA16_FLOAT:			return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		case TexFormat::RG32_FLOAT:				return DXGI_FORMAT_R32G32_FLOAT;
+		case TexFormat::RG16_FLOAT:				return DXGI_FORMAT_R16G16_FLOAT;
+
 		case TexFormat::RGBA8_UNORM:			return DXGI_FORMAT_R8G8B8A8_UNORM;
 		case TexFormat::RGBA8_UNORM_SRGB:		return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 
@@ -206,7 +210,10 @@ namespace vast::gfx
 		switch (v)
 		{
 		case DXGI_FORMAT_UNKNOWN:				return TexFormat::UNKNOWN;
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:	return TexFormat::RGBA32_FLOAT;
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:	return TexFormat::RGBA16_FLOAT;
 		case DXGI_FORMAT_R32G32_FLOAT:			return TexFormat::RG32_FLOAT;
+		case DXGI_FORMAT_R16G16_FLOAT:			return TexFormat::RG16_FLOAT;
 		case DXGI_FORMAT_R8G8B8A8_UNORM:		return TexFormat::RGBA8_UNORM;
 		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:	return TexFormat::RGBA8_UNORM_SRGB;
 

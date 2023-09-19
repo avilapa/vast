@@ -49,7 +49,12 @@ namespace vast::gfx
 	enum class TexFormat
 	{
 		UNKNOWN,
+
+		RGBA32_FLOAT,
+		RGBA16_FLOAT,
 		RG32_FLOAT,
+		RG16_FLOAT,
+
 		RGBA8_UNORM,
 		RGBA8_UNORM_SRGB,
 

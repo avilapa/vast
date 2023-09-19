@@ -160,8 +160,8 @@ namespace vast::gfx
 
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = m_HeapStart.cpuHandle;
 		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = m_HeapStart.gpuHandle;
-		cpuHandle.ptr += static_cast<uint64_t>(index) * m_DescriptorSize;
-		gpuHandle.ptr += static_cast<uint64_t>(index) * m_DescriptorSize;
+		cpuHandle.ptr += static_cast<uint64>(index) * m_DescriptorSize;
+		gpuHandle.ptr += static_cast<uint64>(index) * m_DescriptorSize;
 
 		DX12Descriptor desc;
 		desc.heapIdx = index;
