@@ -264,6 +264,7 @@ namespace vast::gfx
 
 		BeginRenderPass_Internal(rpd);
 
+		// TODO: Figure out something more robust than this.
 		DX12Texture& rt = m_Textures->LookupResource(targets.rt[0].h);
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(uint2(rt.resource->GetDesc().Width, rt.resource->GetDesc().Height));
 	}

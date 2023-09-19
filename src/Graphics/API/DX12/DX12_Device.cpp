@@ -451,6 +451,7 @@ namespace vast::gfx
 			{
 				if ((desc.type == TexType::TEXTURE_2D) && (desc.depthOrArraySize == 6))
 				{
+					// TODO: TextureDesc should be more explicit in whether a texture is a cubemap or not.
 					// Cubemap
 					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 					srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
