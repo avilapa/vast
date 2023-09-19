@@ -23,38 +23,36 @@ namespace vast::gfx
 #if USE_IMGUI_STOCK_IMPL_WIN32
 		ImGui_ImplWin32_Init(windowHandle);
 #endif
+
+		BlendState bs = BlendState::Preset::kAdditive;
+		bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
+
+		PipelineDesc pipelineDesc =
 		{
-			BlendState bs = BlendState::Preset::kAdditive;
-			bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "imgui.hlsl", .entryPoint = "VS_Imgui"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "imgui.hlsl", .entryPoint = "PS_Imgui"},
+			.blendStates = { bs },
+			.depthStencilState = DepthStencilState::Preset::kDisabled,
+			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
+		};
+		m_Pipeline = ctx.CreatePipeline(pipelineDesc);
+		m_TextureProxy = ctx.LookupShaderResource(m_Pipeline, "Texture0");
 
-			PipelineDesc pipelineDesc =
-			{
-				.vs = {.type = ShaderType::VERTEX, .shaderName = "imgui.hlsl", .entryPoint = "VS_Main"},
-				.ps = {.type = ShaderType::PIXEL,  .shaderName = "imgui.hlsl", .entryPoint = "PS_Main"},
-				.blendStates = { bs },
-				.depthStencilState = DepthStencilState::Preset::kDisabled,
-				.renderPassLayout = { .rtFormats = { ctx.GetBackBufferFormat() } },
-			};
-			m_Pipeline = ctx.CreatePipeline(pipelineDesc);
-		}
+		ImGuiIO& io = ImGui::GetIO();
+		unsigned char* texData;
+		int32 texWidth, texHeight;
+		io.Fonts->GetTexDataAsRGBA32(&texData, &texWidth, &texHeight);
 
+		TextureDesc texDesc =
 		{
-			ImGuiIO& io = ImGui::GetIO();
-			unsigned char* texData;
-			int32 texWidth, texHeight;
-			io.Fonts->GetTexDataAsRGBA32(&texData, &texWidth, &texHeight);
+			.format = TexFormat::RGBA8_UNORM_SRGB,
+			.width = static_cast<uint32>(texWidth),
+			.height = static_cast<uint32>(texHeight),
+			.viewFlags = TexViewFlags::SRV,
+		};
+		m_FontTex = ctx.CreateTexture(texDesc, texData);
 
-			TextureDesc texDesc =
-			{
-				.format = TexFormat::RGBA8_UNORM_SRGB,
-				.width  = static_cast<uint32>(texWidth),
-				.height = static_cast<uint32>(texHeight),
-				.viewFlags = TexViewFlags::SRV,
-			};
-			m_FontTex = ctx.CreateTexture(texDesc, texData);
-
-			m_FontTexProxy = ctx.LookupShaderResource(m_Pipeline, "FontTexture");
-		}
+		io.Fonts->SetTexID(&m_FontTex);
 	}
 
 	ImguiRenderer::~ImguiRenderer()
@@ -111,9 +109,6 @@ namespace vast::gfx
 		if (drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f)
 			return;
 
-		if (!ctx.GetIsReady(m_FontTex))
-			return;
-
 		// Get memory for vertex and index buffers
 		VAST_PROFILE_TRACE_BEGIN("ui", "Merge Buffers");
 		const uint32 vtxSize = sizeof(ImDrawVert) * drawData->TotalVtxCount;
@@ -140,7 +135,6 @@ namespace vast::gfx
 			ctx.SetIndexBuffer(idxView.buffer, idxView.offset, IndexBufFormat::R16_UINT);
 			const float4x4 mvp = ComputeProjectionMatrix(drawData);
 			ctx.SetPushConstants(&mvp, sizeof(float4x4));
-			ctx.SetShaderResourceView(m_FontTex, m_FontTexProxy);
 			ctx.SetBlendFactor(float4(0));
 			uint32 vtxOffset = 0, idxOffset = 0;
 			ImVec2 clipOff = drawData->DisplayPos;
@@ -165,6 +159,13 @@ namespace vast::gfx
 							continue;
 						}
 
+						TextureHandle h = *drawCmd->GetTexID();
+
+						if (!ctx.GetIsReady(h))
+							continue;
+
+						// TODO: This could be simpler, SetShaderResourceView does too many things.
+						ctx.SetShaderResourceView(h, m_TextureProxy);
 						ctx.SetScissorRect(int4(clipMin.x, clipMin.y, clipMax.x, clipMax.y));
 						ctx.DrawIndexedInstanced(drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxOffset, drawCmd->VtxOffset + vtxOffset, 0);
 					}
