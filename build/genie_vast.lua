@@ -16,6 +16,7 @@ project "vast"
 		path.join(ROOT_DIR, "src/**.cpp"),
 		path.join(ROOT_DIR, "shaders/**.h"),
 		path.join(ROOT_DIR, "shaders/**.hlsl"),
+		path.join(ROOT_DIR, "shaders/**.hlsli"),
 	}
 	
 	includedirs
