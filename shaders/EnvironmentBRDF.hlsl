@@ -1,17 +1,6 @@
 #include "fullscreen.hlsl"
 #include "ImportanceSampling.hlsli"
 
-float Pow5(float v)
-{
-    float v2 = v * v;
-    return v2 * v2 * v;
-}
-
-float LinearizeRoughness(float roughness)
-{
-    return roughness * roughness;
-}
-
 // Karis 2014 - Real Shading in Unreal Engine 4
 // https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
 // Derivation based on: https://github.com/google/filament/blob/main/libs/ibl/src/CubemapIBL.cpp

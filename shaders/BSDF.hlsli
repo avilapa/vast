@@ -1,9 +1,20 @@
-#define EPS		    0.0001f
+#define EPS		        0.0001f
 #define PI              3.14159265358979323846264338327950288
 #define INV_PI          (1.0 / PI)
 #define MIN_ROUGHNESS   0.0002
 
 #define BSDF_USE_GGX_MULTISCATTER 1
+
+float Pow5(float v)
+{
+    float v2 = v * v;
+    return v2 * v2 * v;
+}
+
+float LinearizeRoughness(float roughness)
+{
+    return roughness * roughness;
+}
 
 float D_GGX(float NdotH, float roughness)
 {
@@ -22,7 +33,7 @@ float V_SmithGGXHeightCorrelated(float NdotV, float NdotL, float roughness)
 
 float3 F_Schlick(float3 f0, float cosTheta)
 {
-    return f0 + (1.0 - f0) * pow(1.0 - cosTheta, 5.0f);
+    return f0 + (1.0 - f0) * Pow5(1.0 - cosTheta);
 }
 
 float3 GetEnergyCompensationGGX(float3 f0, float2 dfg)
