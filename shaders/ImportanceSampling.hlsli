@@ -1,4 +1,4 @@
-#include "BSDF.hlsl"
+#include "BSDF.hlsli"
 
 // Dammertz 2012 - Hammersley Points on the Hemisphere
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
