@@ -1,3 +1,4 @@
+#include "Common.hlsli"
 
 struct FrameCB
 {
@@ -63,8 +64,8 @@ float4 PS_Main(VertexOutput IN) : SV_TARGET
     float3 V = normalize(FrameConstantBuffer.cameraPos - IN.worldPos);
     float3 R = reflect(-V, normalize(IN.worldNormal));
 
-    float3 baseColor = colorTex.Sample(colorSampler, IN.uv).rgb;
-    float3 reflectionColor = skyboxTex.Sample(skyboxSampler, R).rgb;
+    float3 baseColor = sRGBtoLinear(colorTex.Sample(colorSampler, IN.uv).rgb);
+    float3 reflectionColor = sRGBtoLinear(skyboxTex.Sample(skyboxSampler, R).rgb);
 
     float3 F = F_Schlick(0.08f, saturate(dot(normalize(IN.worldNormal), V)));
     return float4(baseColor * (1.0f - F) + reflectionColor * F, 1.0f);

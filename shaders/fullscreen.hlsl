@@ -1,3 +1,5 @@
+#include "Common.hlsli"
+
 cbuffer PushConstants : register(PushConstantRegister)
 {
 	uint RenderTargetIdx;
@@ -31,11 +33,6 @@ VertexOutputFS VS_Main(uint vtxId : SV_VertexID)
     return OUT;
 }
 
-float3 sRGBtoLinear(float3 col)
-{
-    return pow(col, 1.0 / 2.2);
-}
-
 float4 PS_Main(VertexOutputFS IN) : SV_TARGET
 {
     Texture2D<float4> rt = ResourceDescriptorHeap[RenderTargetIdx];
@@ -43,5 +40,5 @@ float4 PS_Main(VertexOutputFS IN) : SV_TARGET
 
     float3 color = rt.Sample(rtSampler, IN.uv).rgb;
 
-    return float4(sRGBtoLinear(color), 1);
+    return float4(ApplyGammaCorrection(color), 1);
 }

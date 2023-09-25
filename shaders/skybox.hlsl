@@ -1,3 +1,4 @@
+#include "Common.hlsli"
 
 cbuffer PushConstants : register(PushConstantRegister)
 {
@@ -36,5 +37,5 @@ float4 PS_Cube(VertexOutput IN) : SV_TARGET
     TextureCube<float4> skyboxTex = ResourceDescriptorHeap[EnvironmentTexIdx];
     SamplerState skyboxSampler = SamplerDescriptorHeap[LinearClampSampler];
 
-    return float4(skyboxTex.Sample(skyboxSampler, IN.uv).rgb, 1);
+    return float4(sRGBtoLinear(skyboxTex.Sample(skyboxSampler, IN.uv).rgb), 1);
 }
