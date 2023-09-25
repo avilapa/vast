@@ -2,8 +2,7 @@
 
 #include "ISample.h"
 #include "Rendering/Camera.h"
-
-#include <cstdlib>
+#include "Rendering/Imgui.h"
 
 using namespace vast::gfx;
 

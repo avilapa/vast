@@ -2,7 +2,7 @@
 
 #include "Rendering/Camera.h"
 
-#include "imgui/imgui.h"
+#include "Rendering/Imgui.h"
 
 // ---------------------------------------- TODO LIST ------------------------------------------ //
 // Features coming up:

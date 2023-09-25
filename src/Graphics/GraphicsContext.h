@@ -71,6 +71,7 @@ namespace vast::gfx
 
 		// - Pipeline State -------------------------------------------------------------------- //
 
+
 		virtual void SetScissorRect(int4 rect) = 0;
 		virtual void SetBlendFactor(float4 blend) = 0;
 
@@ -89,6 +90,7 @@ namespace vast::gfx
 		virtual TexFormat GetBackBufferFormat() const = 0;
 		virtual TexFormat GetTextureFormat(const TextureHandle h) = 0;
 
+		// TODO: Currently we only support bindless SRV indices.
 		virtual uint32 GetBindlessIndex(const BufferHandle h) = 0;
 		virtual uint32 GetBindlessIndex(const TextureHandle h) = 0;
 

@@ -3,9 +3,9 @@
 #include "Core/Types.h"
 #include "Core/Timer.h"
 #include "Graphics/GraphicsContext.h"
+#include "Rendering/Imgui.h"
 
 #include "minitrace/minitrace.h"
-#include "imgui/imgui.h"
 
 #include <queue>
 #include <deque>

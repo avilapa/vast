@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ISample.h"
-#include "imgui/imgui.h"
+#include "Rendering/Imgui.h"
 
 using namespace vast::gfx;
 

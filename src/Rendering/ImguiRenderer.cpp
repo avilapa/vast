@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Rendering/ImguiRenderer.h"
 
-#include "imgui/imgui.h"
+#include "Rendering/Imgui.h"
 
 #define USE_IMGUI_STOCK_IMPL_WIN32	1
 

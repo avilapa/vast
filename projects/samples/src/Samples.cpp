@@ -7,7 +7,7 @@
 #include "SampleScenes/03_Textures.h"
 
 #include "Rendering/ImguiRenderer.h"
-#include "imgui/imgui.h"
+#include "Rendering/Imgui.h"
 
 VAST_DEFINE_APP_MAIN(SamplesApp)
 

@@ -3,6 +3,7 @@
 #include "ISample.h"
 #include "Rendering/Camera.h"
 #include "Rendering/Skybox.h"
+#include "Rendering/Imgui.h"
 
 #include "shaders_shared.h"
 
