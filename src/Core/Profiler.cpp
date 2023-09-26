@@ -80,7 +80,6 @@ namespace vast
 		{
 			tMin = FLT_MAX;
 			tMax = 0;
-			uint32 validSamples = 0;
 			for (float v : history)
 			{
 				if (v > 0.0)
