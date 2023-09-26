@@ -5,8 +5,8 @@
 
 #include <filesystem>
 
-// Don't allow VAST_ASSERT to be called with too many arguments to catch missing F in compile time.
-#pragma warning(error: 4002)
+// Ensure VAST_ASSERT and VAST_ASSERTF are called with the right number of arguments.
+#pragma warning(error: 4002 4003)
 
 #if VAST_ENABLE_ASSERTS
 // TODO: Look into likely/unlikely for asserts.
