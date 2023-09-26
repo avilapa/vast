@@ -34,6 +34,10 @@ namespace vast::gfx
 		void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) override;
 		void EndRenderPass() override;
 
+		void AddBarrier(BufferHandle h, ResourceState newState) override;
+		void AddBarrier(TextureHandle h, ResourceState newState) override;
+		void FlushBarriers() override;
+
 		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
 		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) override;
 		void SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;

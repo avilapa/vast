@@ -99,6 +99,7 @@ namespace vast::gfx
 	{
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
+			// Wait on fences from NUM_FRAMES_IN_FLIGHT frames ago
 			m_CommandQueues[i]->WaitForFenceValue(m_FrameFenceValues[i][m_FrameId]);
 		}
 
@@ -292,6 +293,23 @@ namespace vast::gfx
 
 		m_GraphicsCommandList->SetPipeline(nullptr);
 		VAST_PROFILE_TRACE_END("gfx", "Render Pass");
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////\
+	
+	void DX12GraphicsContext::AddBarrier(BufferHandle h, ResourceState newState)
+	{
+		m_GraphicsCommandList->AddBarrier(m_Buffers->LookupResource(h), TranslateToDX12(newState));
+	}
+
+	void DX12GraphicsContext::AddBarrier(TextureHandle h, ResourceState newState)
+	{
+		m_GraphicsCommandList->AddBarrier(m_Textures->LookupResource(h), TranslateToDX12(newState));
+	}
+	
+	void DX12GraphicsContext::FlushBarriers()
+	{
+		m_GraphicsCommandList->FlushBarriers();
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
@@ -513,7 +531,6 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
 		DX12Pipeline& pipeline = m_Pipelines->AcquireResource(h);
 		m_Device->CreatePipeline(desc, pipeline);
 	}

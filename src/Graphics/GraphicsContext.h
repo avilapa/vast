@@ -57,6 +57,10 @@ namespace vast::gfx
 		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
 		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
 
+		virtual void AddBarrier(BufferHandle h, ResourceState newState) = 0;
+		virtual void AddBarrier(TextureHandle h, ResourceState newState) = 0;
+		virtual void FlushBarriers() = 0;
+		
 		// - Resource Binding ------------------------------------------------------------------ //
 
 		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
@@ -70,7 +74,6 @@ namespace vast::gfx
 		virtual void SetPushConstants(const void* data, const uint32 size) = 0;
 
 		// - Pipeline State -------------------------------------------------------------------- //
-
 
 		virtual void SetScissorRect(int4 rect) = 0;
 		virtual void SetBlendFactor(float4 blend) = 0;

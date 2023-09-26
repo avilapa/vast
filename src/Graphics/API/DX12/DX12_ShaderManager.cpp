@@ -332,6 +332,22 @@ namespace vast::gfx
 					descriptorRanges.push_back(descriptorRange);
 					break;
 				}
+				case D3D_SIT_UAV_RWSTRUCTURED:
+				case D3D_SIT_UAV_RWTYPED:
+				{
+					// UAV
+					D3D12_DESCRIPTOR_RANGE1 descriptorRange = {};
+					descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+					descriptorRange.NumDescriptors = 1;
+					descriptorRange.BaseShaderRegister = sibDesc.BindPoint;
+					descriptorRange.RegisterSpace = sibDesc.Space;
+					// TODO: Review usage, ideally we can set D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC for most stuff.
+					descriptorRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE | D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE;
+					descriptorRange.OffsetInDescriptorsFromTableStart = static_cast<uint32>(descriptorRanges.size());
+
+					descriptorRanges.push_back(descriptorRange);
+					break;
+				}
 				case D3D_SIT_SAMPLER:
 					break; // TODO: Should we assert here? Test using one of these
 				default:
