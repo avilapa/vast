@@ -41,11 +41,10 @@ float2 IntegrateBRDF(uint numSamples, float roughness, float NdotV)
     return r * (4.0f / float(numSamples));
 }
 
-float4 PS_IntegrateBRDF(VertexOutputFS IN) : SV_TARGET
+float2 PS_IntegrateBRDF(VertexOutputFS IN) : SV_TARGET
 {
     float roughness = LinearizeRoughness(IN.uv.x);
     float NdotV = IN.uv.y;
     
-    float2 dfg = IntegrateBRDF(1024u, roughness, NdotV);
-    return float4(dfg.xy, 0, 1);
+    return IntegrateBRDF(1024u, roughness, NdotV);
 }
