@@ -1,10 +1,13 @@
 
-cbuffer ImguiCB : register(PushConstantRegister)
+cbuffer ImguiCB : register(b0)
 {
 	float4x4 ProjectionMatrix;
 };
 
-Texture2D Texture0 : register(t0);
+cbuffer TextureSRV : register(PushConstantRegister)
+{
+    uint TextureIdx;
+};
 
 struct VertexInputImgui
 {
@@ -39,6 +42,7 @@ VertexOutputImgui VS_Imgui(VertexInputImgui IN)
 
 float4 PS_Imgui(VertexOutputImgui IN) : SV_TARGET
 {
-	SamplerState sampler0 = SamplerDescriptorHeap[LinearClampSampler];
-    return IN.col * Texture0.Sample(sampler0, IN.uv);
+    Texture2D<float4> tex = ResourceDescriptorHeap[TextureIdx];
+	SamplerState sam = SamplerDescriptorHeap[LinearClampSampler];
+    return IN.col * tex.Sample(sam, IN.uv);
 }

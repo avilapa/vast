@@ -15,6 +15,7 @@ struct ID3D12ShaderReflection;
 
 namespace vast::gfx
 {
+	static_assert(CONSTANT_BUFFER_ALIGNMENT == D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	static_assert(MAX_RENDERTARGETS == D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
 	// - Resources -------------------------------------------------------------------------------- //

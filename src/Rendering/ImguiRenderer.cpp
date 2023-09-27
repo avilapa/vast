@@ -36,7 +36,7 @@ namespace vast::gfx
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 		};
 		m_Pipeline = ctx.CreatePipeline(pipelineDesc);
-		m_TextureProxy = ctx.LookupShaderResource(m_Pipeline, "Texture0");
+		m_CbvProxy = ctx.LookupShaderResource(m_Pipeline, "ImguiCB");
 
 		ImGuiIO& io = ImGui::GetIO();
 		unsigned char* texData;
@@ -133,8 +133,13 @@ namespace vast::gfx
 		{
 			ctx.BindVertexBuffer(vtxView.buffer, vtxView.offset, sizeof(ImDrawVert));
 			ctx.BindIndexBuffer(idxView.buffer, idxView.offset, IndexBufFormat::R16_UINT);
+
+			// Bind temporary CBV
 			const float4x4 mvp = ComputeProjectionMatrix(drawData);
-			ctx.SetPushConstants(&mvp, sizeof(float4x4));
+			BufferView cbv = ctx.AllocTempBufferView(sizeof(float4x4), CONSTANT_BUFFER_ALIGNMENT);
+			memcpy(cbv.data, &mvp, sizeof(float4x4));
+			ctx.BindConstantBuffer(m_CbvProxy, cbv.buffer, cbv.offset);
+
 			ctx.SetBlendFactor(float4(0));
 			uint32 vtxOffset = 0, idxOffset = 0;
 			ImVec2 clipOff = drawData->DisplayPos;
@@ -164,8 +169,9 @@ namespace vast::gfx
 						if (!ctx.GetIsReady(h))
 							continue;
 
-						// TODO: This could be simpler, SetShaderResourceView does too many things.
-						ctx.SetShaderResourceView(h, m_TextureProxy);
+						// TODO: Do we need explicit transitions here? If so we could bundle them in one go.
+						uint32 srvIndex = ctx.GetBindlessSRV(h);
+						ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 						ctx.SetScissorRect(int4(clipMin.x, clipMin.y, clipMax.x, clipMax.y));
 						ctx.DrawIndexedInstanced(drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxOffset, drawCmd->VtxOffset + vtxOffset, 0);
 					}

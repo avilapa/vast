@@ -19,8 +19,8 @@ namespace vast::gfx
 	private:
 		gfx::GraphicsContext& ctx;
 		gfx::PipelineHandle m_Pipeline;
+		gfx::ShaderResourceProxy m_CbvProxy;
 		gfx::TextureHandle m_FontTex;
-		gfx::ShaderResourceProxy m_TextureProxy;
 	};
 
 }

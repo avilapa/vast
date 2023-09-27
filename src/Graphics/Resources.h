@@ -27,6 +27,8 @@ namespace vast::gfx
 	BufferDesc AllocCbvBufferDesc(uint32 size, ResourceUsage usage = ResourceUsage::UPLOAD);
 	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, ResourceUsage usage = ResourceUsage::DEFAULT);
 
+	static constexpr uint32 CONSTANT_BUFFER_ALIGNMENT = 256;
+
 	struct BufferView
 	{
 		BufferHandle buffer;
