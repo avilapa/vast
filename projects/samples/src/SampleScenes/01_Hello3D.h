@@ -113,7 +113,7 @@ public:
 		// Create a constant buffer and fill it with the necessary data for rendering the cube.
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
 		m_CubeCB.modelMatrix = float4x4::identity();
-		m_CubeCB.vtxBufIdx = ctx.GetBindlessIndex(m_CubeVtxBuf);
+		m_CubeCB.vtxBufIdx = ctx.GetBindlessSRV(m_CubeVtxBuf);
 
 		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
 		
@@ -157,8 +157,8 @@ public:
 			if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeIdxBuf))
 			{
 				// Bind our constant buffer containing the bindless indices to the vertex buffer.
-				ctx.SetConstantBufferView(m_CubeCbvBuf, m_CubeCbvBufProxy);
-				ctx.SetIndexBuffer(m_CubeIdxBuf, 0, IndexBufFormat::R16_UINT);
+				ctx.BindConstantBuffer(m_CubeCbvBufProxy, m_CubeCbvBuf);
+				ctx.BindIndexBuffer(m_CubeIdxBuf, 0, IndexBufFormat::R16_UINT);
 				ctx.DrawIndexed(36);
 			}
 		}
@@ -167,7 +167,7 @@ public:
 		// Render our color target to the back buffer and gamma correct it.
 		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
 		{
-			uint32 srvIndex = ctx.GetBindlessIndex(m_ColorRT);
+			uint32 srvIndex = ctx.GetBindlessSRV(m_ColorRT);
 			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 			ctx.DrawFullscreenTriangle();
 		}

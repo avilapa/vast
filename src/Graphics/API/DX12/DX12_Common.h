@@ -29,6 +29,7 @@ namespace vast::gfx
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = { 0 };
 		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = { 0 };
 		uint32 heapIdx = 0;
+		uint32 bindlessIdx = kInvalidHeapIdx;
 	};
 
 	struct DX12Resource
@@ -37,7 +38,6 @@ namespace vast::gfx
 		D3D12MA::Allocation* allocation = nullptr;
 		D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;
 		D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
-		uint32 descriptorHeapIdx = kInvalidHeapIdx;
 		bool isReady = false;
 
 		virtual void Reset()
@@ -46,7 +46,6 @@ namespace vast::gfx
 			allocation = nullptr;
 			gpuAddress = 0;
 			state = D3D12_RESOURCE_STATE_COMMON;
-			descriptorHeapIdx = kInvalidHeapIdx;
 			isReady = false;
 		}
 

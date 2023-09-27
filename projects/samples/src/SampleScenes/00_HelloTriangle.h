@@ -62,7 +62,7 @@ public:
 		};
 		m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		// Query the bindless descriptor index for the vertex buffer.
-		m_TriangleVtxBufIdx = ctx.GetBindlessIndex(m_TriangleVtxBuf);
+		m_TriangleVtxBufIdx = ctx.GetBindlessSRV(m_TriangleVtxBuf);
 	}
 
 	~HelloTriangle()

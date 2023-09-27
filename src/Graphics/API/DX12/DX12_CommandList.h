@@ -68,7 +68,6 @@ namespace vast::gfx
 		void SetConstantBuffer(const DX12Buffer& buf, uint32 offset, uint32 slotIndex);
 		void SetDescriptorTable(const D3D12_GPU_DESCRIPTOR_HANDLE& gpuHandle);
 		void SetPushConstants(const void* data, const uint32 size);
-
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 		void SetScissorRect(const D3D12_RECT& rect);
 

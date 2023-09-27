@@ -31,9 +31,9 @@ namespace vast::gfx
 
 		// - Render Pass ----------------------------------------------------------------------- //
 
-		virtual void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) = 0;
+		virtual void BeginRenderPass(PipelineHandle h, const RenderPassTargets targets) = 0;
 		// Renders to the back buffer as the only target
-		virtual void BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) = 0;
+		virtual void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) = 0;
 		virtual void EndRenderPass() = 0;
 
 		virtual bool IsInRenderPass() const;
@@ -42,7 +42,7 @@ namespace vast::gfx
 
 		BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr, const size_t dataSize = 0);
 		TextureHandle CreateTexture(const TextureDesc& desc, const void* initialData = nullptr);
-		PipelineHandle CreatePipeline(const PipelineDesc& h);
+		PipelineHandle CreatePipeline(const PipelineDesc& desc);
 
 		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
 		void UpdatePipeline(PipelineHandle h);
@@ -54,7 +54,7 @@ namespace vast::gfx
 		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of
 		// the frame and automatically invalidated after that.
 		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0);
-		virtual ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) = 0;
+		virtual ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName) = 0;
 		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
 
 		virtual void AddBarrier(BufferHandle h, ResourceState newState) = 0;
@@ -63,11 +63,12 @@ namespace vast::gfx
 		
 		// - Resource Binding ------------------------------------------------------------------ //
 
-		virtual void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
-		virtual void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) = 0;
-		virtual void SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
-		virtual void SetShaderResourceView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
-		virtual void SetShaderResourceView(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) = 0;
+		virtual void BindVertexBuffer(BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
+		virtual void BindIndexBuffer(BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) = 0;
+		virtual void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0) = 0;
+		virtual void BindSRV(ShaderResourceProxy proxy, BufferHandle h) = 0;
+		virtual void BindSRV(ShaderResourceProxy proxy, TextureHandle h) = 0;
+		virtual void BindUAV(ShaderResourceProxy proxy, TextureHandle h) = 0;
 		// Passes some data to be used in the GPU under a constant buffer declared in a shader using slot
 		// 'PushConstantRegister'. Push Constants are best suited for small amounts of data that change
 		// frequently (e.g. PerObjectSpace). Size parameter is expected in bytes.
@@ -91,16 +92,17 @@ namespace vast::gfx
 		virtual uint2 GetBackBufferSize() const = 0;
 		virtual float GetBackBufferAspectRatio() const = 0;
 		virtual TexFormat GetBackBufferFormat() const = 0;
-		virtual TexFormat GetTextureFormat(const TextureHandle h) = 0;
+		virtual TexFormat GetTextureFormat(TextureHandle h) = 0;
 
-		// TODO: Currently we only support bindless SRV indices.
-		virtual uint32 GetBindlessIndex(const BufferHandle h) = 0;
-		virtual uint32 GetBindlessIndex(const TextureHandle h) = 0;
+		virtual uint32 GetBindlessSRV(BufferHandle h) = 0;
+		virtual uint32 GetBindlessSRV(TextureHandle h) = 0;
+		virtual uint32 GetBindlessUAV(TextureHandle h) = 0;
 
-		virtual bool GetIsReady(const BufferHandle h) = 0;
-		virtual bool GetIsReady(const TextureHandle h) = 0;
+		// TODO: Review ready check for resources.
+		virtual bool GetIsReady(BufferHandle h) = 0;
+		virtual bool GetIsReady(TextureHandle h) = 0;
 
-		virtual const uint8* GetBufferData(const BufferHandle h) = 0;
+		virtual const uint8* GetBufferData(BufferHandle h) = 0;
 
 		// Waits for all active GPU work to finish as well as any queued resource destructions.
 		virtual void FlushGPU() = 0;

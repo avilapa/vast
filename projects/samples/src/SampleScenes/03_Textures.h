@@ -87,7 +87,7 @@ public:
 
 		m_FrameCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 		m_FrameCB.cameraPos = s_float3(cameraPos.x, cameraPos.y, cameraPos.z);
-		m_FrameCB.skyboxTexIdx = ctx.GetBindlessIndex(m_EnvironmentCubeTex);
+		m_FrameCB.skyboxTexIdx = ctx.GetBindlessSRV(m_EnvironmentCubeTex);
 		m_FrameCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(FrameCB)), &m_FrameCB, sizeof(FrameCB));
 
 		PipelineDesc pipelineDesc =
@@ -157,8 +157,8 @@ public:
 			m_TexturedDrawables[0].colorTex = ctx.LoadTextureFromFile("image.tga");
 
 			m_TexturedDrawables[0].cb.modelMatrix = float4x4::translation(1.5f, 0.0f, 0.0f);
-			m_TexturedDrawables[0].cb.vtxBufIdx = ctx.GetBindlessIndex(m_TexturedDrawables[0].vtxBuf);
-			m_TexturedDrawables[0].cb.colorTexIdx = ctx.GetBindlessIndex(m_TexturedDrawables[0].colorTex);
+			m_TexturedDrawables[0].cb.vtxBufIdx = ctx.GetBindlessSRV(m_TexturedDrawables[0].vtxBuf);
+			m_TexturedDrawables[0].cb.colorTexIdx = ctx.GetBindlessSRV(m_TexturedDrawables[0].colorTex);
 			m_TexturedDrawables[0].cb.colorSamplerIdx = IDX(SamplerState::POINT_CLAMP);
 
 			m_TexturedDrawables[0].cbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[0].cb, sizeof(Drawable::CB));
@@ -183,8 +183,8 @@ public:
 			m_TexturedDrawables[1].colorTex = ctx.LoadTextureFromFile("2k_earth_daymap.jpg");
 
 			m_TexturedDrawables[1].cb.modelMatrix = float4x4::translation(-1.5f, 0.0f, 0.0f);
-			m_TexturedDrawables[1].cb.vtxBufIdx = ctx.GetBindlessIndex(m_TexturedDrawables[1].vtxBuf);
-			m_TexturedDrawables[1].cb.colorTexIdx = ctx.GetBindlessIndex(m_TexturedDrawables[1].colorTex);
+			m_TexturedDrawables[1].cb.vtxBufIdx = ctx.GetBindlessSRV(m_TexturedDrawables[1].vtxBuf);
+			m_TexturedDrawables[1].cb.colorTexIdx = ctx.GetBindlessSRV(m_TexturedDrawables[1].colorTex);
 			m_TexturedDrawables[1].cb.colorSamplerIdx = IDX(SamplerState::LINEAR_CLAMP);
 
 			m_TexturedDrawables[1].cbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[1].cb, sizeof(Drawable::CB));
@@ -238,7 +238,7 @@ public:
 		RenderTargetDesc forwardDsDesc = { .h = m_DepthRT, .loadOp = LoadOp::CLEAR/*, .nextUsage = ResourceState::DEPTH_WRITE */};
 		ctx.BeginRenderPass(m_TexturedMeshPso, RenderPassTargets{.rt = { forwardRtDesc }, .ds = forwardDsDesc });
 		{
-			ctx.SetConstantBufferView(m_FrameCbvBuf, m_FrameCbvProxy);
+			ctx.BindConstantBuffer(m_FrameCbvProxy, m_FrameCbvBuf);
 
 			for (auto& i : m_TexturedDrawables)
 			{
@@ -249,13 +249,13 @@ public:
 						if (!ctx.GetIsReady(i.idxBuf))
 							continue;
 
-						ctx.SetConstantBufferView(i.cbvBuf, m_TexturedMeshCbvProxy);
-						ctx.SetIndexBuffer(i.idxBuf);
+						ctx.BindConstantBuffer(m_TexturedMeshCbvProxy, i.cbvBuf);
+						ctx.BindIndexBuffer(i.idxBuf);
 						ctx.DrawIndexed(i.numIndices);
 					}
 					else
 					{
-						ctx.SetConstantBufferView(i.cbvBuf, m_TexturedMeshCbvProxy);
+						ctx.BindConstantBuffer(m_TexturedMeshCbvProxy, i.cbvBuf);
 						ctx.Draw(i.numIndices);
 					}
 				}
@@ -270,7 +270,7 @@ public:
 		// Render our color target to the back buffer and gamma correct it.
 		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
 		{
-			uint32 srvIndex = ctx.GetBindlessIndex(m_ColorRT);
+			uint32 srvIndex = ctx.GetBindlessSRV(m_ColorRT);
 			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 			ctx.DrawFullscreenTriangle();
 		}

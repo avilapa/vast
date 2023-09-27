@@ -83,12 +83,12 @@ namespace vast::gfx
 					float4x4 proj;
 					uint32 texIdx;
 					uint32 bUseReverseZ;
-				} pc{viewMatrix, projMatrix, ctx.GetBindlessIndex(environmentMap), m_bUsingReverseZ };
+				} pc{viewMatrix, projMatrix, ctx.GetBindlessSRV(environmentMap), m_bUsingReverseZ };
 
 				ctx.SetPushConstants(&pc, sizeof(SkyboxCB));
 
-				ctx.SetVertexBuffer(m_CubeVtxBuf);
-				ctx.SetIndexBuffer(m_CubeIdxBuf);
+				ctx.BindVertexBuffer(m_CubeVtxBuf);
+				ctx.BindIndexBuffer(m_CubeIdxBuf);
 				ctx.DrawIndexed(static_cast<uint32>(s_CubeIndexData.size()));
 			}
 		}

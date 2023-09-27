@@ -158,7 +158,7 @@ public:
 		}
 
 		m_CubeCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
-		m_CubeCB.vtxBufIdx = ctx.GetBindlessIndex(m_CubeVtxBuf);
+		m_CubeCB.vtxBufIdx = ctx.GetBindlessSRV(m_CubeVtxBuf);
 		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
 
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
@@ -231,10 +231,10 @@ public:
 			if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeIdxBuf) /*&& ctx.GetIsReady(m_CubeInstBuf)*/)
 			{
 				// Bind our instance buffer and CBV.
-				ctx.SetConstantBufferView(m_CubeCbvBuf, m_CbvBufProxy);
-				ctx.SetShaderResourceView(m_CubeInstBuf, m_InstBufProxy);
+				ctx.BindConstantBuffer(m_CbvBufProxy, m_CubeCbvBuf);
+				ctx.BindSRV(m_InstBufProxy, m_CubeInstBuf);
 				// Set the index buffer and draw all instances in a single draw call.
-				ctx.SetIndexBuffer(m_CubeIdxBuf, 0, IndexBufFormat::R16_UINT);
+				ctx.BindIndexBuffer(m_CubeIdxBuf, 0, IndexBufFormat::R16_UINT);
 				ctx.DrawIndexedInstanced(static_cast<uint32>(s_CubeIndexData.size()), s_NumInstances, 0, 0, 0);
 			}
 		}
@@ -245,7 +245,7 @@ public:
 
 		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
 		{
-			uint32 srvIndex = ctx.GetBindlessIndex(m_ColorRT);
+			uint32 srvIndex = ctx.GetBindlessSRV(m_ColorRT);
 			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 			ctx.DrawFullscreenTriangle();
 		}

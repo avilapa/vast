@@ -308,11 +308,11 @@ namespace vast::gfx
 			outBuf.srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateShaderResourceView(outBuf.resource, &srvDesc, outBuf.srv.cpuHandle);
 
-			outBuf.descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
+			outBuf.srv.bindlessIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
 			// TODO: For dynamic bindless vertex/index buffers we need to be able to update the SRVs accordingly
-			CopySRVHandleToReservedTable(outBuf.srv, outBuf.descriptorHeapIdx);
+			CopyDescriptorToReservedTable(outBuf.srv, outBuf.srv.bindlessIdx);
 		}
 
 		if (hasUAV)
@@ -468,10 +468,10 @@ namespace vast::gfx
 				}
 			}
 
-			outTex.descriptorHeapIdx = m_FreeReservedDescriptorIndices.back();
+			outTex.srv.bindlessIdx = m_FreeReservedDescriptorIndices.back();
 			m_FreeReservedDescriptorIndices.pop_back();
 
-			CopySRVHandleToReservedTable(outTex.srv, outTex.descriptorHeapIdx);
+			CopyDescriptorToReservedTable(outTex.srv, outTex.srv.bindlessIdx);
 		}
 
 		if (hasRTV)
@@ -496,9 +496,14 @@ namespace vast::gfx
 		{
 			outTex.uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, nullptr, outTex.uav.cpuHandle);
+
+			outTex.uav.bindlessIdx = m_FreeReservedDescriptorIndices.back();
+			m_FreeReservedDescriptorIndices.pop_back();
+			CopyDescriptorToReservedTable(outTex.uav, outTex.uav.bindlessIdx);
 		}
 
-		outTex.isReady = (hasRTV || hasDSV);
+		// TODO: For UAVs, could we do better to identify when the UAV is actually ready?
+		outTex.isReady = (hasRTV || hasDSV || hasUAV);
 	}
 
 	static DXGI_FORMAT ConvertToDXGIFormat(D3D_REGISTER_COMPONENT_TYPE type, BYTE mask)
@@ -677,8 +682,8 @@ namespace vast::gfx
 
 		if (buf.srv.IsValid())
 		{
+			m_FreeReservedDescriptorIndices.push_back(buf.srv.bindlessIdx);
 			m_SRVStagingDescriptorHeap->FreeDescriptor(buf.srv);
-			m_FreeReservedDescriptorIndices.push_back(buf.descriptorHeapIdx);
 		}
 
 		if (buf.uav.IsValid())
@@ -711,12 +716,13 @@ namespace vast::gfx
 
 		if (tex.srv.IsValid())
 		{
+			m_FreeReservedDescriptorIndices.push_back(tex.srv.bindlessIdx);
 			m_SRVStagingDescriptorHeap->FreeDescriptor(tex.srv);
-			m_FreeReservedDescriptorIndices.push_back(tex.descriptorHeapIdx);
 		}
 
 		if (tex.uav.IsValid())
 		{
+			m_FreeReservedDescriptorIndices.push_back(tex.uav.bindlessIdx);
 			m_SRVStagingDescriptorHeap->FreeDescriptor(tex.uav);
 		}
 
@@ -779,13 +785,12 @@ namespace vast::gfx
 		m_Device->CopyDescriptorsSimple(numDesc, destDescRangeStart, srcDescRangeStart, descType);
 	}
 
-	void DX12Device::CopySRVHandleToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex)
+	void DX12Device::CopyDescriptorToReservedTable(DX12Descriptor srcDesc, uint32 heapIndex)
 	{
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			DX12Descriptor targetDescriptor = m_SRVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
-
-			CopyDescriptorsSimple(1, targetDescriptor.cpuHandle, srvHandle.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			DX12Descriptor dstDesc = m_SRVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
+			CopyDescriptorsSimple(1, dstDesc.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}
 }

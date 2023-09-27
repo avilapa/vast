@@ -30,19 +30,20 @@ namespace vast::gfx
 
 		void FlushGPU() override;
 
-		void BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) override;
-		void BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets) override;
+		void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) override;
+		void BeginRenderPass(PipelineHandle h, RenderPassTargets targets) override;
 		void EndRenderPass() override;
 
 		void AddBarrier(BufferHandle h, ResourceState newState) override;
 		void AddBarrier(TextureHandle h, ResourceState newState) override;
 		void FlushBarriers() override;
 
-		void SetVertexBuffer(const BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
-		void SetIndexBuffer(const BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) override;
-		void SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
-		void SetShaderResourceView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy) override;
-		void SetShaderResourceView(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy) override;
+		void BindVertexBuffer(BufferHandle h, uint32 offset = 0, uint32 stride = 0) override;
+		void BindIndexBuffer(BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) override;
+		void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0) override;
+		void BindSRV(ShaderResourceProxy proxy, BufferHandle h) override;
+		void BindSRV(ShaderResourceProxy proxy, TextureHandle h) override;
+		void BindUAV(ShaderResourceProxy proxy, TextureHandle h) override;
 		void SetPushConstants(const void* data, const uint32 size) override;
 
 		void SetScissorRect(int4 rect) override;
@@ -54,20 +55,21 @@ namespace vast::gfx
 		void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) override;
 		void DrawFullscreenTriangle() override;
 
-		ShaderResourceProxy LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName) override;
+		ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName) override;
 
 		uint2 GetBackBufferSize() const override;
 		float GetBackBufferAspectRatio() const override;
 		TexFormat GetBackBufferFormat() const override;
-		TexFormat GetTextureFormat(const TextureHandle h) override;
+		TexFormat GetTextureFormat(TextureHandle h) override;
 
-		uint32 GetBindlessIndex(const BufferHandle h) override;
-		uint32 GetBindlessIndex(const TextureHandle h) override;
+		uint32 GetBindlessSRV(BufferHandle h) override;
+		uint32 GetBindlessSRV(TextureHandle h) override;
+		uint32 GetBindlessUAV(TextureHandle h) override;
 
-		bool GetIsReady(const BufferHandle h) override;
-		bool GetIsReady(const TextureHandle h) override;
+		bool GetIsReady(BufferHandle h) override;
+		bool GetIsReady(TextureHandle h) override;
 
-		const uint8* GetBufferData(const BufferHandle h) override;
+		const uint8* GetBufferData(BufferHandle h) override;
 
 		void SetDebugName(BufferHandle h, const std::string& name);
 		void SetDebugName(TextureHandle h, const std::string& name);
@@ -100,7 +102,9 @@ namespace vast::gfx
 
 		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
-		void SetShaderResourceView_Internal(const DX12Descriptor& srv);
+		void CopyToDescriptorTable(const DX12Descriptor& srcDesc);
+
+		uint32 GetBindlessIndex(DX12Descriptor& d);
 
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;

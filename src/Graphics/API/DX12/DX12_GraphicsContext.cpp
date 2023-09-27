@@ -177,7 +177,7 @@ namespace vast::gfx
 	// Render Passes
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	void DX12GraphicsContext::BeginRenderPassToBackBuffer(const PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
+	void DX12GraphicsContext::BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
 	{
 		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
 		VAST_ASSERT(m_Pipelines && h.IsValid());
@@ -199,7 +199,7 @@ namespace vast::gfx
 		m_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize());
 	}
 
-	void DX12GraphicsContext::BeginRenderPass(const PipelineHandle h, const RenderPassTargets targets)
+	void DX12GraphicsContext::BeginRenderPass(PipelineHandle h, const RenderPassTargets targets)
 	{
 		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
 		VAST_ASSERT(m_Pipelines && h.IsValid());
@@ -316,56 +316,66 @@ namespace vast::gfx
 	// Resource Binding
 	///////////////////////////////////////////////////////////////////////////////////////////////
 
-	void DX12GraphicsContext::SetVertexBuffer(const BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
+	void DX12GraphicsContext::BindVertexBuffer(BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Vertex Buffer");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Vertex Buffer");
 		VAST_ASSERT(h.IsValid());
 		m_GraphicsCommandList->SetVertexBuffer(m_Buffers->LookupResource(h), offset, stride);
 	}
 
-	void DX12GraphicsContext::SetIndexBuffer(const BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
+	void DX12GraphicsContext::BindIndexBuffer(BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Index Buffer");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Index Buffer");
 		VAST_ASSERT(h.IsValid());
 		m_GraphicsCommandList->SetIndexBuffer(m_Buffers->LookupResource(h), offset, TranslateToDX12(format));
 	}
 
-	void DX12GraphicsContext::SetConstantBufferView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
+	void DX12GraphicsContext::BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset /* = 0 */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Shader Resource");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Constant Buffer");
 		VAST_ASSERT(h.IsValid());
-		VAST_ASSERT(shaderResourceProxy.IsValid());
-		m_GraphicsCommandList->SetConstantBuffer(m_Buffers->LookupResource(h), 0, shaderResourceProxy.idx);
+		VAST_ASSERT(proxy.IsValid());
+		m_GraphicsCommandList->SetConstantBuffer(m_Buffers->LookupResource(h), offset, proxy.idx);
 	}
 
-	void DX12GraphicsContext::SetShaderResourceView(const BufferHandle h, const ShaderResourceProxy shaderResourceProxy)
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Shader Resource");
-		VAST_ASSERT(h.IsValid());
-		VAST_ASSERT(shaderResourceProxy.IsValid());
-		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		SetShaderResourceView_Internal(m_Buffers->LookupResource(h).srv);
-	}
-
-	void DX12GraphicsContext::SetShaderResourceView(const TextureHandle h, const ShaderResourceProxy shaderResourceProxy)
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Shader Resource");
-		VAST_ASSERT(h.IsValid());
-		VAST_ASSERT(shaderResourceProxy.IsValid());
-		(void)shaderResourceProxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		SetShaderResourceView_Internal(m_Textures->LookupResource(h).srv);
-	}
-
-	void DX12GraphicsContext::SetShaderResourceView_Internal(const DX12Descriptor& srv)
+	void DX12GraphicsContext::CopyToDescriptorTable(const DX12Descriptor& srcDesc)
 	{
 		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
 		DX12Descriptor blockStart = m_Device->GetSRVDescriptorHeap(m_FrameId).GetUserDescriptorBlockStart(1);
-		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, srv.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		m_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
+	}
+
+	void DX12GraphicsContext::BindSRV(ShaderResourceProxy proxy, BufferHandle h)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind SRV");
+		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(proxy.IsValid());
+		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		CopyToDescriptorTable(m_Buffers->LookupResource(h).srv);
+	}
+
+	void DX12GraphicsContext::BindSRV(ShaderResourceProxy proxy, TextureHandle h)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind SRV");
+		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(proxy.IsValid());
+		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		CopyToDescriptorTable(m_Textures->LookupResource(h).srv);
+	}
+	
+	void DX12GraphicsContext::BindUAV(ShaderResourceProxy proxy, TextureHandle h)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind UAV");
+		VAST_ASSERT(h.IsValid());
+		VAST_ASSERT(proxy.IsValid());
+		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		CopyToDescriptorTable(m_Textures->LookupResource(h).uav);
 	}
 
 	void DX12GraphicsContext::SetPushConstants(const void* data, const uint32 size)
 	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Push Constants");
 		VAST_ASSERT(data && size);
 		m_GraphicsCommandList->SetPushConstants(data, size);
 	}
@@ -550,7 +560,7 @@ namespace vast::gfx
 		pipeline.Reset();
 	}
 
-	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(const PipelineHandle h, const std::string& shaderResourceName)
+	ShaderResourceProxy DX12GraphicsContext::LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName)
 	{
 		VAST_ASSERT(h.IsValid());
 		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
@@ -579,7 +589,7 @@ namespace vast::gfx
 		return m_SwapChain->GetBackBufferFormat();
 	}
 
-	TexFormat DX12GraphicsContext::GetTextureFormat(const TextureHandle h)
+	TexFormat DX12GraphicsContext::GetTextureFormat(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		// Note: Clear Value stores the format given on resource creation, while the format stored
@@ -588,35 +598,43 @@ namespace vast::gfx
 		return TranslateFromDX12(m_Textures->LookupResource(h).clearValue.Format);
 	}
 
-	uint32 DX12GraphicsContext::GetBindlessIndex(const BufferHandle h)
+	uint32 DX12GraphicsContext::GetBindlessIndex(DX12Descriptor& d)
 	{
-		VAST_ASSERT(h.IsValid());
-		DX12Buffer& buf = m_Buffers->LookupResource(h);
-		VAST_ASSERT(buf.descriptorHeapIdx != kInvalidHeapIdx);
-		return buf.descriptorHeapIdx;
+		VAST_ASSERT(d.IsValid() && d.bindlessIdx != kInvalidHeapIdx);
+		return d.bindlessIdx;
 	}
 
-	uint32 DX12GraphicsContext::GetBindlessIndex(const TextureHandle h)
+	uint32 DX12GraphicsContext::GetBindlessSRV(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		DX12Texture& tex = m_Textures->LookupResource(h);
-		VAST_ASSERT(tex.descriptorHeapIdx != kInvalidHeapIdx);
-		return tex.descriptorHeapIdx;
+		return GetBindlessIndex(m_Buffers->LookupResource(h).srv);
 	}
 
-	bool DX12GraphicsContext::GetIsReady(const BufferHandle h)
+	uint32 DX12GraphicsContext::GetBindlessSRV(TextureHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return GetBindlessIndex(m_Textures->LookupResource(h).srv);
+	}
+	
+	uint32 DX12GraphicsContext::GetBindlessUAV(TextureHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return GetBindlessIndex(m_Textures->LookupResource(h).uav);
+	}
+
+	bool DX12GraphicsContext::GetIsReady(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return m_Buffers->LookupResource(h).isReady;
 	}
 
-	bool DX12GraphicsContext::GetIsReady(const TextureHandle h)
+	bool DX12GraphicsContext::GetIsReady(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return m_Textures->LookupResource(h).isReady;
 	}
 
-	const uint8* DX12GraphicsContext::GetBufferData(const BufferHandle h)
+	const uint8* DX12GraphicsContext::GetBufferData(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		DX12Buffer& buf = m_Buffers->LookupResource(h);
