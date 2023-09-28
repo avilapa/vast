@@ -12,7 +12,6 @@
 //		- req: Shader Precompilation
 //
 //	> GFX Stencil State.
-//	> GFX Compute Shaders.
 //	> GFX Display List: command recording for later execution.
 //	> GFX Multithreading.
 //		- req: GFX Display List

@@ -227,7 +227,14 @@ namespace vast::gfx
 		{
 			VAST_PROFILE_TRACE_SCOPE("gfx", "Set Pipeline State and Root Signature");
 			m_CommandList->SetPipelineState(pipeline->pipelineState);
-			m_CommandList->SetGraphicsRootSignature(pipeline->desc.pRootSignature);
+			if (pipeline->IsCompute())
+			{
+				m_CommandList->SetComputeRootSignature(pipeline->rootSignature);
+			}
+			else
+			{
+				m_CommandList->SetGraphicsRootSignature(pipeline->rootSignature);
+			}
 		}
 		m_CurrentPipeline = pipeline;
 	}
@@ -264,14 +271,28 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Constant Buffer");
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind constant buffer before setting a render pipeline."); // TODO: What about global/per frame resources
-		m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, buf.gpuAddress + offset);
+		if (m_CurrentPipeline->IsCompute())
+		{
+			m_CommandList->SetComputeRootConstantBufferView(slotIndex, buf.gpuAddress + offset);
+		}
+		else
+		{
+			m_CommandList->SetGraphicsRootConstantBufferView(slotIndex, buf.gpuAddress + offset);
+		}
 	}
 
 	void DX12GraphicsCommandList::SetDescriptorTable(const D3D12_GPU_DESCRIPTOR_HANDLE& gpuHandle)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Descriptor Table");
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind descriptor table before setting a render pipeline."); // TODO: What about global/per frame resources
-		m_CommandList->SetGraphicsRootDescriptorTable(m_CurrentPipeline->descriptorTableIndex, gpuHandle);
+		if (m_CurrentPipeline->IsCompute())
+		{
+			m_CommandList->SetComputeRootDescriptorTable(m_CurrentPipeline->descriptorTableIndex, gpuHandle);
+		}
+		else
+		{
+			m_CommandList->SetGraphicsRootDescriptorTable(m_CurrentPipeline->descriptorTableIndex, gpuHandle);
+		}
 	}
 
 	void DX12GraphicsCommandList::SetPushConstants(const void* data, const uint32 size)
@@ -279,7 +300,15 @@ namespace vast::gfx
 		VAST_ASSERT(data && size);
 		VAST_ASSERTF(m_CurrentPipeline, "Attempted to bind push constant before setting a render pipeline.");
 		VAST_ASSERTF(m_CurrentPipeline->pushConstantIndex != UINT8_MAX, "Currently set pipeline does not expect push constant.");
-		m_CommandList->SetGraphicsRoot32BitConstants(m_CurrentPipeline->pushConstantIndex, size / sizeof(uint32), data, 0); // TODO: Support offset parameter.
+		// TODO: Support offset parameter.
+		if (m_CurrentPipeline->IsCompute())
+		{
+			m_CommandList->SetComputeRoot32BitConstants(m_CurrentPipeline->pushConstantIndex, size / sizeof(uint32), data, 0);
+		}
+		else
+		{
+			m_CommandList->SetGraphicsRoot32BitConstants(m_CurrentPipeline->pushConstantIndex, size / sizeof(uint32), data, 0);
+		}
 	}
 
 	void DX12GraphicsCommandList::SetDefaultViewportAndScissor(uint2 windowSize)
@@ -307,6 +336,11 @@ namespace vast::gfx
 	{
 		// TODO: Support setting multiple rects
 		m_CommandList->RSSetScissorRects(1, &rect);
+	}
+
+	void DX12GraphicsCommandList::Dispatch(uint3 threadGroupCount)
+	{
+		m_CommandList->Dispatch(threadGroupCount.x, threadGroupCount.y, threadGroupCount.z);
 	}
 
 	//

@@ -529,21 +529,22 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12Device::CreatePipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline)
+	void DX12Device::CreateGraphicsPipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create Pipeline");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create Graphics Pipeline");
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
 		if (desc.vs.type != ShaderType::UNKNOWN)
 		{
+			VAST_ASSERT(desc.vs.type == ShaderType::VERTEX);
 			outPipeline.vs = m_ShaderManager->LoadShader(desc.vs);
 			psDesc.VS.pShaderBytecode = outPipeline.vs->blob->GetBufferPointer();
 			psDesc.VS.BytecodeLength = outPipeline.vs->blob->GetBufferSize();
 
+			// Retrieve Input Layout from reflection
 			auto paramsDesc = m_ShaderManager->GetInputParametersFromReflection(outPipeline.vs->reflection);
 			D3D12_INPUT_ELEMENT_DESC* inputElementDescs = new D3D12_INPUT_ELEMENT_DESC[paramsDesc.size()]{};
-
 			for (uint32 i = 0; i < paramsDesc.size(); ++i)
 			{
 				D3D12_INPUT_ELEMENT_DESC& element = inputElementDescs[i];
@@ -557,26 +558,25 @@ namespace vast::gfx
 				element.InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 				element.InstanceDataStepRate = (element.InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA) ? 1 : 0;
 			}
-
 			psDesc.InputLayout.pInputElementDescs = inputElementDescs;
 			psDesc.InputLayout.NumElements = static_cast<uint32>(paramsDesc.size());
 		}
 
-		std::string shaderName = "Unknown";
 		if (desc.ps.type != ShaderType::UNKNOWN)
 		{
+			VAST_ASSERT(desc.ps.type == ShaderType::PIXEL);
 			outPipeline.ps = m_ShaderManager->LoadShader(desc.ps);
 			psDesc.PS.pShaderBytecode = outPipeline.ps->blob->GetBufferPointer();
 			psDesc.PS.BytecodeLength = outPipeline.ps->blob->GetBufferSize();
-			shaderName = desc.ps.shaderName;
 		}
 
-		outPipeline.resourceProxyTable = MakePtr<ShaderResourceProxyTable>(shaderName);
-
+		// Create root signature from reflection
 		ID3DBlob* rootSignatureBlob = m_ShaderManager->CreateRootSignatureFromReflection(outPipeline);
 		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
 		DX12SafeRelease(rootSignatureBlob);
+		outPipeline.rootSignature = psDesc.pRootSignature;
 
+		// Fill the rest of the pipeline state
 		psDesc.BlendState.AlphaToCoverageEnable = false;
 		psDesc.BlendState.IndependentBlendEnable = false;
 		for (uint32 i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
@@ -638,37 +638,85 @@ namespace vast::gfx
 
 		psDesc.NodeMask = 0;
 
-		outPipeline.desc = psDesc;
 		{
 			VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create PSO");
-			DX12Check(m_Device->CreateGraphicsPipelineState(&outPipeline.desc, IID_PPV_ARGS(&outPipeline.pipelineState)));
+			DX12Check(m_Device->CreateGraphicsPipelineState(&psDesc, IID_PPV_ARGS(&outPipeline.pipelineState)));
+		}
+		outPipeline.desc = psDesc;
+	}
+
+	void DX12Device::CreateComputePipeline(const ShaderDesc& csDesc, DX12Pipeline& outPipeline)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create Compute Pipeline");
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC psDesc = {};
+
+		VAST_ASSERT(csDesc.type == ShaderType::COMPUTE);
+		outPipeline.cs = m_ShaderManager->LoadShader(csDesc);
+		psDesc.CS.pShaderBytecode = outPipeline.cs->blob->GetBufferPointer();
+		psDesc.CS.BytecodeLength = outPipeline.cs->blob->GetBufferSize();
+
+		ID3DBlob* rootSignatureBlob = m_ShaderManager->CreateRootSignatureFromReflection(outPipeline);
+		DX12Check(m_Device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&psDesc.pRootSignature)));
+		DX12SafeRelease(rootSignatureBlob);
+		outPipeline.rootSignature = psDesc.pRootSignature;
+
+		psDesc.NodeMask = 0;
+
+		{
+			VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create PSO");
+			DX12Check(m_Device->CreateComputePipelineState(&psDesc, IID_PPV_ARGS(&outPipeline.pipelineState)));
 		}
 	}
 
 	void DX12Device::UpdatePipeline(DX12Pipeline& pipeline)
 	{
-		if (pipeline.vs != nullptr)
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Update Pipeline");
+
+		if (pipeline.IsCompute())
 		{
-			if (!m_ShaderManager->ReloadShader(pipeline.vs))
+			VAST_ASSERT(pipeline.cs != nullptr);
+
+			if (!m_ShaderManager->ReloadShader(pipeline.cs))
 			{
 				return;
 			}
-			pipeline.desc.VS.pShaderBytecode = pipeline.vs->blob->GetBufferPointer();
-			pipeline.desc.VS.BytecodeLength = pipeline.vs->blob->GetBufferSize();
-		}
 
-		if (pipeline.ps != nullptr)
+			D3D12_COMPUTE_PIPELINE_STATE_DESC psDesc = {};
+			psDesc.CS.pShaderBytecode = pipeline.cs->blob->GetBufferPointer();
+			psDesc.CS.BytecodeLength = pipeline.cs->blob->GetBufferSize();
+
+			psDesc.pRootSignature = pipeline.rootSignature;
+			psDesc.NodeMask = 0;
+
+			DX12SafeRelease(pipeline.pipelineState);
+			DX12Check(m_Device->CreateComputePipelineState(&psDesc, IID_PPV_ARGS(&pipeline.pipelineState)));
+		}
+		else
 		{
-			if (!m_ShaderManager->ReloadShader(pipeline.ps))
+			if (pipeline.vs != nullptr)
 			{
-				return;
-			}			
-			pipeline.desc.PS.pShaderBytecode = pipeline.ps->blob->GetBufferPointer();
-			pipeline.desc.PS.BytecodeLength = pipeline.ps->blob->GetBufferSize();
-		}
+				if (!m_ShaderManager->ReloadShader(pipeline.vs))
+				{
+					return;
+				}
+				pipeline.desc.VS.pShaderBytecode = pipeline.vs->blob->GetBufferPointer();
+				pipeline.desc.VS.BytecodeLength = pipeline.vs->blob->GetBufferSize();
+			}
 
-		DX12SafeRelease(pipeline.pipelineState);
-		DX12Check(m_Device->CreateGraphicsPipelineState(&pipeline.desc, IID_PPV_ARGS(&pipeline.pipelineState)));
+			if (pipeline.ps != nullptr)
+			{
+				if (!m_ShaderManager->ReloadShader(pipeline.ps))
+				{
+					return;
+				}
+				pipeline.desc.PS.pShaderBytecode = pipeline.ps->blob->GetBufferPointer();
+				pipeline.desc.PS.BytecodeLength = pipeline.ps->blob->GetBufferSize();
+			}
+
+			DX12SafeRelease(pipeline.pipelineState);
+			DX12Check(m_Device->CreateGraphicsPipelineState(&pipeline.desc, IID_PPV_ARGS(&pipeline.pipelineState)));
+		}
 	}
 
 	void DX12Device::DestroyBuffer(DX12Buffer& buf)
@@ -735,13 +783,13 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Destroy Pipeline");
 		pipeline.vs = nullptr;
 		pipeline.ps = nullptr;
-		pipeline.resourceProxyTable = nullptr;
+		pipeline.cs = nullptr;
 		if (pipeline.desc.InputLayout.pInputElementDescs)
 		{
 			delete[] pipeline.desc.InputLayout.pInputElementDescs;
 			pipeline.desc.InputLayout.pInputElementDescs = nullptr;
 		}
-		DX12SafeRelease(pipeline.desc.pRootSignature);
+		DX12SafeRelease(pipeline.rootSignature);
 		DX12SafeRelease(pipeline.pipelineState);
 	}
 

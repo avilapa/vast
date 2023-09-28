@@ -126,18 +126,23 @@ namespace vast::gfx
 	{
 		Ref<DX12Shader> vs = nullptr;
 		Ref<DX12Shader> ps = nullptr;
+		Ref<DX12Shader> cs = nullptr;
 		ID3D12PipelineState* pipelineState = nullptr;
+		ID3D12RootSignature* rootSignature = nullptr;
+		// Note: We store the desc to be able to reload the pipeline without having to fully 
+		// reconstruct it from user land.
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-		Ptr<ShaderResourceProxyTable> resourceProxyTable = nullptr;
+
+		ShaderResourceProxyTable resourceProxyTable;
 		uint8 pushConstantIndex = UINT8_MAX;
 		uint8 descriptorTableIndex = UINT8_MAX;
 
+		bool IsCompute() const { return cs != nullptr; }
+
 		void Reset()
 		{
-			vs = nullptr;
-			ps = nullptr;
-			pipelineState = nullptr;
 			desc = {};
+			resourceProxyTable.Reset();
 			pushConstantIndex = UINT8_MAX;
 			descriptorTableIndex = UINT8_MAX;
 		}

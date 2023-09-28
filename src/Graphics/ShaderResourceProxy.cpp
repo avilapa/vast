@@ -4,19 +4,19 @@
 namespace vast::gfx
 {
 
-	ShaderResourceProxyTable::ShaderResourceProxyTable(const std::string& shaderName)
-		: m_ShaderName(shaderName)
-	{
-
-	}
-
 	ShaderResourceProxy ShaderResourceProxyTable::LookupShaderResource(const std::string& shaderResourceName)
 	{
 		return m_Map[shaderResourceName];
 	}
 
+	void ShaderResourceProxyTable::Reset()
+	{
+		m_Map.clear();
+	}
+
 	void ShaderResourceProxyTable::Register(const std::string& shaderResourceName, const ShaderResourceProxy& proxyIdx)
 	{
+#ifdef VAST_DEBUG
 		if (IsRegistered(shaderResourceName))
 		{
 			if (proxyIdx.idx == m_Map[shaderResourceName].idx)
@@ -25,11 +25,11 @@ namespace vast::gfx
 			}
 			else
 			{
-				VAST_LOG_WARNING("[resource] Overriding shader resource proxy '{}' value (was '{}', now is '{}'.", shaderResourceName, proxyIdx.idx, m_Map[shaderResourceName].idx);
+				VAST_LOG_WARNING("[resource] [shader] Overriding shader resource proxy '{}' value (was '{}', now is '{}'.", shaderResourceName, proxyIdx.idx, m_Map[shaderResourceName].idx);
 			}
 		}
+#endif
 		m_Map[shaderResourceName] = proxyIdx;
-		VAST_LOG_TRACE("[resource] Registered new shader resource proxy '{}' in {}.", shaderResourceName, m_ShaderName);
 	}
 
 	bool ShaderResourceProxyTable::IsRegistered(const std::string& shaderResourceName)

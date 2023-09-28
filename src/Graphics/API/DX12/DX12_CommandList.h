@@ -70,10 +70,13 @@ namespace vast::gfx
 		void SetPushConstants(const void* data, const uint32 size);
 		void SetDefaultViewportAndScissor(uint2 windowSize);
 		void SetScissorRect(const D3D12_RECT& rect);
+		void Dispatch(uint3 threadGroupCount);
 
 	private:
 		DX12Pipeline* m_CurrentPipeline;
 	};
+
+	// TODO: Async Compute (DX12ComputeCommandList)
 
 	struct BufferUpload
 	{

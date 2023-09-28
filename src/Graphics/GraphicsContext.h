@@ -38,11 +38,17 @@ namespace vast::gfx
 
 		virtual bool IsInRenderPass() const;
 
+		// TODO: We may want to do Begin/End functions for compute to be analogous with graphics 
+		// pipelines, despite it being perhaps redundant.
+		virtual void BindPipelineForCompute(PipelineHandle h) = 0;
+		virtual void Dispatch(uint3 threadGroupCount) = 0;
+
 		// - GPU Resources --------------------------------------------------------------------- //
 
 		BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr, const size_t dataSize = 0);
 		TextureHandle CreateTexture(const TextureDesc& desc, const void* initialData = nullptr);
 		PipelineHandle CreatePipeline(const PipelineDesc& desc);
+		PipelineHandle CreatePipeline(const ShaderDesc& csDesc);
 
 		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
 		void UpdatePipeline(PipelineHandle h);
@@ -157,6 +163,7 @@ namespace vast::gfx
 		virtual void DestroyTexture_Internal(TextureHandle h) = 0;
 
 		virtual void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) = 0;
+		virtual void CreatePipeline_Internal(PipelineHandle h, const ShaderDesc& csDesc) = 0;
 		virtual void UpdatePipeline_Internal(PipelineHandle h) = 0;
 		virtual void DestroyPipeline_Internal(PipelineHandle h) = 0;
 

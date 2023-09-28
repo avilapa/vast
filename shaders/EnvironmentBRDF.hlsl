@@ -48,3 +48,20 @@ float2 PS_IntegrateBRDF(VertexOutputFS IN) : SV_TARGET
     
     return IntegrateBRDF(1024u, roughness, NdotV);
 }
+
+cbuffer PushConstants : register(PushConstantRegister)
+{
+    uint EnvironmentBrdfUavIdx;
+};
+
+[numthreads(32, 32, 1)] 
+void CS_IntegrateBRDF(uint3 threadId : SV_DispatchThreadID)
+{
+    float2 uv = (threadId.xy + 1.0f) / 256.0f;
+    
+    float roughness = LinearizeRoughness(uv.x);
+    float NdotV = uv.y;
+    
+    RWTexture2D<float2> EnvironmentBrdfUav = ResourceDescriptorHeap[EnvironmentBrdfUavIdx];
+    EnvironmentBrdfUav[threadId.xy] = IntegrateBRDF(1024u, roughness, NdotV);
+}

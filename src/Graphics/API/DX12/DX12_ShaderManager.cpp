@@ -90,6 +90,7 @@ namespace vast::gfx
 			bool success = false;
 			while (!success)
 			{
+				VAST_LOG_INFO("[resource] [shader] Compiling new shader '{}' with entry point '{}'", desc.shaderName, desc.entryPoint);
 				// If we get a shader compile error on startup, allow the user to fix the issue and continue launching the application.
 				success = CompileShader(desc, shaderRef.get());
 				VAST_ASSERTF(success, "Shader Compilation Failed.");
@@ -113,10 +114,10 @@ namespace vast::gfx
 		VAST_ASSERT(shader->key.compare(MakeShaderKey(desc.shaderName, desc.entryPoint)) == 0);
 		if (CompileShader(desc, shader.get()))
 		{
-			VAST_LOG_WARNING("Successfully reloaded shader '{}' ({}).", desc.shaderName, desc.entryPoint);
+			VAST_LOG_TRACE("[resource] [shader] Reloaded shader '{}' with entry point '{}'.", desc.shaderName, desc.entryPoint);
 			return true;
 		}
-		VAST_LOG_WARNING("Failed to reload shader '{}' ({}) due to a compile error.", desc.shaderName, desc.entryPoint);
+		VAST_LOG_WARNING("[resource] [shader] Failed to reload shader '{}' with entry point '{}' due to a compile error.", desc.shaderName, desc.entryPoint);
 		return false;
 	}
 
@@ -187,7 +188,7 @@ namespace vast::gfx
 
 		if (errors != nullptr && errors->GetStringLength() != 0)
 		{
-			VAST_LOG_CRITICAL("Shader compilation error in:\n{}", errors->GetStringPointer());
+			VAST_LOG_CRITICAL("[resource] [shader] Shader compilation error in:\n{}", errors->GetStringPointer());
 		}
 		DX12SafeRelease(errors);
 
@@ -259,7 +260,7 @@ namespace vast::gfx
 	ID3DBlob* DX12ShaderManager::CreateRootSignatureFromReflection(DX12Pipeline& pipeline) const
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Reflect Root Signature");
-		DX12Shader* shaders[] = { pipeline.vs.get(), pipeline.ps.get() };
+		DX12Shader* shaders[] = { pipeline.vs.get(), pipeline.ps.get(), pipeline.cs.get() };
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
 		Vector<D3D12_DESCRIPTOR_RANGE1> descriptorRanges;
 
@@ -276,10 +277,12 @@ namespace vast::gfx
 				D3D12_SHADER_INPUT_BIND_DESC sibDesc{};
 				DX12Check(shader->reflection->GetResourceBindingDesc(rscIdx, &sibDesc));
 
-				if (pipeline.resourceProxyTable->IsRegistered(sibDesc.Name))
+				// Skip resource if it was already registered on a previous shader of this pipeline.
+				if (pipeline.resourceProxyTable.IsRegistered(sibDesc.Name))
 					continue;
 
-				pipeline.resourceProxyTable->Register(sibDesc.Name, ShaderResourceProxy{ static_cast<uint32>(rootParameters.size()) });
+				pipeline.resourceProxyTable.Register(sibDesc.Name, ShaderResourceProxy{ static_cast<uint32>(rootParameters.size()) });
+				VAST_LOG_TRACE("[resource] [shader] Registered shader resource '{}'.", sibDesc.Name);
 
 				switch (sibDesc.Type)
 				{

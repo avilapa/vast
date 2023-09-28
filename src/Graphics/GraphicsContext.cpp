@@ -106,6 +106,14 @@ namespace vast::gfx
 		CreatePipeline_Internal(h, desc);
 		return h;
 	}
+	
+	PipelineHandle GraphicsContext::CreatePipeline(const ShaderDesc& csDesc)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
+		PipelineHandle h = m_PipelineHandles->AllocHandle();
+		CreatePipeline_Internal(h, csDesc);
+		return h;
+	}
 
 	static bool FileExists(const std::wstring& filePath)
 	{

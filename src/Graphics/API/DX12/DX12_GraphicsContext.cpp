@@ -21,6 +21,7 @@ namespace vast::gfx
 		: m_Device(nullptr)
 		, m_SwapChain(nullptr)
 		, m_GraphicsCommandList(nullptr)
+		// TODO: Async Compute (, m_ComputeCommandList(nullptr))
 		, m_UploadCommandLists({ nullptr })
 		, m_CommandQueues({ nullptr })
 		, m_FrameFenceValues({ {0} })
@@ -37,14 +38,16 @@ namespace vast::gfx
 		m_Device = MakePtr<DX12Device>();
 
 		m_CommandQueues[IDX(QueueType::GRAPHICS)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT);
-		m_TimestampFrequency = double(m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetTimestampFrequency());
-		// TODO: Compute
+		// TODO: Async Compute (m_CommandQueues[IDX(QueueType::COMPUTE)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_COMPUTE);)
  		m_CommandQueues[IDX(QueueType::UPLOAD)] = MakePtr<DX12CommandQueue>(m_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_COPY);
+
+		m_TimestampFrequency = double(m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetTimestampFrequency());
 
 		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, 
 			*m_Device, *m_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue());
 
 		m_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*m_Device);
+		// TODO: Async Compute (m_ComputeCommandList = MakePtr<DX12ComputeCommandList>(*m_Device);)
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			m_UploadCommandLists[i] = MakePtr<DX12UploadCommandList>(*m_Device);
@@ -111,17 +114,20 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::EndFrame_Internal()
 	{
+		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
+		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
+		m_GraphicsCommandList->FlushBarriers();
+		SubmitCommandList(*m_GraphicsCommandList);
+
+		// TODO: Async Compute. This probably needs to be exposed to the user to submit graphics and compute
+		// command lists in the desired order.
+		// (SubmitCommandList(*m_ComputeCommandList); SignalEndOfFrame(QueueType::COMPUTE);)
+
 		m_UploadCommandLists[m_FrameId]->ProcessUploads();
 		SubmitCommandList(*m_UploadCommandLists[m_FrameId]);
 		SignalEndOfFrame(QueueType::UPLOAD);
 
-		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
-		m_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
-		m_GraphicsCommandList->FlushBarriers();
-
-		SubmitCommandList(*m_GraphicsCommandList);
 		m_SwapChain->Present();
-
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
@@ -146,7 +152,7 @@ namespace vast::gfx
 			m_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
 		}
-		// TODO: Compute
+		// TODO: Async Compute (case D3D12_COMMAND_LIST_TYPE_COMPUTE:)
 		case D3D12_COMMAND_LIST_TYPE_COPY:
 		{
 			VAST_PROFILE_TRACE_SCOPE("gfx", "Execute Upload Command List");
@@ -293,6 +299,20 @@ namespace vast::gfx
 
 		m_GraphicsCommandList->SetPipeline(nullptr);
 		VAST_PROFILE_TRACE_END("gfx", "Render Pass");
+	}
+
+	void DX12GraphicsContext::BindPipelineForCompute(PipelineHandle h)
+	{
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_ASSERTF(!m_bHasRenderPassBegun, "Cannot bind another pipeline in the middle of a render pass.");
+		VAST_ASSERT(m_Pipelines && h.IsValid());
+		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
+		m_GraphicsCommandList->SetPipeline(&pipeline);
+	}
+
+	void DX12GraphicsContext::Dispatch(uint3 threadGroupCount)
+	{
+		m_GraphicsCommandList->Dispatch(threadGroupCount);
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////\
@@ -542,10 +562,16 @@ namespace vast::gfx
 	void DX12GraphicsContext::CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc)
 	{
 		DX12Pipeline& pipeline = m_Pipelines->AcquireResource(h);
-		m_Device->CreatePipeline(desc, pipeline);
+		m_Device->CreateGraphicsPipeline(desc, pipeline);
 	}
 
-	void DX12GraphicsContext::UpdatePipeline_Internal(const PipelineHandle h)
+	void DX12GraphicsContext::CreatePipeline_Internal(PipelineHandle h, const ShaderDesc& csDesc)
+	{
+		DX12Pipeline& pipeline = m_Pipelines->AcquireResource(h);
+		m_Device->CreateComputePipeline(csDesc, pipeline);
+	}
+
+	void DX12GraphicsContext::UpdatePipeline_Internal(PipelineHandle h)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Pipeline");
 		VAST_ASSERT(h.IsValid());
@@ -564,9 +590,9 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
-		if (pipeline.resourceProxyTable->IsRegistered(shaderResourceName))
+		if (pipeline.resourceProxyTable.IsRegistered(shaderResourceName))
 		{
-			return pipeline.resourceProxyTable->LookupShaderResource(shaderResourceName);
+			return pipeline.resourceProxyTable.LookupShaderResource(shaderResourceName);
 		}
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}

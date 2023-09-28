@@ -17,7 +17,7 @@ namespace vast::gfx
 	enum class QueueType
 	{
 		GRAPHICS = 0,
-		// TODO: Compute
+		// TODO: Async Compute
 		UPLOAD,
 		COUNT,
 	};
@@ -33,6 +33,9 @@ namespace vast::gfx
 		void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) override;
 		void BeginRenderPass(PipelineHandle h, RenderPassTargets targets) override;
 		void EndRenderPass() override;
+
+		void BindPipelineForCompute(PipelineHandle h) override;
+		void Dispatch(uint3 threadGroupCount) override;
 
 		void AddBarrier(BufferHandle h, ResourceState newState) override;
 		void AddBarrier(TextureHandle h, ResourceState newState) override;
@@ -87,6 +90,7 @@ namespace vast::gfx
 		void DestroyTexture_Internal(TextureHandle h) override;
 
 		void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) override;
+		void CreatePipeline_Internal(PipelineHandle h, const ShaderDesc& csDesc) override;
 		void UpdatePipeline_Internal(PipelineHandle h) override;
 		void DestroyPipeline_Internal(PipelineHandle h) override;
 
@@ -109,6 +113,7 @@ namespace vast::gfx
 		Ptr<DX12Device> m_Device;
 		Ptr<DX12SwapChain> m_SwapChain;
 		Ptr<DX12GraphicsCommandList> m_GraphicsCommandList;
+		// TODO: Async Compute (Ptr<DX12GraphicsCommandList> m_ComputeCommandList;)
 		Array<Ptr<DX12UploadCommandList>, NUM_FRAMES_IN_FLIGHT> m_UploadCommandLists;
 
 		Array<Ptr<DX12CommandQueue>, IDX(QueueType::COUNT)> m_CommandQueues;

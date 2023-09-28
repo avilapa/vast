@@ -22,7 +22,8 @@ namespace vast::gfx
 
 		void CreateBuffer(const BufferDesc& desc, DX12Buffer& outBuf);
 		void CreateTexture(const TextureDesc& desc, DX12Texture& outTex);
-		void CreatePipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline);
+		void CreateGraphicsPipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline);
+		void CreateComputePipeline(const ShaderDesc& csDesc, DX12Pipeline& outPipeline);
 
 		void UpdatePipeline(DX12Pipeline& pipeline);
 
