@@ -16,6 +16,7 @@ using namespace vast;
 #define PerObjectSpace space0 // TODO: Implement spaces!
 #define PerFrameSpace space1 // TODO: Implement spaces!
 
+#define BRDF_DFG_TEX_RES		32
 struct Vtx3fPos3fNormal2fUv
 {
 	s_float3 pos;

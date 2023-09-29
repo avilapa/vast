@@ -27,9 +27,9 @@ float3 Hammersley3d(uint i, uint N)
 // Note: Sampled in tangent space, with N = (0, 0, 1)
 float3 HemisphereImportanceSample_GGX(float2 Xi, float a)
 {
-    const float phi = 2 * PI * Xi.x;
+    const float phi = 2 * PI * Xi.y;
     // Optimized for better fp accuracy: (a * a - 1) == (a + 1) * (a - 1)
-    float cosTheta2 = (1 - Xi.y) / (1 + (a + 1) * ((a - 1) * Xi.y));
+    float cosTheta2 = (1 - Xi.x) / (1 + (a + 1) * ((a - 1) * Xi.x));
     float cosTheta = sqrt(cosTheta2);
     float sinTheta = sqrt(1 - cosTheta2);
     
@@ -44,4 +44,37 @@ float3 HemisphereImportanceSample_GGX(float3 Xi, float a)
     float sinTheta = sqrt(1 - cosTheta2);
     
     return float3(sinTheta * Xi.y, sinTheta * Xi.z, cosTheta);
+}
+
+float SphereSampleUniformPDF()
+{
+    return 1.0 / (4.0 * PI);
+}
+
+float HemisphereSampleUniformPDF()
+{
+    return 1.0 / (2.0 * PI);
+}
+
+float HemisphereSampleCosinePDF(float cosTheta)
+{
+    return cosTheta * (1.0 / PI);
+}
+
+float3 HemisphereSampleUniform(float2 Xi)
+{
+    const float phi = 2 * PI * Xi.y;
+    float cosTheta = Xi.x;
+    float sinTheta = sqrt(1 - cosTheta * cosTheta);
+    
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+}
+
+float3 HemisphereSampleCosine(float2 Xi)
+{
+    const float phi = 2 * PI * Xi.y;
+    float cosTheta = sqrt(Xi.x);
+    float sinTheta = sqrt(1 - cosTheta * cosTheta);
+        
+    return float3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 }

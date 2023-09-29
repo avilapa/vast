@@ -170,6 +170,8 @@ namespace vast::gfx
 							continue;
 
 						// TODO: Do we need explicit transitions here? If so we could bundle them in one go.
+						// TODO: Support choosing texture filtering.
+						// TODO: Support cubemap images.
 						uint32 srvIndex = ctx.GetBindlessSRV(h);
 						ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 						ctx.SetScissorRect(int4(clipMin.x, clipMin.y, clipMax.x, clipMax.y));

@@ -1,3 +1,4 @@
+#include "shaders_shared.h"
 #include "fullscreen.hlsl"
 #include "ImportanceSampling.hlsli"
 
@@ -57,7 +58,7 @@ cbuffer PushConstants : register(PushConstantRegister)
 [numthreads(32, 32, 1)] 
 void CS_IntegrateBRDF(uint3 threadId : SV_DispatchThreadID)
 {
-    float2 uv = (threadId.xy + 1.0f) / 256.0f;
+    float2 uv = (threadId.xy + 1.0f) / BRDF_DFG_TEX_RES;
     
     float roughness = LinearizeRoughness(uv.x);
     float NdotV = uv.y;

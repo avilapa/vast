@@ -351,7 +351,12 @@ namespace vast
 			for (uint32 i = 0; i < profileCount; ++i)
 			{
 				ProfileBlock& p = profiles[i];
-				VAST_ASSERTF(p.state == ProfileBlock::State::FINISHED, "Attempted to update a profile that is still active.");
+
+				// TODO: How do we treat profiles that run only once?
+				if (p.state == ProfileBlock::State::IDLE)
+					continue;
+
+				VAST_ASSERTF(p.state != ProfileBlock::State::ACTIVE, "Attempted to update a profile that is still active.");
 				VAST_ASSERTF((p.ctx != nullptr) == bIsGPU, "Mismatched profiling context not allowed.");
 
 				if (p.ctx)
@@ -403,7 +408,7 @@ namespace vast
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-			ImGui::TreeNodeEx("Total", treeLeafFlags);
+			ImGui::TreeNodeEx("Tracked Total", treeLeafFlags);
 			ImGui::TableNextColumn();
 			ImGui::Text("%.3f ms", branch.totalAvg);
 			ImGui::PopStyleColor();
