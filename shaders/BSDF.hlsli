@@ -1,6 +1,8 @@
 #define EPS		        0.0001f
 #define PI              3.14159265358979323846264338327950288
 #define INV_PI          (1.0 / PI)
+#define TWO_PI          (2.0 * PI)
+#define HALF_PI         (0.5 * PI)
 #define MIN_ROUGHNESS   0.0002
 
 #define BSDF_USE_GGX_MULTISCATTER 1
