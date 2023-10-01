@@ -360,6 +360,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::CopyToDescriptorTable(const DX12Descriptor& srcDesc)
 	{
+		VAST_ASSERT(srcDesc.IsValid());
 		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
 		DX12Descriptor blockStart = m_Device->GetSRVDescriptorHeap(m_FrameId).GetUserDescriptorBlockStart(1);
 		m_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -384,13 +385,15 @@ namespace vast::gfx
 		CopyToDescriptorTable(m_Textures->LookupResource(h).srv);
 	}
 	
-	void DX12GraphicsContext::BindUAV(ShaderResourceProxy proxy, TextureHandle h)
+	void DX12GraphicsContext::BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel /* = 0 */)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind UAV");
 		VAST_ASSERT(h.IsValid());
 		VAST_ASSERT(proxy.IsValid());
 		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		CopyToDescriptorTable(m_Textures->LookupResource(h).uav);
+		DX12Texture& tex = m_Textures->LookupResource(h);
+		VAST_ASSERT(tex.uav.size() > mipLevel);
+		CopyToDescriptorTable(tex.uav[mipLevel]);
 	}
 
 	void DX12GraphicsContext::SetPushConstants(const void* data, const uint32 size)
@@ -642,10 +645,12 @@ namespace vast::gfx
 		return GetBindlessIndex(m_Textures->LookupResource(h).srv);
 	}
 	
-	uint32 DX12GraphicsContext::GetBindlessUAV(TextureHandle h)
+	uint32 DX12GraphicsContext::GetBindlessUAV(TextureHandle h, uint32 mipLevel /* = 0 */)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GetBindlessIndex(m_Textures->LookupResource(h).uav);
+		DX12Texture& tex = m_Textures->LookupResource(h);
+		VAST_ASSERT(tex.uav.size() > mipLevel);
+		return GetBindlessIndex(tex.uav[mipLevel]);
 	}
 
 	bool DX12GraphicsContext::GetIsReady(BufferHandle h)

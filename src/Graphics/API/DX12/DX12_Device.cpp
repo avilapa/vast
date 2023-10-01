@@ -430,6 +430,9 @@ namespace vast::gfx
 		// TODO: For texture readback we need to treat the resource as a Buffer... or just use a Buffer.
 		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &outTex.clearValue, &outTex.allocation, IID_PPV_ARGS(&outTex.resource));
 
+		// TODO: Should TextureDesc be more explicit in whether a texture is a cubemap or not?
+		bool bIsCubemap = (desc.type == TexType::TEXTURE_2D) && (desc.depthOrArraySize == 6);
+
 		if (hasSRV)
 		{
 			outTex.srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
@@ -449,10 +452,8 @@ namespace vast::gfx
 			}
 			else
 			{
-				if ((desc.type == TexType::TEXTURE_2D) && (desc.depthOrArraySize == 6))
+				if (bIsCubemap)
 				{
-					// TODO: TextureDesc should be more explicit in whether a texture is a cubemap or not.
-					// Cubemap
 					D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 					srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
 					srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -492,14 +493,45 @@ namespace vast::gfx
 			m_Device->CreateDepthStencilView(outTex.resource, &dsvDesc, outTex.dsv.cpuHandle);
 		}
 
-		if (hasUAV)
+		if (hasUAV) // TODO: DSV exclusion?
 		{
-			outTex.uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
-			m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, nullptr, outTex.uav.cpuHandle);
+			if (desc.mipCount > 1)
+			{
+				outTex.uav.reserve(desc.mipCount);
+				for (uint32 i = 0; i < desc.mipCount; ++i)
+				{
+					D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+					uavDesc.Format = TranslateToDX12(desc.format);
+					if (bIsCubemap)
+					{
+						uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+						uavDesc.Texture2DArray.MipSlice = i;
+						uavDesc.Texture2DArray.FirstArraySlice = 0;
+						uavDesc.Texture2DArray.ArraySize = desc.depthOrArraySize;
+					}
+					else
+					{
+						uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+						uavDesc.Texture2D.MipSlice = i;
+					}
 
-			outTex.uav.bindlessIdx = m_FreeReservedDescriptorIndices.back();
-			m_FreeReservedDescriptorIndices.pop_back();
-			CopyDescriptorToReservedTable(outTex.uav, outTex.uav.bindlessIdx);
+					outTex.uav.push_back(m_SRVStagingDescriptorHeap->GetNewDescriptor());
+					m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, nullptr, outTex.uav[i].cpuHandle);
+
+					outTex.uav[i].bindlessIdx = m_FreeReservedDescriptorIndices.back();
+					m_FreeReservedDescriptorIndices.pop_back();
+					CopyDescriptorToReservedTable(outTex.uav[i], outTex.uav[i].bindlessIdx);
+				}
+			}
+			else
+			{
+				outTex.uav.push_back(m_SRVStagingDescriptorHeap->GetNewDescriptor());
+				m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, nullptr, outTex.uav[0].cpuHandle);
+
+				outTex.uav[0].bindlessIdx = m_FreeReservedDescriptorIndices.back();
+				m_FreeReservedDescriptorIndices.pop_back();
+				CopyDescriptorToReservedTable(outTex.uav[0], outTex.uav[0].bindlessIdx);
+			}
 		}
 
 		// TODO: For UAVs, could we do better to identify when the UAV is actually ready?
@@ -768,10 +800,13 @@ namespace vast::gfx
 			m_SRVStagingDescriptorHeap->FreeDescriptor(tex.srv);
 		}
 
-		if (tex.uav.IsValid())
+		for (auto& i : tex.uav)
 		{
-			m_FreeReservedDescriptorIndices.push_back(tex.uav.bindlessIdx);
-			m_SRVStagingDescriptorHeap->FreeDescriptor(tex.uav);
+			if (i.IsValid())
+			{
+				m_FreeReservedDescriptorIndices.push_back(i.bindlessIdx);
+				m_SRVStagingDescriptorHeap->FreeDescriptor(i);
+			}
 		}
 
 		DX12SafeRelease(tex.resource);

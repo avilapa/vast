@@ -46,7 +46,7 @@ namespace vast::gfx
 		void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0) override;
 		void BindSRV(ShaderResourceProxy proxy, BufferHandle h) override;
 		void BindSRV(ShaderResourceProxy proxy, TextureHandle h) override;
-		void BindUAV(ShaderResourceProxy proxy, TextureHandle h) override;
+		void BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel = 0) override;
 		void SetPushConstants(const void* data, const uint32 size) override;
 
 		void SetScissorRect(int4 rect) override;
@@ -67,7 +67,7 @@ namespace vast::gfx
 
 		uint32 GetBindlessSRV(BufferHandle h) override;
 		uint32 GetBindlessSRV(TextureHandle h) override;
-		uint32 GetBindlessUAV(TextureHandle h) override;
+		uint32 GetBindlessUAV(TextureHandle h, uint32 mipLevel = 0) override;
 
 		bool GetIsReady(BufferHandle h) override;
 		bool GetIsReady(TextureHandle h) override;

@@ -101,7 +101,7 @@ namespace vast::gfx
 		DX12Descriptor rtv = {};
 		DX12Descriptor dsv = {};
 		DX12Descriptor srv = {};
-		DX12Descriptor uav = {};
+		Vector<DX12Descriptor> uav = {};
 		D3D12_CLEAR_VALUE clearValue = {};
 
 		void Reset() override

@@ -74,7 +74,7 @@ namespace vast::gfx
 		virtual void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0) = 0;
 		virtual void BindSRV(ShaderResourceProxy proxy, BufferHandle h) = 0;
 		virtual void BindSRV(ShaderResourceProxy proxy, TextureHandle h) = 0;
-		virtual void BindUAV(ShaderResourceProxy proxy, TextureHandle h) = 0;
+		virtual void BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel = 0) = 0;
 		// Passes some data to be used in the GPU under a constant buffer declared in a shader using slot
 		// 'PushConstantRegister'. Push Constants are best suited for small amounts of data that change
 		// frequently (e.g. PerObjectSpace). Size parameter is expected in bytes.
@@ -102,7 +102,7 @@ namespace vast::gfx
 
 		virtual uint32 GetBindlessSRV(BufferHandle h) = 0;
 		virtual uint32 GetBindlessSRV(TextureHandle h) = 0;
-		virtual uint32 GetBindlessUAV(TextureHandle h) = 0;
+		virtual uint32 GetBindlessUAV(TextureHandle h, uint32 mipLevel = 0) = 0;
 
 		// TODO: Review ready check for resources.
 		virtual bool GetIsReady(BufferHandle h) = 0;
