@@ -10,15 +10,15 @@
 cbuffer PushConstants : register(PushConstantRegister)
 {
     uint CubeTexIdx;
-    uint IrradianceCubeUavIdx;
+    uint CubeTexUavIdx;
+    uint MipLevel;
 };
 
-float3 GetSamplingVector(uint3 threadId)
+float3 GetCubemapUV(float2 uv, uint cubeFace)
 {
-    float2 uv = (threadId.xy + 0.5f) / float2(BRDF_IRRADIANCE_TEX_RES.xx);
     uv = float2(uv.x, 1 - uv.y) * 2.0f - 1.0f;
 
-    switch (threadId.z)
+    switch (cubeFace)
     {
 	    case 0: return normalize(float3( 1.0f,  uv.y, -uv.x));
 	    case 1: return normalize(float3(-1.0f,  uv.y,  uv.x));
@@ -50,6 +50,8 @@ float GetSampleDelta(const uint numSamples)
 
 // Coding Labs: Physically based rendering
 // http://www.codinglabs.net/article_physically_based_rendering.aspx
+// LearnOpenGL: Diffuse Irradiance
+// https://learnopengl.com/PBR/IBL/Diffuse-irradiance
 float3 IntegrateDiffuseIrradiance_Discrete(float sampleDelta, float3 N, bool bIsEnvironmentMapLinear)
 {
     const float invNumSamples = 1.0f / float(uint(TWO_PI / sampleDelta) * uint(HALF_PI / sampleDelta));
@@ -116,8 +118,9 @@ float3 IntegrateDiffuseIrradiance(uint numSamples, float3 N, bool bIsEnvironment
 void CS_IntegrateDiffuseIrradiance(uint3 threadId : SV_DispatchThreadID)
 {
     bool bIsEnvironmentMapLinear = false; // TODO: Support HDR path.
-    float3 N = normalize(GetSamplingVector(threadId));
+    float2 uv = (threadId.xy + 0.5f) / BRDF_IRRADIANCE_TEX_RES;
+    float3 N = normalize(GetCubemapUV(uv, threadId.z));
     
-    RWTexture2DArray<float4> IrradianceCubeUav = ResourceDescriptorHeap[IrradianceCubeUavIdx];
+    RWTexture2DArray<float4> IrradianceCubeUav = ResourceDescriptorHeap[CubeTexUavIdx];
     IrradianceCubeUav[threadId] = float4(IntegrateDiffuseIrradiance(16384u, N, bIsEnvironmentMapLinear), 1.0f);
 }
