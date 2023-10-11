@@ -20,6 +20,8 @@ namespace vast::gfx
 		BufViewFlags viewFlags = BufViewFlags::NONE;
 		ResourceUsage usage = ResourceUsage::DEFAULT;
 		bool isRawAccess = false;
+
+		std::string name = "Unnamed Buffer";
 	};
 
 	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, ResourceUsage usage = ResourceUsage::DEFAULT, bool bBindless = true);
@@ -46,6 +48,8 @@ namespace vast::gfx
 		uint32 mipCount = 1;
 		TexViewFlags viewFlags = TexViewFlags::NONE;
 		ClearValue clear = ClearValue(float4(1.0f, 1.0f, 1.0f, 1.0f));
+
+		std::string name = "Unnamed Texture";
 	};
 
 	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear = DEFAULT_CLEAR_COLOR_VALUE);

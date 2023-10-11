@@ -454,7 +454,7 @@ namespace vast::gfx
 	{
 		DX12Buffer& buf = m_Buffers->AcquireResource(h);
 		m_Device->CreateBuffer(desc, buf);
-		buf.SetName("Unnamed Buffer");
+		buf.SetName(desc.name);
 	}
 
 	void DX12GraphicsContext::UpdateBuffer_Internal(BufferHandle h, const void* srcMem, size_t srcSize)
@@ -502,7 +502,7 @@ namespace vast::gfx
 	{
 		DX12Texture& tex = m_Textures->AcquireResource(h);
 		m_Device->CreateTexture(desc, tex);
-		tex.SetName("Unnamed Texture");
+		tex.SetName(desc.name);
 	}
 
 	void DX12GraphicsContext::UpdateTexture_Internal(TextureHandle h, const void* srcMem)

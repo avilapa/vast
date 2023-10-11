@@ -150,6 +150,8 @@ namespace vast::gfx
 	// TODO: This should be completely external to the Graphics Context
 	TextureHandle GraphicsContext::LoadTextureFromFile(const std::string& filePath, bool sRGB /* = true */)
 	{
+		bool bFlipImage = false;
+
 		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(filePath);
 		if (!FileExists(wpath))
 		{
@@ -166,19 +168,34 @@ namespace vast::gfx
 		}
 		else if (wext.compare(L"TGA") == 0 || wext.compare(L"tga") == 0)
 		{
-			DirectX::ScratchImage tempImage;
-			DX12Check(DirectX::LoadFromTGAFile(wpath.c_str(), nullptr, tempImage));
-			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
+			DX12Check(DirectX::LoadFromTGAFile(wpath.c_str(), nullptr, image));
+		}
+		else if (wext.compare(L"HDR") == 0 || wext.compare(L"hdr") == 0)
+		{
+			DX12Check(DirectX::LoadFromHDRFile(wpath.c_str(), nullptr, image));
 		}
 		else // Windows Imaging Component (WIC) includes .BMP, .PNG, .GIF, .TIFF, .JPEG
 		{
-			DirectX::ScratchImage tempImage;
-			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, tempImage));
-			DX12Check(DirectX::GenerateMipMaps(*tempImage.GetImage(0, 0, 0), DirectX::TEX_FILTER_DEFAULT, 0, image, false));
+			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, image));
 		}
 		VAST_PROFILE_TRACE_END("gfx", "Load Texture File");
 
+		if (bFlipImage)
+		{
+			DirectX::ScratchImage tempImage;
+			DX12Check(DirectX::FlipRotate(image.GetImages()[0], DirectX::TEX_FR_FLIP_VERTICAL, tempImage));
+			image = std::move(tempImage);
+		}
+
+		if (image.GetMetadata().mipLevels == 1)
+		{
+			DirectX::ScratchImage tempImage;
+			DX12Check(DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_DEFAULT, 0, tempImage));
+			image = std::move(tempImage);
+		}
+
 		const DirectX::TexMetadata& metaData = image.GetMetadata();
+
 		DXGI_FORMAT format = metaData.format;
 		if (sRGB)
 		{
@@ -196,8 +213,9 @@ namespace vast::gfx
 			.depthOrArraySize = static_cast<uint32>((type == TexType::TEXTURE_3D) ? metaData.depth : metaData.arraySize),
 			.mipCount = static_cast<uint32>(metaData.mipLevels),
 			.viewFlags = TexViewFlags::SRV, // TODO: Provide option to add more flags when needed
+			.name = filePath,
 		};
-		return CreateTexture(texDesc, image.GetPixels());
+		return CreateTexture(texDesc, std::move(image.GetPixels()));
 	}
 
 	void GraphicsContext::UpdateBuffer(BufferHandle h, void* data, const size_t size)
