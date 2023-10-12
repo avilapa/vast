@@ -516,7 +516,7 @@ namespace vast::gfx
 					}
 
 					outTex.uav.push_back(m_SRVStagingDescriptorHeap->GetNewDescriptor());
-					m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, nullptr, outTex.uav[i].cpuHandle);
+					m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, &uavDesc, outTex.uav[i].cpuHandle);
 
 					outTex.uav[i].bindlessIdx = m_FreeReservedDescriptorIndices.back();
 					m_FreeReservedDescriptorIndices.pop_back();
