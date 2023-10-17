@@ -72,25 +72,25 @@ namespace vast::gfx
 
 	void Skybox::Render(TextureHandle environmentMap, const RenderTargetDesc& rt, const RenderTargetDesc& ds, const float4x4& viewMatrix, const float4x4& projMatrix)
 	{
+		if (!ctx.GetIsReady(m_CubeVtxBuf) || !ctx.GetIsReady(m_CubeIdxBuf) || !ctx.GetIsReady(environmentMap))
+			return;
+
 		// TODO: If the user calls this function directly we don't currently check for ReverseZ settings.
-		ctx.BeginRenderPass(m_PSO, RenderPassTargets{.rt = { rt }, .ds = ds });
+		ctx.BeginRenderPass(m_PSO, RenderPassTargets{ .rt = { rt }, .ds = ds });
 		{
-			if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeIdxBuf) && ctx.GetIsReady(environmentMap))
+			struct SkyboxCB
 			{
-				struct SkyboxCB
-				{
-					float4x4 view;
-					float4x4 proj;
-					uint32 texIdx;
-					uint32 bUseReverseZ;
-				} pc{viewMatrix, projMatrix, ctx.GetBindlessSRV(environmentMap), m_bUsingReverseZ };
+				float4x4 view;
+				float4x4 proj;
+				uint32 texIdx;
+				uint32 bUseReverseZ;
+			} pc{viewMatrix, projMatrix, ctx.GetBindlessSRV(environmentMap), m_bUsingReverseZ };
 
-				ctx.SetPushConstants(&pc, sizeof(SkyboxCB));
+			ctx.SetPushConstants(&pc, sizeof(SkyboxCB));
 
-				ctx.BindVertexBuffer(m_CubeVtxBuf);
-				ctx.BindIndexBuffer(m_CubeIdxBuf);
-				ctx.DrawIndexed(static_cast<uint32>(s_CubeIndexData.size()));
-			}
+			ctx.BindVertexBuffer(m_CubeVtxBuf);
+			ctx.BindIndexBuffer(m_CubeIdxBuf);
+			ctx.DrawIndexed(static_cast<uint32>(s_CubeIndexData.size()));
 		}
 		ctx.EndRenderPass();
 	}

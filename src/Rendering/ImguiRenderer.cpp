@@ -165,6 +165,7 @@ namespace vast::gfx
 						}
 
 						TextureHandle h = *drawCmd->GetTexID();
+						VAST_ASSERT(h.IsValid());
 
 						if (!ctx.GetIsReady(h))
 							continue;

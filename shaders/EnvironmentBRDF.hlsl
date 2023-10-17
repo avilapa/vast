@@ -52,17 +52,22 @@ float2 PS_IntegrateBRDF(VertexOutputFS IN) : SV_TARGET
 
 cbuffer PushConstants : register(PushConstantRegister)
 {
-    uint EnvironmentBrdfUavIdx;
+    uint EnvBrdfUavIdx;
+    uint NumSamples;
 };
 
 [numthreads(32, 32, 1)] 
 void CS_IntegrateBRDF(uint3 threadId : SV_DispatchThreadID)
 {
-    float2 uv = (threadId.xy + 1.0f) / BRDF_DFG_TEX_RES;
+    RWTexture2D<float2> EnvBrdfUav = ResourceDescriptorHeap[EnvBrdfUavIdx];
+
+    float2 texSize;
+    EnvBrdfUav.GetDimensions(texSize.x, texSize.y);
+    
+    float2 uv = (threadId.xy + 0.5f) / texSize;
     
     float roughness = LinearizeRoughness(uv.x);
     float NdotV = uv.y;
     
-    RWTexture2D<float2> EnvironmentBrdfUav = ResourceDescriptorHeap[EnvironmentBrdfUavIdx];
-    EnvironmentBrdfUav[threadId.xy] = IntegrateBRDF(1024u, roughness, NdotV);
+    EnvBrdfUav[threadId.xy] = IntegrateBRDF(NumSamples, roughness, NdotV);
 }

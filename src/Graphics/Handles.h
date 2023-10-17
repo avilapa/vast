@@ -111,7 +111,8 @@ namespace vast::gfx
 		T& LookupResource(Handle<H> h)
 		{
 			auto& r = AccessResource(h);
-			VAST_ASSERT(h == r.m_Handle);
+			// Note: If it crashes here it is likely to be a 'use after free' situation.
+			VAST_ASSERTF(h == r.m_Handle, "The handle provided doesn't match internal handle.");
 			return r;
 		}
 
