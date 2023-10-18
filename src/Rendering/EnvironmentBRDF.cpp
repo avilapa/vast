@@ -6,7 +6,7 @@ namespace vast::gfx
 
 	static PipelineHandle s_IntegrateBrdfPso;
 
-	void EnvBRDF::CreatePSOs(GraphicsContext& ctx)
+	void EnvironmentBRDF::CreatePSOs(GraphicsContext& ctx)
 	{
 		VAST_ASSERTF(!s_IntegrateBrdfPso.IsValid(), "Cannot create Environment BRDF PSO, already initialized.");
 
@@ -18,15 +18,23 @@ namespace vast::gfx
 		};
 		s_IntegrateBrdfPso = ctx.CreatePipeline(csDesc);
 	}
+
+	void EnvironmentBRDF::ReloadPSOs(GraphicsContext& ctx)
+	{
+		VAST_ASSERTF(s_IntegrateBrdfPso.IsValid(), "Cannot reload Environment BRDF PSO, not currently initialized.");
+
+		ctx.UpdatePipeline(s_IntegrateBrdfPso);
+	}
 	
-	void EnvBRDF::DestroyPSOs(GraphicsContext& ctx)
+	void EnvironmentBRDF::DestroyPSOs(GraphicsContext& ctx)
 	{
 		VAST_ASSERTF(s_IntegrateBrdfPso.IsValid(), "Cannot destroy Environment BRDF PSO, not currently initialized.");
+
 		ctx.DestroyPipeline(s_IntegrateBrdfPso);
 		s_IntegrateBrdfPso = PipelineHandle();
 	}
 
-	TextureHandle EnvBRDF::GenerateLUT(GraphicsContext& ctx, const Params& p /* = Params() */)
+	TextureHandle EnvironmentBRDF::GenerateLUT(GraphicsContext& ctx, const Params& p /* = Params() */)
 	{
 		// If PSOs were not explicitly created, create them on the fly and destroy them at the end of this function.
 		bool bUseTransientPSO = !s_IntegrateBrdfPso.IsValid();
@@ -40,8 +48,8 @@ namespace vast::gfx
 		{
 			.type = TexType::TEXTURE_2D,
 			.format = TexFormat::RG16_FLOAT,
-			.width = p.resolution.x,
-			.height = p.resolution.y,
+			.width = p.resolution,
+			.height = p.resolution,
 			.viewFlags = TexViewFlags::SRV | TexViewFlags::UAV,
 			.name = "Environment BRDF LUT",
 		};
@@ -63,7 +71,7 @@ namespace vast::gfx
 			} pc = { ctx.GetBindlessUAV(envBrdfLut), p.numSamples};
 			ctx.SetPushConstants(&pc, sizeof(EnvBRDF_Constants));
 
-			ctx.Dispatch(uint3(textureDesc.width / 32, textureDesc.height / 32, 1));
+			ctx.Dispatch(uint3(p.resolution / 32, p.resolution / 32, 1));
 
 			ctx.AddBarrier(envBrdfLut, ResourceState::PIXEL_SHADER_RESOURCE);
 			ctx.FlushBarriers();

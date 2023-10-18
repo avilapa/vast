@@ -5,15 +5,16 @@
 namespace vast::gfx
 {
 
-	class EnvBRDF
+	class EnvironmentBRDF
 	{
 	public:
 		static void CreatePSOs(GraphicsContext& ctx);
+		static void ReloadPSOs(GraphicsContext& ctx);
 		static void DestroyPSOs(GraphicsContext& ctx);
 
 		struct Params
 		{
-			uint2 resolution = uint2(32);
+			uint32 resolution = 32;
 			uint32 numSamples = 1024;
 		};
 

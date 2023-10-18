@@ -2,15 +2,12 @@
 #include "fullscreen.hlsl"
 #include "ImportanceSampling.hlsli"
 
-#define DIFFUSE_IRRADIANCE_CONVOLUTION_DISCRETE     0
-#define DIFFUSE_IRRADIANCE_CONVOLUTION_MONTE_CARLO  1
-
-#define DIFFUSE_IRRADIANCE_CONVOLUTION_METHOD       DIFFUSE_IRRADIANCE_CONVOLUTION_DISCRETE
-
 cbuffer PushConstants : register(PushConstantRegister)
 {
-    uint CubeTexIdx;
-    uint CubeTexUavIdx;
+    uint SkyboxTexIdx;
+    uint OutputUavTexIdx;
+    uint NumSamples;
+    uint NumMips;
     uint MipLevel;
 };
 
@@ -30,12 +27,13 @@ float3 GetCubemapUV(float2 uv, uint cubeFace)
     }
 }
 
-float3 GetEnvironmentSample(float3 uv, bool bIsEnvironmentMapLinear)
+float3 GetEnvironmentSample(float3 uv, bool bIsEnvironmentMapLinear, uint mip = 0)
 {
+    // TODO: Double check what filtering we're using, as we may need trilinear (mip) for prefilter.
     SamplerState LinearSampler = SamplerDescriptorHeap[LinearClampSampler];
-    TextureCube<float4> CubeTex = ResourceDescriptorHeap[CubeTexIdx];
+    TextureCube<float4> CubeTex = ResourceDescriptorHeap[SkyboxTexIdx];
 
-    float3 envSample = CubeTex.SampleLevel(LinearSampler, uv, 0).rgb;
+    float3 envSample = CubeTex.SampleLevel(LinearSampler, uv, mip).rgb;
     if (!bIsEnvironmentMapLinear)
     {
         envSample = sRGBtoLinear(envSample);
@@ -43,10 +41,7 @@ float3 GetEnvironmentSample(float3 uv, bool bIsEnvironmentMapLinear)
     return envSample;
 }
 
-float GetSampleDelta(const uint numSamples)
-{
-    return PI / sqrt(float(max(numSamples, 1)));
-}
+// - Irradiance Integration -----------------------------------------------------------------------
 
 // Coding Labs: Physically based rendering
 // http://www.codinglabs.net/article_physically_based_rendering.aspx
@@ -102,12 +97,24 @@ float3 IntegrateDiffuseIrradiance_MonteCarlo(uint numSamples, float3 N, bool bIs
     return irradiance * invNumSamples * 2.0f;
 }
 
-float3 IntegrateDiffuseIrradiance(uint numSamples, float3 N, bool bIsEnvironmentMapLinear)
+//
+
+#define DIFFUSE_IRRADIANCE_CONVOLUTION_DISCRETE     0
+#define DIFFUSE_IRRADIANCE_CONVOLUTION_MONTE_CARLO  1
+
+#define DIFFUSE_IRRADIANCE_CONVOLUTION_METHOD       DIFFUSE_IRRADIANCE_CONVOLUTION_DISCRETE
+
+float GetSampleDelta(const uint numSamples)
+{
+    return PI / sqrt(float(max(numSamples, 1)));
+}
+
+float3 IntegrateDiffuseIrradiance(float3 N, bool bIsEnvironmentMapLinear)
 {
 #if DIFFUSE_IRRADIANCE_CONVOLUTION_METHOD == DIFFUSE_IRRADIANCE_CONVOLUTION_DISCRETE
-    return IntegrateDiffuseIrradiance_Discrete(GetSampleDelta(numSamples), N, bIsEnvironmentMapLinear);
+    return IntegrateDiffuseIrradiance_Discrete(GetSampleDelta(NumSamples), N, bIsEnvironmentMapLinear);
 #elif DIFFUSE_IRRADIANCE_CONVOLUTION_METHOD == DIFFUSE_IRRADIANCE_CONVOLUTION_MONTE_CARLO
-    return IntegrateDiffuseIrradiance_MonteCarlo(numSamples, N, bIsEnvironmentMapLinear);
+    return IntegrateDiffuseIrradiance_MonteCarlo(NumSamples, N, bIsEnvironmentMapLinear);
 #endif
 }
 
@@ -117,10 +124,87 @@ float3 IntegrateDiffuseIrradiance(uint numSamples, float3 N, bool bIsEnvironment
 [numthreads(32, 32, 1)] 
 void CS_IntegrateDiffuseIrradiance(uint3 threadId : SV_DispatchThreadID)
 {
-    bool bIsEnvironmentMapLinear = false; // TODO: Support HDR path.
-    float2 uv = (threadId.xy + 0.5f) / BRDF_IRRADIANCE_TEX_RES;
+    RWTexture2DArray<float4> IrradianceCubeUav = ResourceDescriptorHeap[OutputUavTexIdx];
+    float3 texSize;
+    IrradianceCubeUav.GetDimensions(texSize.x, texSize.y, texSize.z);
+
+    float2 uv = (threadId.xy + 0.5f) / texSize.xy;
     float3 N = normalize(GetCubemapUV(uv, threadId.z));
     
-    RWTexture2DArray<float4> IrradianceCubeUav = ResourceDescriptorHeap[CubeTexUavIdx];
-    IrradianceCubeUav[threadId] = float4(IntegrateDiffuseIrradiance(16384u, N, bIsEnvironmentMapLinear), 1.0f);
+    bool bIsEnvironmentMapLinear = false; // TODO: Support HDR path.
+    IrradianceCubeUav[threadId] = float4(IntegrateDiffuseIrradiance(N, bIsEnvironmentMapLinear), 1.0f);
+}
+
+// - Environment Convolution ----------------------------------------------------------------------
+
+// Jags 2015 - Image Based Lighting (Aliasing Artifacts)
+// https://chetanjags.wordpress.com/2015/08/26/image-based-lighting/
+// This method relies on filtering the cubemap by sampling from a lower mip level when the PDF of a
+// sample direction is small, the reasoning being that the smaller the PDF, the more texels should
+// be averaged for that sample direction. 
+//
+// In practice, this helps the importance sampling converge much faster.
+#define PREFILTER_USE_PDF_FILTERING 1
+
+float3 PrefilterEnvironmentMap(float3 R, float roughness, bool bIsEnvironmentMapLinear)
+{
+    const float invNumSamples = 1.0f / float(NumSamples);
+    float3 N = R;
+    float3 V = R;
+    
+    float3x3 TBN = GetTangentBasis(N);
+    
+#if PREFILTER_USE_PDF_FILTERING
+    TextureCube<float4> SkyboxTex = ResourceDescriptorHeap[SkyboxTexIdx];
+    float2 skyboxTexResolution;
+    SkyboxTex.GetDimensions(skyboxTexResolution.x, skyboxTexResolution.y);
+    // Solid angle subtended by a texel from the environment map at mip level 0.
+    const float saTexel = 4.0f * PI / (6.0f * skyboxTexResolution.x * skyboxTexResolution.y);
+#endif
+    
+    float3 color = 0;
+    float weight = 0;
+    for (uint i = 0; i < NumSamples; ++i)
+    {
+        float2 Xi = Hammersley2d(i, NumSamples);
+        float3 H = TangentToWorld(HemisphereImportanceSample_GGX(Xi, roughness), TBN);
+        float3 L = reflect(-V, H);
+        
+        float NdotL = dot(N, L);
+        if (NdotL > 0)
+        {
+#if PREFILTER_USE_PDF_FILTERING
+            float NdotH = saturate(dot(N, H));
+            float D = D_GGX(NdotH, roughness);
+            // Note: Cosines cancel out due to the approximation 'N = V' from full derivation:
+            // 'pdf = D * NdotH / (4.0 * VdotH)'.
+            float pdf = D * 0.25f;
+
+            // Solid angle associated with this sample.
+            float saSample = 1.0 / (NumSamples * pdf);
+            const float mip = max(0.5f * log2(saSample / saTexel) + 1.0f, 0.0f);
+#else
+            const float mip = 0;
+#endif
+            color += GetEnvironmentSample(L, bIsEnvironmentMapLinear, mip).rgb * NdotL;
+            weight += NdotL;
+        }
+    }
+
+    return (color / max(weight, 0.1));
+}
+
+[numthreads(8, 8, 1)] 
+void CS_PrefilterEnvironmentMap(uint3 threadId : SV_DispatchThreadID)
+{   
+    RWTexture2DArray<float4> PrefilterCubeUav = ResourceDescriptorHeap[OutputUavTexIdx];
+    float3 texSize;
+    PrefilterCubeUav.GetDimensions(texSize.x, texSize.y, texSize.z);
+
+    float2 uv = (threadId.xy + 0.5f) / texSize.xy;
+    float3 R = normalize(GetCubemapUV(uv, threadId.z));
+    float roughness = max(LinearizeRoughness(float(MipLevel) / float(NumMips - 1)), MIN_ROUGHNESS);
+
+    bool bIsEnvironmentMapLinear = false; // TODO: Support HDR path.
+    PrefilterCubeUav[threadId] = float4(PrefilterEnvironmentMap(R, roughness, bIsEnvironmentMapLinear), 1.0f);
 }

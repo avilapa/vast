@@ -16,16 +16,15 @@ float2 IntegrateBRDF(uint numSamples, float roughness, float NdotV)
     {
         // Sample microfacet direction
         float2 Xi = Hammersley2d(i, numSamples);
-        float3 H = HemisphereImportanceSample_GGX(Xi, roughness);
-        
-        float3 L = 2.0f * dot(V, H) * H - V; // Equivalent to reflect(V, H)
-        
-        float NdotL = saturate(L.z);
-        float NdotH = saturate(H.z);
-        float VdotH = saturate(dot(V, H));
-        
+        float3 H = HemisphereImportanceSample_GGX(Xi, roughness);        
+        float3 L = reflect(-V, H);
+
+        float NdotL = saturate(L.z);        
         if (NdotL > 0)
         {
+            float NdotH = saturate(H.z);
+            float VdotH = saturate(dot(V, H));
+
             float Vis = V_SmithGGXHeightCorrelated(NdotV, NdotL, roughness) * NdotL * (VdotH / NdotH);
             float Fc = Pow5(1.0 - VdotH);
 
