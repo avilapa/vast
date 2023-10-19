@@ -59,13 +59,12 @@ cbuffer PushConstants : register(PushConstantRegister)
 void CS_IntegrateBRDF(uint3 threadId : SV_DispatchThreadID)
 {
     RWTexture2D<float2> EnvBrdfUav = ResourceDescriptorHeap[EnvBrdfUavIdx];
-
     float2 texSize;
     EnvBrdfUav.GetDimensions(texSize.x, texSize.y);
     
     float2 uv = (threadId.xy + 0.5f) / texSize;
     
-    float roughness = LinearizeRoughness(uv.x);
+    float roughness = max(LinearizeRoughness(uv.x), MIN_ROUGHNESS);
     float NdotV = uv.y;
     
     EnvBrdfUav[threadId.xy] = IntegrateBRDF(NumSamples, roughness, NdotV);

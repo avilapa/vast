@@ -159,7 +159,7 @@ float3 PrefilterEnvironmentMap(float3 R, float roughness, bool bIsEnvironmentMap
     float2 skyboxTexResolution;
     SkyboxTex.GetDimensions(skyboxTexResolution.x, skyboxTexResolution.y);
     // Solid angle subtended by a texel from the environment map at mip level 0.
-    const float saTexel = 4.0f * PI / (6.0f * skyboxTexResolution.x * skyboxTexResolution.y);
+    const float saTexel = FOUR_PI / (6.0f * skyboxTexResolution.x * skyboxTexResolution.y);
 #endif
     
     float3 color = 0;
@@ -176,7 +176,7 @@ float3 PrefilterEnvironmentMap(float3 R, float roughness, bool bIsEnvironmentMap
 #if PREFILTER_USE_PDF_FILTERING
             float NdotH = saturate(dot(N, H));
             float D = D_GGX(NdotH, roughness);
-            // Note: Cosines cancel out due to the approximation 'N = V' from full derivation:
+            // Note: Cosines cancel out due to the approximation 'N = V' from full formula:
             // 'pdf = D * NdotH / (4.0 * VdotH)'.
             float pdf = D * 0.25f;
 
