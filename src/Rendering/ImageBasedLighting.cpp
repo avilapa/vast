@@ -18,7 +18,7 @@ namespace vast::gfx
 			.entryPoint = "CS_IntegrateDiffuseIrradiance",
 		};
 		s_IntegrateIrradiancePso = ctx.CreatePipeline(csDesc);
-		csDesc.entryPoint = "CS_PrefilterEnvironmentMap";
+		csDesc.entryPoint = "CS_IntegratePrefilteredRadiance";
 		s_PrefilterEnvironmentPso = ctx.CreatePipeline(csDesc);
 	}
 

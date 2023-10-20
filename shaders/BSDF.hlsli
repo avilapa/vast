@@ -1,3 +1,6 @@
+#ifndef __BSDF_HLSL__
+#define __BSDF_HLSL__
+
 #define EPS		        0.0001f
 #define PI              3.14159265358979323846264338327950288
 #define INV_PI          (1.0 / PI)
@@ -51,16 +54,26 @@ float V_SmithGGXHeightCorrelated(float NdotV, float NdotL, float roughness)
     return 0.5 / (GGXV + GGXL);
 }
 
-float3 F_Schlick(float3 f0, float cosTheta)
+// Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
+float3 F_Schlick(float3 f0, float f90, float cosTheta)
 {
-    return f0 + (1.0 - f0) * Pow5(1.0 - cosTheta);
+    return f0 + (f90 - f0) * Pow5(1.0 - cosTheta);
 }
 
-float3 GetEnergyCompensationGGX(float3 f0, float2 dfg)
+// Version optimized for f90 = 1.0
+float3 F_Schlick(float3 f0, float cosTheta)
+{
+    float pow5 = Pow5(1.0 - cosTheta);
+    return pow5 + f0 * (1.0 - pow5);
+}
+
+float3 GetEnergyCompensationGGX(float3 f0, float2 envBrdf)
 {
 #if BSDF_USE_GGX_MULTISCATTER
-	return 1.0.xxx + f0 * (1.0 / dfg.y - 1.0);
+    return 1.0.xxx + f0 * (1.0 / envBrdf.y - 1.0);
 #else
     return 1.0.xxx;
 #endif
 }
+
+#endif // __BSDF_HLSL__

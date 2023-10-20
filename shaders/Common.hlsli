@@ -1,3 +1,5 @@
+#ifndef __COMMON_HLSL__
+#define __COMMON_HLSL__
 
 float3 sRGBtoLinear(float3 col)
 {
@@ -47,3 +49,24 @@ float3 TangentToWorld(float3 vec, float3 N)
 {
     return mul(vec, GetTangentBasis(N));
 }
+
+//
+
+struct CubemapParams
+{
+    SamplerState cubeSampler;
+    TextureCube<float4> cubeTex;
+    bool bConvertToLinear;
+};
+
+float3 SampleCubemap(CubemapParams p, float3 uv, uint mip = 0)
+{
+    float3 color = p.cubeTex.SampleLevel(p.cubeSampler, uv, mip).rgb;
+    if (p.bConvertToLinear)
+    {
+        color = sRGBtoLinear(color);
+    }
+    return color;
+}
+
+#endif // __COMMON_HLSL__

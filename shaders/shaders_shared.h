@@ -25,17 +25,47 @@ struct Vtx3fPos3fNormal2fUv
 
 struct MeshCB // TODO: Default values
 {
-	float4x4 model;
+	float4x4 modelMatrix;
 
 	uint32 vtxBufIdx;
 	uint32 colorTexIdx;
 	uint32 colorSamplerIdx;
+	uint32 bUseColorTex;
+
+	s_float3 baseColor;
+	float metallic;
+
+	float roughness;
 };
+
+struct IBL_PerFrame
+{
+	uint32 envBrdfLutIdx;
+	uint32 irradianceTexIdx;
+	uint32 prefilterTexIdx;
+	uint32 prefilterNumMips;
+};
+
+struct ShaderDebug_PerFrame
+{
+	float4 var0;
+	float4 var1;
+
+	uint32 flags;
+	uint32 _pad0, _pad1, _pad2;
+};
+
+#define GetDebugToggle(n) ((FrameConstantBuffer.debug.flags & (1 << n)) != 0)
 
 struct SimpleRenderer_PerFrame
 {
 	float4x4 viewProjMatrix;
+	
 	s_float3 cameraPos;
+	uint32 skyboxTexIdx;
+
+	IBL_PerFrame ibl;
+	ShaderDebug_PerFrame debug;
 };
 
 #endif
