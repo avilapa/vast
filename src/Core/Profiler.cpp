@@ -521,7 +521,7 @@ namespace vast
 		char overlay[64];
 		sprintf_s(overlay, "avg %0.3f ms (max %0.3f ms)", avg, max);
 		float availableWidth = ImGui::GetContentRegionAvail().x;
-		ImGui::PlotLines("", plot.history.data(), static_cast<int>(plot.kHistorySize), 0, overlay, plot.tMin, plot.tMax, ImVec2(availableWidth, 80.0f));
+		ImGui::PlotLines("", plot.history.data(), static_cast<int>(plot.kHistorySize), 0, overlay, std::min(plot.tMin, std::max(float(avg) - 1.5f, 0.0f)), std::max(plot.tMax, float(avg) + 1.5f), ImVec2(availableWidth, 80.0f));
 	}
 
 	void Profiler::OnGUI()
