@@ -28,7 +28,7 @@ namespace vast::gfx
 		DX12GraphicsContext(const GraphicsParams& params);
 		~DX12GraphicsContext();
 
-		void FlushGPU() override;
+		void WaitForIdle() override;
 
 		void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) override;
 		void BeginRenderPass(PipelineHandle h, RenderPassTargets targets) override;
@@ -100,7 +100,6 @@ namespace vast::gfx
 
 		void SubmitCommandList(DX12CommandList& ctx);
 		void SignalEndOfFrame(const QueueType type);
-		void WaitForIdle();
 
 		void BeginRenderPass_Internal(const DX12RenderPassData& rpd);
 

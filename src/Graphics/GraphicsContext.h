@@ -26,8 +26,14 @@ namespace vast::gfx
 
 		void BeginFrame();
 		void EndFrame();
-
 		virtual bool IsInFrame() const;
+
+		// Waits for the current batch of GPU work to finish.
+		virtual void WaitForIdle() = 0;
+		// Waits for all active GPU work to finish as well as any queued resource destructions and 
+		// pipeline updates.
+		void FlushGPU();
+
 
 		// - Render Pass ----------------------------------------------------------------------- //
 
@@ -110,9 +116,6 @@ namespace vast::gfx
 
 		virtual const uint8* GetBufferData(BufferHandle h) = 0;
 
-		// Waits for all active GPU work to finish as well as any queued resource destructions.
-		virtual void FlushGPU() = 0;
-
 		uint32 BeginTimestamp();
 		void EndTimestamp(uint32 timestampIdx);
 		// Call after EndFrame() and before the next BeginFrame() to collect data on the frame that just ended.
@@ -133,6 +136,10 @@ namespace vast::gfx
 
 		void CreateHandlePools();
 		void DestroyHandlePools();
+
+		Vector<PipelineHandle> m_PipelinesMarkedForUpdate = {};
+
+		void UpdateMarkedPipelines();
 
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction = {};
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction = {};

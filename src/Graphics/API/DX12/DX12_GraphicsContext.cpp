@@ -131,17 +131,6 @@ namespace vast::gfx
 		SignalEndOfFrame(QueueType::GRAPHICS);
 	}
 
-	void DX12GraphicsContext::FlushGPU()
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
-		WaitForIdle();
-
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			ProcessDestructions(i);
-		}
-	}
-
 	void DX12GraphicsContext::SubmitCommandList(DX12CommandList& cmdList)
 	{
 		switch (cmdList.GetCommandType())
@@ -303,7 +292,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::BindPipelineForCompute(PipelineHandle h)
 	{
-		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Pipeline For Compute");
 		VAST_ASSERTF(!m_bHasRenderPassBegun, "Cannot bind another pipeline in the middle of a render pass.");
 		VAST_ASSERT(m_Pipelines && h.IsValid());
 		DX12Pipeline& pipeline = m_Pipelines->LookupResource(h);
@@ -312,6 +301,7 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::Dispatch(uint3 threadGroupCount)
 	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Compute Dispatch");
 		m_GraphicsCommandList->Dispatch(threadGroupCount);
 	}
 
@@ -576,9 +566,6 @@ namespace vast::gfx
 
 	void DX12GraphicsContext::UpdatePipeline_Internal(PipelineHandle h)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Pipeline");
-		VAST_ASSERT(h.IsValid());
-		WaitForIdle(); // TODO TEMP: We should cache pipelines that want to update on a given frame and reload them all at a safe place, but this does the job for now.
 		m_Device->UpdatePipeline(m_Pipelines->LookupResource(h));
 	}
 

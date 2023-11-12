@@ -38,6 +38,13 @@ namespace vast::gfx
 		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
 		m_bHasFrameBegun = true;
 
+		if (!m_PipelinesMarkedForUpdate.empty())
+		{
+			// Pipelines are not double buffered, so we need a hard wait to reload shaders in place.
+			WaitForIdle();
+			UpdateMarkedPipelines();
+		}
+
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
 
 		// TODO: Figure out where the profiling for destructions should go (cpu/gpu?)
@@ -67,6 +74,21 @@ namespace vast::gfx
 	{
 		return m_bHasFrameBegun;
 	}
+
+	void GraphicsContext::FlushGPU()
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
+		WaitForIdle();
+
+		UpdateMarkedPipelines();
+
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			ProcessDestructions(i);
+		}
+	}
+
+	//
 
 	bool GraphicsContext::IsInRenderPass() const
 	{
@@ -227,9 +249,19 @@ namespace vast::gfx
 
 	void GraphicsContext::UpdatePipeline(PipelineHandle h)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Pipeline");
 		VAST_ASSERT(h.IsValid());
-		UpdatePipeline_Internal(h);
+		m_PipelinesMarkedForUpdate.push_back(h);
+	}
+
+	void GraphicsContext::UpdateMarkedPipelines()
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Cached Pipelines");
+		for (auto& h : m_PipelinesMarkedForUpdate)
+		{
+			VAST_ASSERT(h.IsValid());
+			UpdatePipeline_Internal(h);
+		}
+		m_PipelinesMarkedForUpdate.clear();
 	}
 
 	void GraphicsContext::DestroyBuffer(BufferHandle h)
