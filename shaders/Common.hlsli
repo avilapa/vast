@@ -52,6 +52,37 @@ float3 TangentToWorld(float3 vec, float3 N)
 
 //
 
+// Clamp normal directions facing away from the camera to their perpendicular direction.
+float3 AdjustBackFacingVertexNormals(float3 N, float3 V)
+{
+    const float NdotV = dot(N, V);
+    if (NdotV < 0.0f)
+    {
+        // Project current normal onto the plane defined by the view vector to find the closest
+        // valid orientation and normalize.
+        return normalize(N - V * NdotV);
+    }
+    return N;
+}
+//
+// How do we end up with back-facing normals to begin with? Interpolated/smoothed normals in the 
+// mesh as an approximation of a higher polygon count mesh can cause a triangle to be visible at a
+// grazing angle with a front-facing geometry normal but a back-facing vertex normal, which will be
+// used for shading. Back-facing normals can lead to visual artifacts when doing lighting. A higher
+// polygon count and not exporting smoothed normals prevents this issue from happening.
+//
+// This issue is closely related to the 'shadow-ray terminator problem'. Furtrher reading:
+// Woo et al. 1996 - It's Really Not a Rendering Bug, You See...
+// https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=7986ebd7b5427bbe54edb7c0c9cf674fee817933
+// Schussler et al. 2017 - Microfacet-based Normal Mapping for Robust Monte Carlo Path Tracing
+// https://jo.dreggn.org/home/2017_normalmap.pdf
+// Chiang, Li & Burley 2019 - Taming the Shadow Terminator
+// https://www.yiningkarlli.com/projects/shadowterminator.html
+// Hanika 2021 - Hacking the Shadow Terminator
+// https://jo.dreggn.org/home/2021_terminator.pdf
+
+//
+
 struct CubemapParams
 {
     SamplerState cubeSampler;
