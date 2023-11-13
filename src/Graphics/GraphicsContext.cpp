@@ -38,11 +38,11 @@ namespace vast::gfx
 		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
 		m_bHasFrameBegun = true;
 
-		if (!m_PipelinesMarkedForUpdate.empty())
+		if (!m_PipelinesMarkedForShaderReload.empty())
 		{
 			// Pipelines are not double buffered, so we need a hard wait to reload shaders in place.
 			WaitForIdle();
-			UpdateMarkedPipelines();
+			ProcessShaderReloads();
 		}
 
 		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
@@ -80,7 +80,7 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
 		WaitForIdle();
 
-		UpdateMarkedPipelines();
+		ProcessShaderReloads();
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -247,21 +247,21 @@ namespace vast::gfx
 		UpdateBuffer_Internal(h, data, size);
 	}
 
-	void GraphicsContext::UpdatePipeline(PipelineHandle h)
+	void GraphicsContext::ReloadShaders(PipelineHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_PipelinesMarkedForUpdate.push_back(h);
+		m_PipelinesMarkedForShaderReload.push_back(h);
 	}
 
-	void GraphicsContext::UpdateMarkedPipelines()
+	void GraphicsContext::ProcessShaderReloads()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Cached Pipelines");
-		for (auto& h : m_PipelinesMarkedForUpdate)
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Process Shader Reloads");
+		for (auto& h : m_PipelinesMarkedForShaderReload)
 		{
 			VAST_ASSERT(h.IsValid());
-			UpdatePipeline_Internal(h);
+			ReloadShaders_Internal(h);
 		}
-		m_PipelinesMarkedForUpdate.clear();
+		m_PipelinesMarkedForShaderReload.clear();
 	}
 
 	void GraphicsContext::DestroyBuffer(BufferHandle h)

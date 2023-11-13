@@ -18,6 +18,7 @@ namespace vast
 		NONE = 0,
 		WindowClose, WindowResize,
 		DebugAction,
+		ReloadShaders,
 		COUNT
 	};
 
@@ -41,5 +42,14 @@ namespace vast
 	public:
 		DebugActionEvent() = default;
 		EVENT_CLASS_DECL_STATIC_TYPE(DebugAction);
+	};
+
+	class ReloadShadersEvent final : public IEvent
+	{
+	public:
+		ReloadShadersEvent() = default;
+		EVENT_CLASS_DECL_STATIC_TYPE(ReloadShaders);
+		ReloadShadersEvent(gfx::GraphicsContext& ctx_) : ctx(ctx_) {}
+		gfx::GraphicsContext& ctx;
 	};
 }

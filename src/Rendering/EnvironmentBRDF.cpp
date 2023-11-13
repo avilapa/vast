@@ -6,6 +6,11 @@ namespace vast::gfx
 
 	static PipelineHandle s_IntegrateBrdfPso;
 
+	static void OnReloadShadersEvent(const ReloadShadersEvent& event)
+	{
+		EnvironmentBRDF::ReloadPSOs(event.ctx);
+	}
+
 	void EnvironmentBRDF::CreatePSOs(GraphicsContext& ctx)
 	{
 		VAST_ASSERTF(!s_IntegrateBrdfPso.IsValid(), "Cannot create Environment BRDF PSO, already initialized.");
@@ -17,21 +22,24 @@ namespace vast::gfx
 			.entryPoint = "CS_IntegrateBRDF",
 		};
 		s_IntegrateBrdfPso = ctx.CreatePipeline(csDesc);
+
+		VAST_SUBSCRIBE_TO_EVENT("EnvironmentBRDF", ReloadShadersEvent, VAST_EVENT_HANDLER_CB_STATIC(OnReloadShadersEvent, ReloadShadersEvent));
 	}
 
 	void EnvironmentBRDF::ReloadPSOs(GraphicsContext& ctx)
 	{
 		VAST_ASSERTF(s_IntegrateBrdfPso.IsValid(), "Cannot reload Environment BRDF PSO, not currently initialized.");
-
-		ctx.UpdatePipeline(s_IntegrateBrdfPso);
+		ctx.ReloadShaders(s_IntegrateBrdfPso);
 	}
-	
+
 	void EnvironmentBRDF::DestroyPSOs(GraphicsContext& ctx)
 	{
 		VAST_ASSERTF(s_IntegrateBrdfPso.IsValid(), "Cannot destroy Environment BRDF PSO, not currently initialized.");
 
 		ctx.DestroyPipeline(s_IntegrateBrdfPso);
 		s_IntegrateBrdfPso = PipelineHandle();
+
+		VAST_UNSUBSCRIBE_FROM_EVENT("EnvironmentBRDF", ReloadShadersEvent);
 	}
 
 	TextureHandle EnvironmentBRDF::GenerateLUT(GraphicsContext& ctx, const Params& p /* = Params() */)

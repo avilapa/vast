@@ -31,9 +31,8 @@ namespace vast::gfx
 		// Waits for the current batch of GPU work to finish.
 		virtual void WaitForIdle() = 0;
 		// Waits for all active GPU work to finish as well as any queued resource destructions and 
-		// pipeline updates.
+		// shader reloads.
 		void FlushGPU();
-
 
 		// - Render Pass ----------------------------------------------------------------------- //
 
@@ -57,7 +56,7 @@ namespace vast::gfx
 		PipelineHandle CreatePipeline(const ShaderDesc& csDesc);
 
 		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
-		void UpdatePipeline(PipelineHandle h);
+		void ReloadShaders(PipelineHandle h);
 
 		void DestroyBuffer(BufferHandle h);
 		void DestroyTexture(TextureHandle h);
@@ -137,9 +136,9 @@ namespace vast::gfx
 		void CreateHandlePools();
 		void DestroyHandlePools();
 
-		Vector<PipelineHandle> m_PipelinesMarkedForUpdate = {};
+		Vector<PipelineHandle> m_PipelinesMarkedForShaderReload = {};
 
-		void UpdateMarkedPipelines();
+		void ProcessShaderReloads();
 
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction = {};
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction = {};
@@ -171,7 +170,7 @@ namespace vast::gfx
 
 		virtual void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) = 0;
 		virtual void CreatePipeline_Internal(PipelineHandle h, const ShaderDesc& csDesc) = 0;
-		virtual void UpdatePipeline_Internal(PipelineHandle h) = 0;
+		virtual void ReloadShaders_Internal(PipelineHandle h) = 0;
 		virtual void DestroyPipeline_Internal(PipelineHandle h) = 0;
 
 		double m_TimestampFrequency = 0.0;

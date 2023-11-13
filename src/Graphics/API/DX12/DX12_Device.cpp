@@ -701,9 +701,9 @@ namespace vast::gfx
 		}
 	}
 
-	void DX12Device::UpdatePipeline(DX12Pipeline& pipeline)
+	void DX12Device::ReloadShaders(DX12Pipeline& pipeline)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Update Pipeline");
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Reload Shaders");
 
 		if (pipeline.IsCompute())
 		{

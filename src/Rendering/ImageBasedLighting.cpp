@@ -6,6 +6,11 @@ namespace vast::gfx
 	static PipelineHandle s_IntegrateIrradiancePso;
 	static PipelineHandle s_PrefilterEnvironmentPso;
 
+	static void OnReloadShadersEvent(const ReloadShadersEvent& event)
+	{
+		ImageBasedLighting::ReloadPSOs(event.ctx);
+	}
+
 	void ImageBasedLighting::CreatePSOs(GraphicsContext& ctx)
 	{
 		VAST_ASSERTF(!s_IntegrateIrradiancePso.IsValid() && !s_PrefilterEnvironmentPso.IsValid(), 
@@ -20,6 +25,8 @@ namespace vast::gfx
 		s_IntegrateIrradiancePso = ctx.CreatePipeline(csDesc);
 		csDesc.entryPoint = "CS_IntegratePrefilteredRadiance";
 		s_PrefilterEnvironmentPso = ctx.CreatePipeline(csDesc);
+
+		VAST_SUBSCRIBE_TO_EVENT("ImageBasedLighting", ReloadShadersEvent, VAST_EVENT_HANDLER_CB_STATIC(OnReloadShadersEvent, ReloadShadersEvent));
 	}
 
 	void ImageBasedLighting::ReloadPSOs(GraphicsContext& ctx)
@@ -27,8 +34,8 @@ namespace vast::gfx
 		VAST_ASSERTF(s_IntegrateIrradiancePso.IsValid() || s_PrefilterEnvironmentPso.IsValid(),
 			"Cannot reload Image Based Lighting PSOs, not currently initialized.");
 
-		ctx.UpdatePipeline(s_IntegrateIrradiancePso);
-		ctx.UpdatePipeline(s_PrefilterEnvironmentPso);
+		ctx.ReloadShaders(s_IntegrateIrradiancePso);
+		ctx.ReloadShaders(s_PrefilterEnvironmentPso);
 	}
 	
 	void ImageBasedLighting::DestroyPSOs(GraphicsContext& ctx)
@@ -40,6 +47,8 @@ namespace vast::gfx
 		ctx.DestroyPipeline(s_PrefilterEnvironmentPso);
 		s_IntegrateIrradiancePso = PipelineHandle();
 		s_PrefilterEnvironmentPso = PipelineHandle();
+
+		VAST_UNSUBSCRIBE_FROM_EVENT("ImageBasedLighting", ReloadShadersEvent);
 	}
 
 	TextureHandle ImageBasedLighting::GenerateIrradianceMap(GraphicsContext& ctx, TextureHandle skyboxMap, const IrradianceParams& p /* = Params() */)

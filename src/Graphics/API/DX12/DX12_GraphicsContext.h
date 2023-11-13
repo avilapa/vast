@@ -91,7 +91,7 @@ namespace vast::gfx
 
 		void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) override;
 		void CreatePipeline_Internal(PipelineHandle h, const ShaderDesc& csDesc) override;
-		void UpdatePipeline_Internal(PipelineHandle h) override;
+		void ReloadShaders_Internal(PipelineHandle h) override;
 		void DestroyPipeline_Internal(PipelineHandle h) override;
 
 		void BeginTimestamp_Internal(uint32 idx) override;

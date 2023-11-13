@@ -24,6 +24,7 @@ public:
 	virtual void Render() {}
 	virtual void OnGUI() {}
 	virtual void OnWindowResizeEvent(const WindowResizeEvent&) {}
+	virtual void OnReloadShadersEvent() {}
 
 protected:
 	gfx::GraphicsContext& ctx;

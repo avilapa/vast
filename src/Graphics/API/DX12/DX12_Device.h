@@ -25,7 +25,7 @@ namespace vast::gfx
 		void CreateGraphicsPipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline);
 		void CreateComputePipeline(const ShaderDesc& csDesc, DX12Pipeline& outPipeline);
 
-		void UpdatePipeline(DX12Pipeline& pipeline);
+		void ReloadShaders(DX12Pipeline& pipeline);
 
 		void DestroyBuffer(DX12Buffer& buf);
 		void DestroyTexture(DX12Texture& tex);

@@ -191,7 +191,8 @@ public:
 		}
 
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		VAST_SUBSCRIBE_TO_EVENT("cubemapping", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Textures::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("Textures", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Textures::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("Textures", ReloadShadersEvent, VAST_EVENT_HANDLER_CB(Textures::OnReloadShadersEvent));
 	}
 
 	~Textures()
@@ -215,7 +216,8 @@ public:
 
 		m_Skybox = nullptr;
 
-		VAST_UNSUBSCRIBE_FROM_EVENT("cubemapping", WindowResizeEvent);
+		VAST_UNSUBSCRIBE_FROM_EVENT("Textures", WindowResizeEvent);
+		VAST_UNSUBSCRIBE_FROM_EVENT("Textures", ReloadShadersEvent);
 	}
 
 	void Update() override
@@ -286,6 +288,12 @@ public:
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
 		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+	}
+
+	void OnReloadShadersEvent() override
+	{
+		ctx.ReloadShaders(m_FullscreenPso);
+		ctx.ReloadShaders(m_TexturedMeshPso);
 	}
 
 	void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCount, Vector<Vtx3fPos3fNormal2fUv>& vtx, Vector<uint16>& idx)

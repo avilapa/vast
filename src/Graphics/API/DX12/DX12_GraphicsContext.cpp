@@ -564,9 +564,9 @@ namespace vast::gfx
 		m_Device->CreateComputePipeline(csDesc, pipeline);
 	}
 
-	void DX12GraphicsContext::UpdatePipeline_Internal(PipelineHandle h)
+	void DX12GraphicsContext::ReloadShaders_Internal(PipelineHandle h)
 	{
-		m_Device->UpdatePipeline(m_Pipelines->LookupResource(h));
+		m_Device->ReloadShaders(m_Pipelines->LookupResource(h));
 	}
 
 	void DX12GraphicsContext::DestroyPipeline_Internal(PipelineHandle h)

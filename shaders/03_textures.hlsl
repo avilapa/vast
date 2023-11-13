@@ -40,6 +40,9 @@ VertexOutput VS_Main(uint vtxId : SV_VertexID)
     float3 worldPos = mul(ObjectConstantBuffer.modelMatrix, float4(vtx.pos, 1)).xyz;
     float3 worldNormal = mul(ObjectConstantBuffer.modelMatrix, float4(vtx.normal, 0)).xyz;
 
+    float3 V = normalize(FrameConstantBuffer.cameraPos - worldPos);
+    worldNormal = AdjustBackFacingVertexNormals(worldNormal, V);
+
 	VertexOutput OUT;
 	OUT.pos = mul(FrameConstantBuffer.viewProjMatrix, float4(worldPos, 1));
     OUT.worldPos = worldPos;

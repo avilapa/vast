@@ -118,7 +118,8 @@ public:
 		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
 		
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		VAST_SUBSCRIBE_TO_EVENT("hello3d", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("Hello3D", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("Hello3D", ReloadShadersEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnReloadShadersEvent));
 	}
 
 	~Hello3D()
@@ -132,7 +133,8 @@ public:
 		ctx.DestroyBuffer(m_CubeIdxBuf);
 		ctx.DestroyBuffer(m_CubeCbvBuf);
 
-		VAST_UNSUBSCRIBE_FROM_EVENT("hello3d", WindowResizeEvent);
+		VAST_UNSUBSCRIBE_FROM_EVENT("Hello3D", WindowResizeEvent);
+		VAST_UNSUBSCRIBE_FROM_EVENT("Hello3D", ReloadShadersEvent);
 	}
 
 	void Update() override
@@ -184,6 +186,12 @@ public:
 		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
 		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();
+	}
+
+	void OnReloadShadersEvent() override
+	{
+		ctx.ReloadShaders(m_FullscreenPso);
+		ctx.ReloadShaders(m_CubePso);
 	}
 
 	float4x4 ComputeViewProjectionMatrix()

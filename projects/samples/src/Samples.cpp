@@ -108,7 +108,7 @@ void SamplesApp::DrawSamplesEditorUI()
 {
 	if (ImGui::BeginMainMenuBar())
 	{
-		if (ImGui::BeginMenu("Load Sample..."))
+		if (ImGui::BeginMenu("Load Sample"))
 		{
 			for (uint32 i = 0; i < NELEM(s_SampleSceneNames); ++i)
 			{
@@ -119,6 +119,21 @@ void SamplesApp::DrawSamplesEditorUI()
 				}
 			}
 
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Options"))
+		{
+			if (ImGui::MenuItem("Show Profiler"))
+			{
+				VAST_FIRE_EVENT(DebugActionEvent);
+			}
+			
+			if (ImGui::MenuItem("Reload Shaders"))
+			{
+				ReloadShadersEvent e(*m_GraphicsContext);
+				VAST_FIRE_EVENT(ReloadShadersEvent, e);
+			}
 			ImGui::EndMenu();
 		}
 

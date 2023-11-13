@@ -162,7 +162,8 @@ public:
 		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
 
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		VAST_SUBSCRIBE_TO_EVENT("instancing", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Instancing::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("Instancing", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Instancing::OnWindowResizeEvent, WindowResizeEvent));
+		VAST_SUBSCRIBE_TO_EVENT("Instancing", ReloadShadersEvent, VAST_EVENT_HANDLER_CB(Instancing::OnReloadShadersEvent));
 	}
 
 	~Instancing()
@@ -178,7 +179,8 @@ public:
 		ctx.DestroyBuffer(m_CubeVtxBuf);
 		ctx.DestroyBuffer(m_CubeIdxBuf);
 
-		VAST_UNSUBSCRIBE_FROM_EVENT("instancing", WindowResizeEvent);
+		VAST_UNSUBSCRIBE_FROM_EVENT("Instancing", WindowResizeEvent);
+		VAST_UNSUBSCRIBE_FROM_EVENT("Instancing", ReloadShadersEvent);
 	}
 
 	void Update() override
@@ -272,6 +274,13 @@ public:
 
 		m_Camera->SetAspectRatio(ctx.GetBackBufferAspectRatio());
 		m_bViewChanged = true;
+	}
+
+	void OnReloadShadersEvent() override
+	{
+		ctx.ReloadShaders(m_FullscreenPso);
+		ctx.ReloadShaders(m_CubeInstPso[DepthBufferMode::STANDARD]);
+		ctx.ReloadShaders(m_CubeInstPso[DepthBufferMode::REVERSE_Z]);
 	}
 
 	void OnGUI() override
