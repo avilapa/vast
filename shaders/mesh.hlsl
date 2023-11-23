@@ -1,9 +1,9 @@
 #include "shaders_shared.h"
 #include "Common.hlsli"
 #include "BSDF.hlsli"
+#include "EnvironmentBRDF.hlsl"
 #include "ImportanceSampling.hlsli"
 
-ConstantBuffer<SimpleRenderer_PerFrame> FrameConstantBuffer : register(b0, PerObjectSpace);
 ConstantBuffer<MeshCB> ObjectConstantBuffer : register(b1, PerObjectSpace);
 
 struct VertexOutput

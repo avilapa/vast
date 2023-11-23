@@ -59,6 +59,16 @@ float G_SmithGGX(float NdotV, float NdotL, float roughness)
     return GGXL * GGXV;
 }
 
+float G_SmithGGXCorrelated(float NdotV, float NdotL, float roughness)
+{
+    float a2 = roughness * roughness;
+    float NdotV2 = NdotV * NdotV;
+    float NdotL2 = NdotL * NdotL;
+    float GGXV = (-1.0f + sqrt(a2 * (1 - NdotL2) / NdotL2 + 1)) * 0.5f;
+    float GGXL = (-1.0f + sqrt(a2 * (1 - NdotV2) / NdotV2 + 1)) * 0.5f;
+    return 1.0f / (1.0f + GGXV + GGXL);
+}
+
 // Note: V_SmithGGX = G_SmithGGX / (4.0f * NdotV * NdotL)
 float V_SmithGGX(float NdotV, float NdotL, float roughness)
 {

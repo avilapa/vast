@@ -21,10 +21,10 @@ enum class SampleScenes
 };
 static const char* s_SampleSceneNames[]
 {
-	"Hello Triangle",
-	"Hello 3D",
-	"Instancing",
-	"Textures",
+	"00 - Hello Triangle",
+	"01 - Hello 3D",
+	"02 - Instancing",
+	"03 - Textures",
 };
 static_assert(NELEM(s_SampleSceneNames) == IDX(SampleScenes::COUNT));
 

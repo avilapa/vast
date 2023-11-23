@@ -55,8 +55,6 @@ struct ShaderDebug_PerFrame
 	uint32 _pad0, _pad1, _pad2;
 };
 
-#define GetDebugToggle(n) ((FrameConstantBuffer.debug.flags & (1 << n)) != 0)
-
 struct SimpleRenderer_PerFrame
 {
 	float4x4 viewProjMatrix;
@@ -67,5 +65,11 @@ struct SimpleRenderer_PerFrame
 	IBL_PerFrame ibl;
 	ShaderDebug_PerFrame debug;
 };
+
+#if !defined(__cplusplus)
+ConstantBuffer<SimpleRenderer_PerFrame> FrameConstantBuffer : register(b0, PerObjectSpace);
+
+#define GetDebugToggle(n) ((FrameConstantBuffer.debug.flags & (1 << n)) != 0)
+#endif
 
 #endif

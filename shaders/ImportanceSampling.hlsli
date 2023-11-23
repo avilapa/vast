@@ -217,8 +217,6 @@ float3 IntegratePrefilteredRadiance(uint numSamples, float roughness, float3 R, 
     return IntegratePrefilteredRadiance(numSamples, roughness, R, R, p, bUsingNeqVApproximation);
 }
 
-//
-
 // Karis 2014 - Real Shading in Unreal Engine 4
 // https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
 // Derivation based on: https://github.com/google/filament/blob/main/libs/ibl/src/CubemapIBL.cpp
@@ -239,28 +237,4 @@ float2 IntegrateEnvBRDF(uint numSamples, float roughness, float NdotV)
         // Sample microfacet direction
         float2 Xi = Hammersley2d(i, numSamples);
         float3 H = HemisphereImportanceSample_GGX(Xi, roughness);
-        float3 L = reflect(-V, H);
-
-        float NdotL = saturate(L.z);
-        if (NdotL > 0)
-        {
-            float NdotH = saturate(H.z);
-            float VdotH = saturate(dot(V, H));
-
-            float Vis = V_SmithGGXHeightCorrelated(NdotV, NdotL, roughness) * NdotL * (VdotH / NdotH);
-            float Fc = Pow5(1.0 - VdotH);
-
-#if BSDF_USE_GGX_MULTISCATTER
-            r.x += Vis * Fc;
-            r.y += Vis;
-#else
-            r.x += Vis * (1.0f - Fc);
-            r.y += Vis * Fc;
-#endif
-        }
-    }
-
-    return r * (4.0f / float(numSamples));
-}
-
 #endif // __IMPORTANCE_SAMPLING_HLSL__
