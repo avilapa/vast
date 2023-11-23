@@ -1,11 +1,12 @@
-#include "Common.hlsli"
+#include "FullscreenPass.hlsli"
+#include "Color.hlsli"
 
 cbuffer PushConstants : register(PushConstantRegister)
 {
 	uint RenderTargetIdx;
 };
 
-VertexOutputFS VS_Main(uint vtxId : SV_VertexID)
+VertexOutputFS VS_Main(uint vtxId : SV_VERTEXID)
 {
     float4 vtx = MakeFullscreenTriangle(vtxId);
 

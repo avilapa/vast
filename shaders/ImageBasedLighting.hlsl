@@ -13,6 +13,23 @@ struct IBLConstants
 };
 ConstantBuffer<IBLConstants> IBLParams : register(PushConstantRegister);
 
+struct CubemapParams
+{
+    SamplerState cubeSampler;
+    TextureCube<float4> cubeTex;
+    bool bConvertToLinear;
+};
+
+float3 SampleCubemap(CubemapParams p, float3 uv, uint mip = 0)
+{
+    float3 color = p.cubeTex.SampleLevel(p.cubeSampler, uv, mip).rgb;
+    if (p.bConvertToLinear)
+    {
+        color = sRGBtoLinear(color);
+    }
+    return color;
+}
+
 float3 GetCubemapUV(float2 uv, uint cubeFace)
 {
     uv = float2(uv.x, 1 - uv.y) * 2.0f - 1.0f;

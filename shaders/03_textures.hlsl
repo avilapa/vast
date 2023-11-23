@@ -1,4 +1,5 @@
 #include "Common.hlsli"
+#include "Color.hlsli"
 
 struct FrameCB
 {

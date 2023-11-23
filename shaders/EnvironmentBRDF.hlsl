@@ -1,5 +1,5 @@
 #include "shaders_shared.h"
-#include "Common.hlsli"
+#include "FullscreenPass.hlsli"
 #include "BSDF.hlsli"
 #include "ImportanceSampling.hlsli"
 

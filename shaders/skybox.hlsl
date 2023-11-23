@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "Color.hlsli"
 
 cbuffer PushConstants : register(PushConstantRegister)
 {

@@ -1,15 +1,9 @@
 #ifndef __COMMON_HLSL__
 #define __COMMON_HLSL__
 
-float3 sRGBtoLinear(float3 col)
-{
-    return pow(col, 2.2f);
-}
+#include "Color.hlsli"
 
-float3 ApplyGammaCorrection(float3 col)
-{
-    return pow(col, 1.0f / 2.2f);
-}
+// - Transformations and Matrices -------------------------------------------------------------- //
 
 void ComputeOrthonormalBasis(float3 N, out float3 T, out float3 B)
 {
@@ -50,21 +44,8 @@ float3 TangentToWorld(float3 vec, float3 N)
     return mul(vec, GetTangentBasis(N));
 }
 
-//
+// - Vertex Shading ---------------------------------------------------------------------------- //
 
-// Clamp normal directions facing away from the camera to their perpendicular direction.
-float3 AdjustBackFacingVertexNormals(float3 N, float3 V)
-{
-    const float NdotV = dot(N, V);
-    if (NdotV < 0.0f)
-    {
-        // Project current normal onto the plane defined by the view vector to find the closest
-        // valid orientation and normalize.
-        return normalize(N - V * NdotV);
-    }
-    return N;
-}
-//
 // How do we end up with back-facing normals to begin with? Interpolated/smoothed normals in the 
 // mesh as an approximation of a higher polygon count mesh can cause a triangle to be visible at a
 // grazing angle with a front-facing geometry normal but a back-facing vertex normal, which will be
@@ -81,44 +62,25 @@ float3 AdjustBackFacingVertexNormals(float3 N, float3 V)
 // Hanika 2021 - Hacking the Shadow Terminator
 // https://jo.dreggn.org/home/2021_terminator.pdf
 
-//
-
-struct CubemapParams
+// Clamp normal directions facing away from the camera to their perpendicular direction.
+float3 AdjustBackFacingVertexNormals(float3 N, float3 V)
 {
-    SamplerState cubeSampler;
-    TextureCube<float4> cubeTex;
-    bool bConvertToLinear;
-};
-
-float3 SampleCubemap(CubemapParams p, float3 uv, uint mip = 0)
-{
-    float3 color = p.cubeTex.SampleLevel(p.cubeSampler, uv, mip).rgb;
-    if (p.bConvertToLinear)
+    const float NdotV = dot(N, V);
+    if (NdotV < 0.0f)
     {
-        color = sRGBtoLinear(color);
+        // Project current normal onto the plane defined by the view vector to find the closest
+        // valid orientation and normalize.
+        return normalize(N - V * NdotV);
     }
-    return color;
+    return N;
 }
 
-//
+// - Misc -------------------------------------------------------------------------------------- //
 
-// TODO: This should be elsewhere...
-struct VertexOutputFS
+float RMSE(float forecasted, float observed)
 {
-    float4 pos : SV_POSITION;
-    float2 uv : TEXCOORD0;
-};
-
-float4 MakeFullscreenTriangle(int vtxId)
-{
-    // 0 -> pos = [-1, 1], uv = [0,0]
-    // 1 -> pos = [-1,-3], uv = [0,2] 
-    // 2 -> pos = [ 3, 1], uv = [2,0]
-    float4 vtx;
-    vtx.zw = float2(vtxId & 2, (vtxId << 1) & 2);
-    vtx.xy = vtx.zw * float2(2, -2) + float2(-1, 1);
-    return vtx;
+    float difference = forecasted - observed;
+    return sqrt(difference * difference);
 }
-
 
 #endif // __COMMON_HLSL__
