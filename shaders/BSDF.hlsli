@@ -9,7 +9,10 @@
 #define HALF_PI         (0.5 * PI)
 #define MIN_ROUGHNESS   0.0002
 
-#define BSDF_USE_GGX_MULTISCATTER 1
+#define BSDF_USE_GGX_MULTISCATTER                               1
+#define BSDF_USE_JOINT_VISIBILITY_FUNCTIONS                     0
+#define BSDF_USE_HEIGHT_CORRELATED_SHADOWING_MASKING_FUNCTIONS  1
+#define BSDF_USE_VISIBILITY_SMITH_GGX_APPROX_CORRELATED         0
 
 float Pow5(float v)
 {
@@ -42,6 +45,21 @@ float D_GGX(float NdotH, float roughness)
 
 //
 
+// - Masking-Shadowing Geometry and Visibility terms ------------------------------------------- //
+
+// Heitz 2014 - Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs
+// https://jcgt.org/published/0003/02/03/paper.pdf
+// Correlated/Uncorrelated: The Smith microsurface profile assumes that the microsurface is not 
+// autocorrelated, i.e., that there is no correlation between the height (or the normal) at one 
+// point of the microsurface and the height (or the normal) at any neighboring point, even the 
+// closest ones. This implies a random set of microfacets rather than a continuous surface where 
+// the heights and the normals of the microsurface are independent random variables.
+// 
+// Note: The _Correlated functions below model Height-Correlation in Masking-Shadowing, but not
+// Direction-Correlation.
+// Note: Only joint G2 functions have a closed analytical form for Height-Correlation, so cannot
+// have G1 correlated functions.
+
 float G1_GGX(float NdotV, float roughness)
 {
     float a2 = roughness * roughness;
@@ -52,25 +70,24 @@ float G1_GGX(float NdotV, float roughness)
     // return (2.0f * NdotV) / (NdotV + sqrt(a2 + (1.0f - a2) * NdotV2));
 }
 
-float G_SmithGGX(float NdotV, float NdotL, float roughness)
+float G_SmithGGX_Uncorrelated(float NdotV, float NdotL, float roughness)
 {
     float GGXV = G1_GGX(NdotV, roughness);
     float GGXL = G1_GGX(NdotL, roughness);
     return GGXL * GGXV;
 }
 
-float G_SmithGGXCorrelated(float NdotV, float NdotL, float roughness)
+float G_SmithGGX_Correlated(float NdotV, float NdotL, float roughness)
 {
     float a2 = roughness * roughness;
     float NdotV2 = NdotV * NdotV;
     float NdotL2 = NdotL * NdotL;
-    float GGXV = (-1.0f + sqrt(a2 * (1 - NdotL2) / NdotL2 + 1)) * 0.5f;
-    float GGXL = (-1.0f + sqrt(a2 * (1 - NdotV2) / NdotV2 + 1)) * 0.5f;
+    float GGXV = (-1.0f + sqrt(a2 * (1 - NdotL2) / NdotL2 + 1.0f)) * 0.5f;
+    float GGXL = (-1.0f + sqrt(a2 * (1 - NdotV2) / NdotV2 + 1.0f)) * 0.5f;
     return 1.0f / (1.0f + GGXV + GGXL);
 }
 
-// Note: V_SmithGGX = G_SmithGGX / (4.0f * NdotV * NdotL)
-float V_SmithGGX(float NdotV, float NdotL, float roughness)
+float V_SmithGGX_Uncorrelated(float NdotV, float NdotL, float roughness)
 {
     float a2 = roughness * roughness;
     // Karis 2013 formulation
@@ -84,7 +101,7 @@ float V_SmithGGX(float NdotV, float NdotL, float roughness)
 
 // Guy & Agopian 2018 - Physically Based Rendering in Filament
 // https://google.github.io/filament/Filament.html
-float V_SmithGGXCorrelated(float NdotV, float NdotL, float roughness)
+float V_SmithGGX_Correlated(float NdotV, float NdotL, float roughness)
 {
     float a2 = roughness * roughness;
     float GGXV = NdotL * sqrt(NdotV * NdotV * (1.0 - a2) + a2);
@@ -94,12 +111,34 @@ float V_SmithGGXCorrelated(float NdotV, float NdotL, float roughness)
 
 // Hammon 2017 - PBR Diffuse Lighting for GGX + Smith Microsurfaces, p. 82
 // https://www.gdcvault.com/play/1024478/PBR-Diffuse-Lighting-for-GGX
-float V_SmithGGXCorrelatedApprox(float NdotV, float NdotL, float roughness)
+float V_SmithGGXApprox_Correlated(float NdotV, float NdotL, float roughness)
 {
     float a = roughness;
     float GGXV = NdotL * (NdotV * (1.0 - a) + a);
     float GGXL = NdotV * (NdotL * (1.0 - a) + a);
     return 0.5 / (GGXV + GGXL);
+}
+
+float G_SmithGGX(float NdotV, float NdotL, float roughness)
+{
+#if BSDF_USE_HEIGHT_CORRELATED_SHADOWING_MASKING_FUNCTIONS
+    return G_SmithGGX_Correlated(NdotV, NdotL, roughness);
+#else
+    return G_SmithGGX_Uncorrelated(NdotV, NdotL, roughness);
+#endif
+}
+// Note: V_SmithGGX = G_SmithGGX / (4.0f * NdotV * NdotL)
+float V_SmithGGX(float NdotV, float NdotL, float roughness)
+{
+#if BSDF_USE_HEIGHT_CORRELATED_SHADOWING_MASKING_FUNCTIONS
+#if BSDF_USE_VISIBILITY_SMITH_GGX_APPROX_CORRELATED
+    return V_SmithGGXApprox_Correlated(NdotV, NdotL, roughness);
+#else
+    return V_SmithGGX_Correlated(NdotV, NdotL, roughness);
+#endif
+#else
+    return V_SmithGGX_Uncorrelated(NdotV, NdotL, roughness);
+#endif
 }
 
 //

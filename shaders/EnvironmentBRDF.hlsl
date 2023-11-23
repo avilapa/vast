@@ -1,4 +1,6 @@
 #include "shaders_shared.h"
+#include "Common.hlsli"
+#include "BSDF.hlsli"
 #include "ImportanceSampling.hlsli"
 
 // Karis 2014 - Real Shading in Unreal Engine 4
@@ -32,20 +34,20 @@ float2 IntegrateEnvBRDF(uint numSamples, float roughness, float NdotV)
             float NdotH = saturate(H.z);
             float VdotH = saturate(dot(V, H));
             
-#if 1
+#if !BSDF_USE_JOINT_VISIBILITY_FUNCTIONS
             // Derivation for Geometry function:
-            // BRDF * (1 / PDF) * NdotL
+            // (BRDF / PDF) * NdotL
             // BRDF = (D * F * G) / (4 * NdotV * NdotL), PDF = D * NdotH * J, J = 1 / (4 * VdotH)
             // (D * F * G) / (4 * NdotV * NdotL) * (4 * VdotH) / (D * NdotH) * NdotL
             // NDFs (D) and NdotLs cancel out, giving: 
             // (F * G) / (4 * NdotV) * (4 * VdotH / NdotH) = F * G * VdotH / (NdotH * NdotV)
-            float G = G_SmithGGXCorrelated(NdotV, NdotL, roughness);
+            float G = G_SmithGGX(NdotV, NdotL, roughness);
             float Vis = G * VdotH / (NdotH * NdotV);
 #else
             // When instead deriving for a Visibility function (G / BRDF denominator) NdotL's don't
             // cancel out since one is already accounted for. Moreover, the 4 can be taken out of
             // the loop as it is constant.
-            float Vis = V_SmithGGXCorrelated(NdotV, NdotL, roughness) * NdotL * (4.0f * VdotH / NdotH);
+            float Vis = V_SmithGGX(NdotV, NdotL, roughness) * NdotL * (4.0f * VdotH / NdotH);
 #endif
             float Fc = Pow5(1.0 - VdotH);
       
@@ -62,24 +64,17 @@ float2 IntegrateEnvBRDF(uint numSamples, float roughness, float NdotV)
     return r / float(numSamples);
 }
 
-float2 PS_IntegrateBRDF(VertexOutputFS IN) : SV_TARGET
+struct EnvBrdfConstants
 {
-    float roughness = max(LinearizeRoughness(IN.uv.x), MIN_ROUGHNESS);
-    float NdotV = IN.uv.y;
-    
-    return IntegrateEnvBRDF(1024u, roughness, NdotV);
-}
-
-cbuffer PushConstants : register(PushConstantRegister)
-{
-    uint EnvBrdfUavIdx;
+    uint UavIdx;
     uint NumSamples;
 };
+ConstantBuffer<EnvBrdfConstants> EnvBrdfParams : register(PushConstantRegister);
 
 [numthreads(32, 32, 1)] 
 void CS_IntegrateBRDF(uint3 threadId : SV_DispatchThreadID)
 {
-    RWTexture2D<float2> EnvBrdfUav = ResourceDescriptorHeap[EnvBrdfUavIdx];
+    RWTexture2D<float2> EnvBrdfUav = ResourceDescriptorHeap[EnvBrdfParams.UavIdx];
     float2 texSize;
     EnvBrdfUav.GetDimensions(texSize.x, texSize.y);
     
@@ -88,5 +83,13 @@ void CS_IntegrateBRDF(uint3 threadId : SV_DispatchThreadID)
     float roughness = max(LinearizeRoughness(uv.x), MIN_ROUGHNESS);
     float NdotV = uv.y;
     
-    EnvBrdfUav[threadId.xy] = IntegrateEnvBRDF(NumSamples, roughness, NdotV);
+    EnvBrdfUav[threadId.xy] = IntegrateEnvBRDF(EnvBrdfParams.NumSamples, roughness, NdotV);
+}
+
+float2 PS_IntegrateBRDF(VertexOutputFS IN) : SV_TARGET
+{
+    float roughness = max(LinearizeRoughness(IN.uv.x), MIN_ROUGHNESS);
+    float NdotV = IN.uv.y;
+    
+    return IntegrateEnvBRDF(1024u, roughness, NdotV);
 }

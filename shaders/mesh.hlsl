@@ -2,7 +2,7 @@
 #include "Common.hlsli"
 #include "BSDF.hlsli"
 #include "EnvironmentBRDF.hlsl"
-#include "ImportanceSampling.hlsli"
+#include "ImageBasedLighting.hlsl"
 
 ConstantBuffer<MeshCB> ObjectConstantBuffer : register(b1, PerObjectSpace);
 
