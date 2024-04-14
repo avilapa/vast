@@ -1,6 +1,40 @@
 
 ROOT_DIR = path.getabsolute("../")
 
+function CopyDLLs(projDir)
+	postbuildcommands
+	{
+		'echo Copying necessary DLLs to bin',
+		'copy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXShaderCompiler/bin/x64\\*.dll")..'" "'..path.join(projDir, "build/bin/Debug/")..'" ',
+		'xcopy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXAgilitySDK/bin/x64\\*.dll")..'" "'..path.join(projDir, "build/bin/Debug/D3D12/*")..'" /y',
+	}
+end
+
+function AddLibrary(lib)
+	if nil ~= lib.files 		then
+		files(lib.files)
+	end
+	if nil ~= lib.includedirs 	then
+		includedirs(lib.includedirs)
+	end
+	if nil ~= lib.libdirs 		then
+		libdirs(lib.libdirs)
+	end
+	if nil ~= lib.links 		then
+		links(lib.links)
+	end
+end
+
+function AddProject(proj)
+	local filePath = path.join(ROOT_DIR, "projects/" .. proj .. "/build/genie.lua")
+	local file = io.open(filePath)
+	if file then
+		file:close()
+		print("Generating Project: " .. proj)
+		dofile(filePath)
+	end
+end
+
 solution "vast"
 	location (path.join(ROOT_DIR, "build/vs"))
 	
@@ -25,25 +59,11 @@ solution "vast"
 		
 	startproject "dev"
 	
-function AddLibrary(lib)
-	if nil ~= lib.files 		then
-		files(lib.files)
-	end
-	if nil ~= lib.includedirs 	then
-		includedirs(lib.includedirs)
-	end
-	if nil ~= lib.libdirs 		then
-		libdirs(lib.libdirs)
-	end
-	if nil ~= lib.links 		then
-		links(lib.links)
-	end
-end
-
 group "vendor"
 dofile("genie_vendor.lua")
 group "engine"
 dofile("genie_vast.lua")
 group "projects"
-dofile("genie_dev.lua")
-dofile("genie_samples.lua")
+AddProject("dev")
+AddProject("samples")
+AddProject("forge")

@@ -1,6 +1,6 @@
 # Binaries
 **/bin/
-build/obj/
+**/build/obj/
 shaders/compiled/
 
 # Logs
@@ -14,3 +14,6 @@ build/vs/
 **.vcxproj.filters
 **.vcxproj.user
 **.csproj
+
+# External Projects
+projects/forge
