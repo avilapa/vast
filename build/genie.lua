@@ -4,9 +4,9 @@ ROOT_DIR = path.getabsolute("../")
 function CopyDLLs(projDir)
 	postbuildcommands
 	{
-		'echo Copying necessary DLLs to bin',
-		'copy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXShaderCompiler/bin/x64\\*.dll")..'" "'..path.join(projDir, "build/bin/Debug/")..'" ',
-		'xcopy "'..path.join(ROOT_DIR, "vendor/dx12/DirectXAgilitySDK/bin/x64\\*.dll")..'" "'..path.join(projDir, "build/bin/Debug/D3D12/*")..'" /y',
+		'echo Copying DX12 necessary DLLs to bin',
+		'xcopy /Y /D "'..path.join(ROOT_DIR, "vendor/dx12/DirectXShaderCompiler/bin/x64\\*.dll")..'" "'..path.join(projDir, "build/bin/Debug/")..'"',
+		'xcopy /Y /D "'..path.join(ROOT_DIR, "vendor/dx12/DirectXAgilitySDK/bin/x64\\*.dll")..'" "'..path.join(projDir, "build/bin/Debug/D3D12/*")..'"',
 	}
 end
 

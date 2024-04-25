@@ -1,16 +1,18 @@
 #pragma once
 
 #include "Graphics/ShaderResourceProxy.h"
+#include "Graphics/Resources.h"
 #include "Graphics/API/DX12/DX12_Common.h"
 
 #include "dx12/DirectXAgilitySDK/include/d3d12shader.h"
 
-struct IDxcUtils;
-struct IDxcCompiler3;
-struct IDxcIncludeHandler;
+class ID3D12ShaderReflection;
 
 namespace vast::gfx
 {
+	class DX12ShaderCompiler;
+	class DX12Shader;
+	class DX12Pipeline;
 
 	class DX12ShaderManager
 	{
@@ -27,9 +29,7 @@ namespace vast::gfx
 		Vector<D3D12_SIGNATURE_PARAMETER_DESC> GetInputParametersFromReflection(ID3D12ShaderReflection* reflection) const;
 
 	private:
-		IDxcUtils* m_DxcUtils;
-		IDxcCompiler3* m_DxcCompiler;
-		IDxcIncludeHandler* m_DxcIncludeHandler;
+		Ptr<DX12ShaderCompiler> m_ShaderCompiler;
 
 		bool CompileShader(const ShaderDesc& desc, DX12Shader* outShader);
 

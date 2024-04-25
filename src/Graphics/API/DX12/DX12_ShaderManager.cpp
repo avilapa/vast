@@ -1,7 +1,10 @@
 #include "vastpch.h"
 #include "Graphics/API/DX12/DX12_ShaderManager.h"
+#include "Graphics/API/DX12/DX12_ShaderCompiler.h"
 
+// TODO: DX12ShaderManager shouldn't have to include this or be aware of compiler specific arguments, should be moved down to DX12ShaderCompiler.
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
+#include "dx12/DirectXAgilitySDK/include/d3d12shader.h"
 
 static const wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
 // TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
@@ -16,14 +19,10 @@ namespace vast::gfx
 {
 
 	DX12ShaderManager::DX12ShaderManager()
-		: m_DxcUtils(nullptr)
-		, m_DxcCompiler(nullptr)
-		, m_DxcIncludeHandler(nullptr)
+		: m_ShaderCompiler(nullptr)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Shader Manager");
-		DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils));
-		DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler));
-		m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler);
+		m_ShaderCompiler = MakePtr<DX12ShaderCompiler>();
 
 		m_SharedCompilerArgs =
 		{
@@ -32,9 +31,11 @@ namespace vast::gfx
 			DXC_ARG_DEBUG,
 #else
 			DXC_ARG_OPTIMIZATION_LEVEL3,
+			//DXC_ARG_SKIP_OPTIMIZATIONS,
 #endif
 			DXC_ARG_WARNINGS_ARE_ERRORS,
 			L"-Qstrip_reflect",
+			//L"-Qstrip_debug"
 		};
 
 		AddGlobalShaderDefine("PushConstantRegister", std::string("b") + std::to_string(PUSH_CONSTANT_REGISTER_INDEX));
@@ -50,10 +51,6 @@ namespace vast::gfx
 			shader.first = nullptr; // TODO: Make sure all shaders are deleted here (pass weak ptr instead of ref?)
 		}
 		m_Shaders.clear();
-
-		DX12SafeRelease(m_DxcIncludeHandler);
-		DX12SafeRelease(m_DxcCompiler);
-		DX12SafeRelease(m_DxcUtils);
 	}
 
 	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
@@ -132,122 +129,60 @@ namespace vast::gfx
 		return (m_ShaderKeys.find(key) != m_ShaderKeys.end());
 	}
 
-	static const wchar_t* ToShaderTarget(ShaderType type)
-	{
-		switch (type)
-		{
-		case ShaderType::COMPUTE:
-			return L"cs_6_6";
-		case ShaderType::VERTEX:
-			return L"vs_6_6";
-		case ShaderType::PIXEL:
-			return L"ps_6_6";
-		default:
-			VAST_ASSERTF(0, "Shader type not supported.");
-			return nullptr;
-		}
-	}
-
 	bool DX12ShaderManager::CompileShader(const ShaderDesc& desc, DX12Shader* outShader)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Compile Shader");
 		std::wstring shaderName(desc.shaderName.begin(), desc.shaderName.end());
 		std::wstring entryPoint(desc.entryPoint.begin(), desc.entryPoint.end());
+		std::wstring fullPath = SHADER_SOURCE_PATH + shaderName;
 
-		// Load and compile shader
-		std::wstring sourcePath = SHADER_SOURCE_PATH + shaderName;
-		IDxcBlobEncoding* sourceBlobEncoding = nullptr;
-		DX12Check(m_DxcUtils->LoadFile(sourcePath.c_str(), nullptr, &sourceBlobEncoding));
-		VAST_ASSERTF(sourceBlobEncoding, "Cannot find specified shader path.");
+		IDxcBlobEncoding* sourceBlobEncoding = m_ShaderCompiler->LoadShader(fullPath);
 
-		const DxcBuffer sourceBuffer
+		Vector<LPCWSTR> args
 		{
-			sourceBlobEncoding->GetBufferPointer(),
-			sourceBlobEncoding->GetBufferSize(),
-			DXC_CP_ACP
-		};
-
-		Vector<LPCWSTR> arguments
-		{
-			shaderName.c_str(),
-			L"-E", entryPoint.c_str(),
-			L"-T", ToShaderTarget(desc.type),
+			shaderName.c_str(),										// Optional source file name used in error logging.
+			L"-E", entryPoint.c_str(),								// Entry point function name.
+			L"-T", DX12ShaderCompiler::ToShaderTarget(desc.type),	// Shader target profile.
 		};
 
 		for (auto& arg : m_SharedCompilerArgs)
 		{
-			arguments.push_back(arg.c_str());
+			args.push_back(arg.c_str());
 		}
 
-		IDxcResult* compiledShader = nullptr;
-		DX12Check(m_DxcCompiler->Compile(&sourceBuffer, arguments.data(), static_cast<uint32>(arguments.size()), m_DxcIncludeHandler, IID_PPV_ARGS(&compiledShader)));
-		DX12SafeRelease(sourceBlobEncoding);
+		IDxcResult* compiledShader = m_ShaderCompiler->CompileShader(sourceBlobEncoding, args);
 
-		IDxcBlobUtf8* errors = nullptr;
-		DX12Check(compiledShader->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr));
-
-		if (errors != nullptr && errors->GetStringLength() != 0)
-		{
-			VAST_LOG_CRITICAL("[resource] [shader] Shader compilation error in:\n{}", errors->GetStringPointer());
-		}
-		DX12SafeRelease(errors);
-
-		HRESULT statusResult;
-		compiledShader->GetStatus(&statusResult);
-		if (FAILED(statusResult))
-		{
-			DX12SafeRelease(compiledShader);
-			return false;
-		}
-
-		// Extract reflection
-		IDxcBlob* reflectionBlob = nullptr;
-		DX12Check(compiledShader->GetOutput(DXC_OUT_REFLECTION, IID_PPV_ARGS(&reflectionBlob), nullptr));
-
-		const DxcBuffer reflectionBuffer
-		{
-			reflectionBlob->GetBufferPointer(),
-			reflectionBlob->GetBufferSize(),
-			DXC_CP_ACP
-		};
-
-		ID3D12ShaderReflection* shaderReflection = nullptr;
-		m_DxcUtils->CreateReflection(&reflectionBuffer, IID_PPV_ARGS(&shaderReflection));
-		DX12SafeRelease(reflectionBlob);
-
-		// Extract object
-		std::wstring dxilPath = SHADER_OUTPUT_PATH + shaderName;
-		dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
-		dxilPath.append(L".dxil");
-		std::wstring pdbPath = dxilPath;
-		pdbPath.append(L".pdb"); // TODO: dxil.pdb?
-
-		IDxcBlob* shaderBlob = nullptr;
-		compiledShader->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
-		if (shaderBlob != nullptr)
-		{
-			FILE* fp = nullptr;
-			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
-			// TODO: Create "compiled" folder if not found, will crash newly cloned builds from repo otherwise.
-			VAST_ASSERTF(fp, "Cannot find specified path.");
-			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
-			fclose(fp);
-		}
-
-		// Extract debug info
+		ID3D12ShaderReflection* shaderReflection = m_ShaderCompiler->ExtractShaderReflection(compiledShader);
+		IDxcBlob* shaderBlob = m_ShaderCompiler->ExtractShaderOutput(compiledShader);
+		// TODO: Write out DXIL?
+// 		{
+// 			std::wstring dxilPath = SHADER_OUTPUT_PATH + shaderName;
+// 			dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
+// 			dxilPath.append(L".dxil"); // .bin?
+// 
+// 			FILE* fp = nullptr;
+// 			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
+// 			VAST_ASSERTF(fp, "Cannot find specified path.");
+// 			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
+// 			fclose(fp);
+// 		}
 #ifdef VAST_DEBUG
-		IDxcBlob* pdbBlob = nullptr;
-		DX12Check(compiledShader->GetOutput(DXC_OUT_PDB, IID_PPV_ARGS(&pdbBlob), nullptr));
-		{
-			FILE* fp = nullptr;
-			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
-			VAST_ASSERTF(fp, "Cannot find specified path.");
-			fwrite(pdbBlob->GetBufferPointer(), pdbBlob->GetBufferSize(), 1, fp);
-			fclose(fp);
-		}
+		IDxcBlob* shaderDebugBlob = m_ShaderCompiler->ExtractShaderPDB(compiledShader);
+		// TODO: Write out PDB?
+// 		{
+// 			std::wstring pdbPath = SHADER_OUTPUT_PATH + shaderName;
+// 			pdbPath.erase(pdbPath.end() - 5, pdbPath.end());
+// 			pdbPath.append(L".pdb");
+// 
+// 			FILE* fp = nullptr;
+// 			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
+// 			VAST_ASSERTF(fp, "Cannot find specified path.");
+// 			fwrite(pdbBlob->GetBufferPointer(), pdbBlob->GetBufferSize(), 1, fp);
+// 			fclose(fp);
+// 		}
+		DX12SafeRelease(shaderDebugBlob);
+#endif
 
-		DX12SafeRelease(pdbBlob);
-#endif // VAST_DEBUG
+		DX12SafeRelease(sourceBlobEncoding);
 		DX12SafeRelease(compiledShader);
 
 		DX12SafeRelease(outShader->blob);
