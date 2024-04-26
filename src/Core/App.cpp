@@ -20,8 +20,9 @@ namespace vast
 		VAST_PROFILE_TRACE_BEGIN("app", "App Startup");
 		// Initialize Log next because all our systems make use of it to log progress.
 		Log::Init();
+#if VAST_ENABLE_PROFILING
 		Profiler::Init();
-
+#endif
 		VAST_SUBSCRIBE_TO_EVENT("windowedapp", WindowCloseEvent, VAST_EVENT_HANDLER_CB(WindowedApp::Quit));
 	}
 
@@ -41,7 +42,6 @@ namespace vast
 		VAST_PROFILE_TRACE_BEGIN("app", "App Loop");
 
 		Window& window = GetWindow();
-		gfx::GraphicsContext& ctx = GetGraphicsContext();
 
 		m_bRunning = true;
 
@@ -62,7 +62,7 @@ namespace vast
 				Draw();
 			}
 #if VAST_ENABLE_PROFILING
-			Profiler::EndFrame(ctx);
+			Profiler::EndFrame(GetGraphicsContext());
 #endif
 		}
 

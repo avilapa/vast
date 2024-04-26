@@ -51,6 +51,8 @@ namespace vast::gfx
 			shader.first = nullptr; // TODO: Make sure all shaders are deleted here (pass weak ptr instead of ref?)
 		}
 		m_Shaders.clear();
+
+		m_ShaderCompiler = nullptr;
 	}
 
 	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode

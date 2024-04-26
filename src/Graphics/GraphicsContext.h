@@ -17,36 +17,34 @@ namespace vast::gfx
 		TexFormat backBufferFormat;
 	};
 
-	// TODO: Look into __declspec(novtable)
+	class ResourceManager;
+
 	class GraphicsContext
 	{
 	public:
-		static Ptr<GraphicsContext> Create(const GraphicsParams& params = GraphicsParams());
-		virtual ~GraphicsContext() = default;
+		GraphicsContext(const GraphicsParams& params = GraphicsParams());
+		~GraphicsContext();
 
 		void BeginFrame();
 		void EndFrame();
-		virtual bool IsInFrame() const;
 
-		// Waits for the current batch of GPU work to finish.
-		virtual void WaitForIdle() = 0;
-		// Waits for all active GPU work to finish as well as any queued resource destructions and 
-		// shader reloads.
-		void FlushGPU();
-
-		// - Render Pass ----------------------------------------------------------------------- //
-
-		virtual void BeginRenderPass(PipelineHandle h, const RenderPassTargets targets) = 0;
+		void BeginRenderPass(PipelineHandle h, const RenderPassTargets targets);
 		// Renders to the back buffer as the only target
-		virtual void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE) = 0;
-		virtual void EndRenderPass() = 0;
+		void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE);
+		void EndRenderPass();
 
-		virtual bool IsInRenderPass() const;
+		bool IsInFrame() const;
+		bool IsInRenderPass() const;
 
 		// TODO: We may want to do Begin/End functions for compute to be analogous with graphics 
 		// pipelines, despite it being perhaps redundant.
-		virtual void BindPipelineForCompute(PipelineHandle h) = 0;
-		virtual void Dispatch(uint3 threadGroupCount) = 0;
+		void BindPipelineForCompute(PipelineHandle h);
+
+		// Waits for the current batch of GPU work to finish.
+		void WaitForIdle();
+		// Waits for all active GPU work to finish as well as any queued resource destructions and 
+		// shader reloads.
+		void FlushGPU();
 
 		// - GPU Resources --------------------------------------------------------------------- //
 
@@ -55,65 +53,80 @@ namespace vast::gfx
 		PipelineHandle CreatePipeline(const PipelineDesc& desc);
 		PipelineHandle CreatePipeline(const ShaderDesc& csDesc);
 
-		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
-		void ReloadShaders(PipelineHandle h);
-
 		void DestroyBuffer(BufferHandle h);
 		void DestroyTexture(TextureHandle h);
 		void DestroyPipeline(PipelineHandle h);
 
+		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
+
+		void ReloadShaders(PipelineHandle h);
+
+		ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName);
+
+		// TODO: This should be separate from the Context (ContentLoader?)
+		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
+
 		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of
 		// the frame and automatically invalidated after that.
 		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0);
-		virtual ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName) = 0;
-		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
 
-		virtual void AddBarrier(BufferHandle h, ResourceState newState) = 0;
-		virtual void AddBarrier(TextureHandle h, ResourceState newState) = 0;
-		virtual void FlushBarriers() = 0;
-		
-		// - Resource Binding ------------------------------------------------------------------ //
+		void SetDebugName(BufferHandle h, const std::string& name);
+		void SetDebugName(TextureHandle h, const std::string& name);
 
-		virtual void BindVertexBuffer(BufferHandle h, uint32 offset = 0, uint32 stride = 0) = 0;
-		virtual void BindIndexBuffer(BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT) = 0;
-		virtual void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0) = 0;
-		virtual void BindSRV(ShaderResourceProxy proxy, BufferHandle h) = 0;
-		virtual void BindSRV(ShaderResourceProxy proxy, TextureHandle h) = 0;
-		virtual void BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel = 0) = 0;
+		const uint8* GetBufferData(BufferHandle h);
+
+		// TODO: Review ready check for resources.
+		bool GetIsReady(BufferHandle h);
+		bool GetIsReady(TextureHandle h);
+
+		TexFormat GetTextureFormat(TextureHandle h);
+
+		// Resource Transitions
+		void AddBarrier(BufferHandle h, ResourceState newState);
+		void AddBarrier(TextureHandle h, ResourceState newState);
+		void FlushBarriers();
+
+		// Resource View Binding
+		void BindVertexBuffer(BufferHandle h, uint32 offset = 0, uint32 stride = 0);
+		void BindIndexBuffer(BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT);
+		void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0);
+
 		// Passes some data to be used in the GPU under a constant buffer declared in a shader using slot
 		// 'PushConstantRegister'. Push Constants are best suited for small amounts of data that change
 		// frequently (e.g. PerObjectSpace). Size parameter is expected in bytes.
-		virtual void SetPushConstants(const void* data, const uint32 size) = 0;
+		void SetPushConstants(const void* data, const uint32 size);
+
+		void BindSRV(ShaderResourceProxy proxy, BufferHandle h);
+		void BindSRV(ShaderResourceProxy proxy, TextureHandle h);
+		void BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel = 0);
+
+		// Query Bindless View Indices
+		uint32 GetBindlessSRV(BufferHandle h);
+		uint32 GetBindlessSRV(TextureHandle h);
+		uint32 GetBindlessUAV(TextureHandle h, uint32 mipLevel = 0);
 
 		// - Pipeline State -------------------------------------------------------------------- //
 
-		virtual void SetScissorRect(int4 rect) = 0;
-		virtual void SetBlendFactor(float4 blend) = 0;
+		void SetScissorRect(int4 rect);
+		void SetBlendFactor(float4 blend);
 
-		// - Draw Calls ------------------------------------------------------------------------ //
+		// - Draw/Dispatch Calls --------------------------------------------------------------- //
 
-		virtual void Draw(uint32 vtxCount, uint32 vtxStartLocation = 0) = 0;
-		virtual void DrawIndexed(uint32 idxCount, uint32 startIdxLocation = 0, uint32 baseVtxLocation = 0) = 0;
-		virtual void DrawInstanced(uint32 vtxCountPerInst, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0) = 0;
-		virtual void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation) = 0;
-		virtual void DrawFullscreenTriangle() = 0;
+		void Draw(uint32 vtxCount, uint32 vtxStartLocation = 0);
+		void DrawIndexed(uint32 idxCount, uint32 startIdxLocation = 0, uint32 baseVtxLocation = 0);
+		void DrawInstanced(uint32 vtxCountPerInst, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0);
+		void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation);
+		void DrawFullscreenTriangle();
 
-		// - Misc ------------------------------------------------------------------------------ //
+		void Dispatch(uint3 threadGroupCount);
 
-		virtual uint2 GetBackBufferSize() const = 0;
-		virtual float GetBackBufferAspectRatio() const = 0;
-		virtual TexFormat GetBackBufferFormat() const = 0;
-		virtual TexFormat GetTextureFormat(TextureHandle h) = 0;
+		// - Swap Chain/Back Buffers ----------------------------------------------------------- //
 
-		virtual uint32 GetBindlessSRV(BufferHandle h) = 0;
-		virtual uint32 GetBindlessSRV(TextureHandle h) = 0;
-		virtual uint32 GetBindlessUAV(TextureHandle h, uint32 mipLevel = 0) = 0;
+		uint2 GetBackBufferSize() const;
+		float GetBackBufferAspectRatio() const;
+		TexFormat GetBackBufferFormat() const;
 
-		// TODO: Review ready check for resources.
-		virtual bool GetIsReady(BufferHandle h) = 0;
-		virtual bool GetIsReady(TextureHandle h) = 0;
-
-		virtual const uint8* GetBufferData(BufferHandle h) = 0;
+		// - Timestamps ------------------------------------------------------------------------ //
 
 		uint32 BeginTimestamp();
 		void EndTimestamp(uint32 timestampIdx);
@@ -121,57 +134,11 @@ namespace vast::gfx
 		double GetTimestampDuration(uint32 timestampIdx);
 		double GetLastFrameDuration();
 
-	protected:
-		uint32 m_FrameId = 0;
-
+	private:
+		bool m_bHasFrameBegun = false;
 		bool m_bHasRenderPassBegun = false;
 
-		virtual void BeginFrame_Internal() = 0;
-		virtual void EndFrame_Internal() = 0;
-
-		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles = nullptr;
-		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles = nullptr;
-		Ptr<HandlePool<Pipeline, NUM_PIPELINES>> m_PipelineHandles = nullptr;
-
-		void CreateHandlePools();
-		void DestroyHandlePools();
-
-		Vector<PipelineHandle> m_PipelinesMarkedForShaderReload = {};
-
-		void ProcessShaderReloads();
-
-		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction = {};
-		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction = {};
-		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction = {};
-
-		void ProcessDestructions(uint32 frameId);
-
-		struct TempAllocator
-		{
-			BufferHandle buffer;
-			uint32 size = 0;
-			uint32 offset = 0;
-
-			void Reset() { offset = 0; }
-		};
-		// TODO: Could this be replaced by a single, big dynamic buffer?
-		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators = {};
-
-		void CreateTempFrameAllocators();
-		void DestroyTempFrameAllocators();
-
-		virtual void CreateBuffer_Internal(BufferHandle h, const BufferDesc& desc) = 0;
-		virtual void UpdateBuffer_Internal(BufferHandle h, const void* srcMem, size_t srcSize) = 0;
-		virtual void DestroyBuffer_Internal(BufferHandle h) = 0;
-
-		virtual void CreateTexture_Internal(TextureHandle h, const TextureDesc& desc) = 0;
-		virtual void UpdateTexture_Internal(TextureHandle h, const void* srcMem) = 0;
-		virtual void DestroyTexture_Internal(TextureHandle h) = 0;
-
-		virtual void CreatePipeline_Internal(PipelineHandle h, const PipelineDesc& desc) = 0;
-		virtual void CreatePipeline_Internal(PipelineHandle h, const ShaderDesc& csDesc) = 0;
-		virtual void ReloadShaders_Internal(PipelineHandle h) = 0;
-		virtual void DestroyPipeline_Internal(PipelineHandle h) = 0;
+		Ptr<ResourceManager> m_ResourceManager;
 
 		double m_TimestampFrequency = 0.0;
 
@@ -179,17 +146,9 @@ namespace vast::gfx
 		void DestroyProfilingResources();
 		void CollectTimestamps();
 
-		virtual void BeginTimestamp_Internal(uint32 idx) = 0;
-		virtual void EndTimestamp_Internal(uint32 idx) = 0;
-		virtual void CollectTimestamps_Internal(BufferHandle h, uint32 count) = 0;
-
-	private:
-		bool m_bHasFrameBegun = false;
-
 		uint32 m_TimestampCount = 0;
 		uint32 m_GpuFrameTimestampIdx = 0;
 		Array<BufferHandle, NUM_FRAMES_IN_FLIGHT> m_TimestampsReadbackBuf;
 		Array<const uint64*, NUM_FRAMES_IN_FLIGHT> m_TimestampData;
-
 	};
 }

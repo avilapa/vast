@@ -40,7 +40,7 @@ SamplesApp::SamplesApp(int argc, char** argv)
 	params.swapChainSize = GetWindow().GetSize();
 	params.swapChainFormat = gfx::TexFormat::RGBA8_UNORM;
 	params.backBufferFormat = gfx::TexFormat::RGBA8_UNORM;
-	m_GraphicsContext = gfx::GraphicsContext::Create(params);
+	m_GraphicsContext = MakePtr<GraphicsContext>(params);
 
 	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
 }

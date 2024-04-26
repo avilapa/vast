@@ -6,13 +6,17 @@
 
 #include "dx12/DirectXAgilitySDK/include/d3d12shader.h"
 
-class ID3D12ShaderReflection;
+struct ID3D12ShaderReflection;
+
+// TODO: Refactor
+// - Shader "Manager" class should be higher level (not owned by device), and GFX API agnostic
+// - Shaders are loaded and compiled in advance
 
 namespace vast::gfx
 {
 	class DX12ShaderCompiler;
-	class DX12Shader;
-	class DX12Pipeline;
+	struct DX12Shader;
+	struct DX12Pipeline;
 
 	class DX12ShaderManager
 	{

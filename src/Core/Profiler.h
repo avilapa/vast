@@ -14,11 +14,11 @@
 #else
 #define VAST_PROFILE_CPU_SCOPE(n)	
 #define VAST_PROFILE_CPU_BEGIN(n)	
-#define VAST_PROFILE_CPU_END(n)		
+#define VAST_PROFILE_CPU_END()		
 
 #define VAST_PROFILE_GPU_SCOPE(n, ctx)
 #define VAST_PROFILE_GPU_BEGIN(n, ctx)
-#define VAST_PROFILE_GPU_END(n, ctx)
+#define VAST_PROFILE_GPU_END()
 #endif
 
 #if VAST_ENABLE_TRACING

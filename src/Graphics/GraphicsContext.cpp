@@ -1,36 +1,51 @@
 #include "vastpch.h"
 #include "Graphics/GraphicsContext.h"
+#include "Graphics/GraphicsBackend.h"
+#include "Graphics/ResourceManager.h"
 
-#if VAST_GFX_DX12_SUPPORTED
-#include "Graphics/API/DX12/DX12_GraphicsContext.h"
-#else
-#error "Invalid Platform: Unknown Graphics Backend"
-#endif
-
-#include "dx12/DirectXTex/DirectXTex/DirectXTex.h"
-#include <iostream>
-
-static const wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
+#include "Core/EventTypes.h"
 
 namespace vast::gfx
 {
-	// TODO: Current goal with Graphics Context refactor is to see if we can make it agnostic enough that really all we need
-	// is a RenderBackend and no virtual class at all for Graphics Context. Right now many of the calls would be straight
-	// up pointless indirections, but with pipeline caching many of that may be bundled together in the Graphics Context before
-	// reaching the device/cmdlist.
-	Ptr<GraphicsContext> GraphicsContext::Create(const GraphicsParams& params /* = GraphicsParams() */)
+
+	static void OnWindowResizeEvent(const WindowResizeEvent& event)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Context");
-		VAST_LOG_INFO("[gfx] Initializing GraphicsContext...");
-#ifdef VAST_GFX_DX12_SUPPORTED
-		return MakePtr<DX12GraphicsContext>(params);
-#else
-		VAST_ASSERTF(0, "Invalid Platform: Unknown Graphics Backend");
-		return nullptr;
-#endif
+		const uint2 scSize = GraphicsBackend::GetBackBufferSize();
+
+		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
+		{
+			GraphicsBackend::WaitForIdle();
+			GraphicsBackend::ResizeSwapChainAndBackBuffers(event.m_WindowSize);
+		}
 	}
 
 	//
+
+	GraphicsContext::GraphicsContext(const GraphicsParams& params /* = GraphicsParams() */)
+		: m_ResourceManager(nullptr)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Context");
+		VAST_LOG_INFO("[gfx] Initializing GraphicsContext...");
+
+		GraphicsBackend::Init(params);
+
+		m_ResourceManager = MakePtr<ResourceManager>();
+
+		m_TimestampFrequency = GraphicsBackend::GetTimestampFrequency();
+
+		CreateProfilingResources();
+
+		VAST_SUBSCRIBE_TO_EVENT("gfxctx", WindowResizeEvent, VAST_EVENT_HANDLER_CB(OnWindowResizeEvent, WindowResizeEvent));
+	}
+
+	GraphicsContext::~GraphicsContext()
+	{
+		DestroyProfilingResources();
+
+		m_ResourceManager = nullptr;
+
+		GraphicsBackend::Shutdown();
+	}
 
 	void GraphicsContext::BeginFrame()
 	{
@@ -38,21 +53,9 @@ namespace vast::gfx
 		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
 		m_bHasFrameBegun = true;
 
-		if (!m_PipelinesMarkedForShaderReload.empty())
-		{
-			// Pipelines are not double buffered, so we need a hard wait to reload shaders in place.
-			WaitForIdle();
-			ProcessShaderReloads();
-		}
+		m_ResourceManager->BeginFrame();
 
-		m_FrameId = (m_FrameId + 1) % NUM_FRAMES_IN_FLIGHT;
-
-		// TODO: Figure out where the profiling for destructions should go (cpu/gpu?)
-		ProcessDestructions(m_FrameId);
-
-		m_TempFrameAllocators[m_FrameId].Reset();
-
-		BeginFrame_Internal();
+		GraphicsBackend::BeginFrame();
 
 		m_GpuFrameTimestampIdx = BeginTimestamp();
 	}
@@ -65,9 +68,40 @@ namespace vast::gfx
 		EndTimestamp(m_GpuFrameTimestampIdx);
 		CollectTimestamps();
 
-		EndFrame_Internal();
+		GraphicsBackend::EndFrame();
 
 		m_bHasFrameBegun = false;
+	}
+
+	void GraphicsContext::BeginRenderPass(PipelineHandle h, const RenderPassTargets targets)
+	{
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_ASSERTF(!m_bHasRenderPassBegun, "A render pass is already running.");
+		m_bHasRenderPassBegun = true;
+		VAST_ASSERT(h.IsValid());
+		GraphicsBackend::BeginRenderPass(h, targets);
+	}
+
+	void GraphicsContext::BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
+	{
+		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_ASSERTF(!m_bHasRenderPassBegun, "A render pass is already running.");
+		m_bHasRenderPassBegun = true;
+		VAST_ASSERT(h.IsValid());
+		GraphicsBackend::BeginRenderPassToBackBuffer(h, loadOp, storeOp);
+	}
+
+	void GraphicsContext::EndRenderPass()
+	{
+		VAST_ASSERTF(m_bHasRenderPassBegun, "No render pass is currently running.");
+		m_bHasRenderPassBegun = false;
+		GraphicsBackend::EndRenderPass();
+	}
+
+	bool GraphicsContext::IsInRenderPass() const
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Compute Dispatch");
+		return m_bHasRenderPassBegun;
 	}
 
 	bool GraphicsContext::IsInFrame() const
@@ -75,310 +109,203 @@ namespace vast::gfx
 		return m_bHasFrameBegun;
 	}
 
-	void GraphicsContext::FlushGPU()
+	void GraphicsContext::BindPipelineForCompute(PipelineHandle h)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
-		WaitForIdle();
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Pipeline For Compute");
+		VAST_ASSERTF(!m_bHasRenderPassBegun, "Cannot bind another pipeline in the middle of a render pass.");
+		VAST_ASSERT(h.IsValid());
+		GraphicsBackend::BindPipelineForCompute(h);
+	}
 
-		ProcessShaderReloads();
-
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			ProcessDestructions(i);
-		}
+	void GraphicsContext::WaitForIdle()
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Wait CPU on GPU");
+		GraphicsBackend::WaitForIdle();
 	}
 
 	//
 
-	bool GraphicsContext::IsInRenderPass() const
+	// TODO: This is ugly!
+	BufferHandle GraphicsContext::CreateBuffer(const BufferDesc& desc, const void* initialData, const size_t dataSize) { return m_ResourceManager->CreateBuffer(desc, initialData, dataSize); }
+	TextureHandle GraphicsContext::CreateTexture(const TextureDesc& desc, const void* initialData) { return m_ResourceManager->CreateTexture(desc, initialData); }
+	PipelineHandle GraphicsContext::CreatePipeline(const PipelineDesc& desc) { return m_ResourceManager->CreatePipeline(desc); }
+	PipelineHandle GraphicsContext::CreatePipeline(const ShaderDesc& csDesc) { return m_ResourceManager->CreatePipeline(csDesc); }
+	void GraphicsContext::DestroyBuffer(BufferHandle h) { m_ResourceManager->DestroyBuffer(h); }
+	void GraphicsContext::DestroyTexture(TextureHandle h) { m_ResourceManager->DestroyTexture(h); }
+	void GraphicsContext::DestroyPipeline(PipelineHandle h) { m_ResourceManager->DestroyPipeline(h); }
+	void GraphicsContext::UpdateBuffer(BufferHandle h, void* data, const size_t size) { m_ResourceManager->UpdateBuffer(h, data, size); }
+	void GraphicsContext::ReloadShaders(PipelineHandle h) { m_ResourceManager->ReloadShaders(h); }
+	TextureHandle GraphicsContext::LoadTextureFromFile(const std::string& filePath, bool sRGB) { return m_ResourceManager->LoadTextureFromFile(filePath, sRGB); }
+	BufferView GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment) { return m_ResourceManager->AllocTempBufferView(size, alignment); }
+	void GraphicsContext::FlushGPU() { m_ResourceManager->FlushGPU(); }
+	void GraphicsContext::SetDebugName(BufferHandle h, const std::string& name) { m_ResourceManager->SetDebugName(h, name); }
+	void GraphicsContext::SetDebugName(TextureHandle h, const std::string& name) { m_ResourceManager->SetDebugName(h, name); }
+	const uint8* GraphicsContext::GetBufferData(BufferHandle h) { return m_ResourceManager->GetBufferData(h); }
+	bool GraphicsContext::GetIsReady(BufferHandle h) { return m_ResourceManager->GetIsReady(h); }
+	bool GraphicsContext::GetIsReady(TextureHandle h) { return m_ResourceManager->GetIsReady(h); }
+	TexFormat GraphicsContext::GetTextureFormat(TextureHandle h) { return m_ResourceManager->GetTextureFormat(h); }
+
+	//
+
+	ShaderResourceProxy GraphicsContext::LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName)
 	{
-		return m_bHasRenderPassBegun;
+		return GraphicsBackend::LookupShaderResource(h, shaderResourceName);
 	}
 
 	//
 
-	BufferHandle GraphicsContext::CreateBuffer(const BufferDesc& desc, const void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Buffer");
-		BufferHandle h = m_BufferHandles->AllocHandle();
-		CreateBuffer_Internal(h, desc);
-		if (initialData != nullptr)
-		{
-			UpdateBuffer_Internal(h, initialData, dataSize);
-		}
-		return h;
-	}
-
-	TextureHandle GraphicsContext::CreateTexture(const TextureDesc& desc, const void* initialData /*= nullptr*/)
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Texture");
-		TextureHandle h = m_TextureHandles->AllocHandle();
-		CreateTexture_Internal(h, desc);
-		if (initialData != nullptr)
-		{
-			UpdateTexture_Internal(h, initialData);
-		}
-		return h;
-	}
-
-	PipelineHandle GraphicsContext::CreatePipeline(const PipelineDesc& desc)
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
-		PipelineHandle h = m_PipelineHandles->AllocHandle();
-		CreatePipeline_Internal(h, desc);
-		return h;
-	}
-	
-	PipelineHandle GraphicsContext::CreatePipeline(const ShaderDesc& csDesc)
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
-		PipelineHandle h = m_PipelineHandles->AllocHandle();
-		CreatePipeline_Internal(h, csDesc);
-		return h;
-	}
-
-	static bool FileExists(const std::wstring& filePath)
-	{
-		if (filePath.c_str() == NULL)
-			return false;
-
-		DWORD fileAttr = GetFileAttributesW(filePath.c_str());
-		if (fileAttr == INVALID_FILE_ATTRIBUTES)
-			return false;
-
-		return true;
-	}
-
-	static std::wstring GetFileExtension(const std::wstring& filePath)
-	{
-		size_t idx = filePath.rfind(L'.');
-		if (idx != std::wstring::npos)
-			return filePath.substr(idx + 1, filePath.length() - idx - 2);
-		else
-			return std::wstring(L"");
-	}
-
-	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
-	static std::wstring StringToWString(const std::string& s, bool bIsUTF8 = true)
-	{
-		int32 slength = (int32)s.length() + 1;
-		int32 len = MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, 0, 0);
-		std::wstring buf;
-		buf.resize(len);
-		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
-		return buf;
-	}
-
-	// TODO: This should be completely external to the Graphics Context
-	TextureHandle GraphicsContext::LoadTextureFromFile(const std::string& filePath, bool sRGB /* = true */)
-	{
-		bool bFlipImage = false;
-
-		const std::wstring wpath = ASSETS_TEXTURES_PATH + StringToWString(filePath);
-		if (!FileExists(wpath))
-		{
-			VAST_ASSERTF(0, "Texture file path does not exist.");
-			return TextureHandle();
-		}
-
-		VAST_PROFILE_TRACE_BEGIN("gfx", "Load Texture File");
-		const std::wstring wext = GetFileExtension(wpath);
-		DirectX::ScratchImage image;
-		if (wext.compare(L"DDS") == 0 || wext.compare(L"dds") == 0)
-		{
-			DX12Check(DirectX::LoadFromDDSFile(wpath.c_str(), DirectX::DDS_FLAGS_NONE, nullptr, image));
-		}
-		else if (wext.compare(L"TGA") == 0 || wext.compare(L"tga") == 0)
-		{
-			DX12Check(DirectX::LoadFromTGAFile(wpath.c_str(), nullptr, image));
-		}
-		else if (wext.compare(L"HDR") == 0 || wext.compare(L"hdr") == 0)
-		{
-			DX12Check(DirectX::LoadFromHDRFile(wpath.c_str(), nullptr, image));
-		}
-		else // Windows Imaging Component (WIC) includes .BMP, .PNG, .GIF, .TIFF, .JPEG
-		{
-			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, image));
-		}
-		VAST_PROFILE_TRACE_END("gfx", "Load Texture File");
-
-		if (bFlipImage)
-		{
-			DirectX::ScratchImage tempImage;
-			DX12Check(DirectX::FlipRotate(image.GetImages()[0], DirectX::TEX_FR_FLIP_VERTICAL, tempImage));
-			image = std::move(tempImage);
-		}
-
-		if (image.GetMetadata().mipLevels == 1)
-		{
-			DirectX::ScratchImage tempImage;
-			DX12Check(DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_DEFAULT, 0, tempImage));
-			image = std::move(tempImage);
-		}
-
-		const DirectX::TexMetadata& metaData = image.GetMetadata();
-
-		DXGI_FORMAT format = metaData.format;
-		if (sRGB)
-		{
-			format = DirectX::MakeSRGB(format);
-		}
-
-		TexType type = TranslateFromDX12(static_cast<D3D12_RESOURCE_DIMENSION>(metaData.dimension));
-
-		TextureDesc texDesc =
-		{
-			.type = type,
-			.format = TranslateFromDX12(metaData.format),
-			.width = static_cast<uint32>(metaData.width),
-			.height = static_cast<uint32>(metaData.height),
-			.depthOrArraySize = static_cast<uint32>((type == TexType::TEXTURE_3D) ? metaData.depth : metaData.arraySize),
-			.mipCount = static_cast<uint32>(metaData.mipLevels),
-			.viewFlags = TexViewFlags::SRV, // TODO: Provide option to add more flags when needed
-			.name = filePath,
-		};
-		return CreateTexture(texDesc, std::move(image.GetPixels()));
-	}
-
-	void GraphicsContext::UpdateBuffer(BufferHandle h, void* data, const size_t size)
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Buffer");
-		VAST_ASSERT(h.IsValid());
-		UpdateBuffer_Internal(h, data, size);
-	}
-
-	void GraphicsContext::ReloadShaders(PipelineHandle h)
+	void GraphicsContext::AddBarrier(BufferHandle h, ResourceState newState)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_PipelinesMarkedForShaderReload.push_back(h);
+		GraphicsBackend::AddBarrier(h, newState);
 	}
 
-	void GraphicsContext::ProcessShaderReloads()
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Process Shader Reloads");
-		for (auto& h : m_PipelinesMarkedForShaderReload)
-		{
-			VAST_ASSERT(h.IsValid());
-			ReloadShaders_Internal(h);
-		}
-		m_PipelinesMarkedForShaderReload.clear();
-	}
-
-	void GraphicsContext::DestroyBuffer(BufferHandle h)
+	void GraphicsContext::AddBarrier(TextureHandle h, ResourceState newState)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_BuffersMarkedForDestruction[m_FrameId].push_back(h);
+		GraphicsBackend::AddBarrier(h, newState);
 	}
 
-	void GraphicsContext::DestroyTexture(TextureHandle h)
+	void GraphicsContext::FlushBarriers()
+	{
+		GraphicsBackend::FlushBarriers();
+	}
+
+	//
+
+	void GraphicsContext::BindVertexBuffer(BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Vertex Buffer");
+		VAST_ASSERT(h.IsValid());
+		GraphicsBackend::BindVertexBuffer(h, offset, stride);
+	}
+
+	void GraphicsContext::BindIndexBuffer(BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Index Buffer");
+		VAST_ASSERT(h.IsValid());
+		GraphicsBackend::BindIndexBuffer(h, offset, format);
+	}
+
+	void GraphicsContext::BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset /* = 0 */)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Constant Buffer");
+		VAST_ASSERT(h.IsValid() && proxy.IsValid());
+		GraphicsBackend::BindConstantBuffer(proxy, h, offset);
+	}
+
+	void GraphicsContext::SetPushConstants(const void* data, const uint32 size)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Push Constants");
+		VAST_ASSERT(data && size);
+		GraphicsBackend::SetPushConstants(data, size);
+	}
+
+	void GraphicsContext::BindSRV(ShaderResourceProxy proxy, BufferHandle h)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind SRV");
+		VAST_ASSERT(h.IsValid() && proxy.IsValid());
+		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		GraphicsBackend::BindSRV(h);
+	}
+
+	void GraphicsContext::BindSRV(ShaderResourceProxy proxy, TextureHandle h)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind SRV");
+		VAST_ASSERT(h.IsValid() && proxy.IsValid());
+		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		GraphicsBackend::BindSRV(h);
+	}
+
+	void GraphicsContext::BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel /* = 0 */)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind UAV");
+		VAST_ASSERT(h.IsValid() && proxy.IsValid());
+		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
+		GraphicsBackend::BindUAV(h, mipLevel);
+	}
+
+	uint32 GraphicsContext::GetBindlessSRV(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_TexturesMarkedForDestruction[m_FrameId].push_back(h);
+		return GraphicsBackend::GetBindlessSRV(h);
 	}
 
-	void GraphicsContext::DestroyPipeline(PipelineHandle h)
+	uint32 GraphicsContext::GetBindlessSRV(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_PipelinesMarkedForDestruction[m_FrameId].push_back(h);
+		return GraphicsBackend::GetBindlessSRV(h);
 	}
 
-	void GraphicsContext::ProcessDestructions(uint32 frameId)
+	uint32 GraphicsContext::GetBindlessUAV(TextureHandle h, uint32 mipLevel /* = 0 */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Process Destructions");
-
-		for (auto& h : m_BuffersMarkedForDestruction[frameId])
-		{
-			VAST_ASSERT(h.IsValid());
-			DestroyBuffer_Internal(h);
-			m_BufferHandles->FreeHandle(h);
-		}
-		m_BuffersMarkedForDestruction[frameId].clear();
-
-		for (auto& h : m_TexturesMarkedForDestruction[frameId])
-		{
-			VAST_ASSERT(h.IsValid());
-			DestroyTexture_Internal(h);
-			m_TextureHandles->FreeHandle(h);
-		}
-		m_TexturesMarkedForDestruction[frameId].clear();
-
-		for (auto& h : m_PipelinesMarkedForDestruction[frameId])
-		{
-			VAST_ASSERT(h.IsValid());
-			DestroyPipeline_Internal(h);
-			m_PipelineHandles->FreeHandle(h);
-		}
-		m_PipelinesMarkedForDestruction[frameId].clear();
+		VAST_ASSERT(h.IsValid());
+		return GraphicsBackend::GetBindlessUAV(h, mipLevel);
 	}
 
-	void GraphicsContext::CreateHandlePools()
+	//
+
+	void GraphicsContext::SetScissorRect(int4 rect)
 	{
-		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
-		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
-		m_PipelineHandles = MakePtr<HandlePool<Pipeline, NUM_PIPELINES>>();
-	}
-	
-	void GraphicsContext::DestroyHandlePools()
-	{
-		m_BufferHandles = nullptr;
-		m_TextureHandles = nullptr;
-		m_PipelineHandles = nullptr;
+		GraphicsBackend::SetScissorRect(rect);
 	}
 
-	void GraphicsContext::CreateTempFrameAllocators()
+	void GraphicsContext::SetBlendFactor(float4 blend)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Temp Frame Allocators");
-		uint32 tempFrameBufferSize = 1024 * 1024;
-
-		BufferDesc tempFrameBufferDesc =
-		{
-			.size = tempFrameBufferSize,
-			.usage = ResourceUsage::UPLOAD,
-			.isRawAccess = true,
-		};
-
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			VAST_ASSERT(!m_TempFrameAllocators[i].buffer.IsValid());
-			m_TempFrameAllocators[i].buffer = CreateBuffer(tempFrameBufferDesc);
-			m_TempFrameAllocators[i].size = tempFrameBufferSize;
-			m_TempFrameAllocators[i].offset = 0;
-		}
+		GraphicsBackend::SetBlendFactor(blend);
 	}
 
-	void GraphicsContext::DestroyTempFrameAllocators()
+	//
+
+	void GraphicsContext::Draw(uint32 vtxCount, uint32 vtxStartLocation /* = 0 */)
 	{
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			DestroyBuffer(m_TempFrameAllocators[i].buffer);
-		}
+		DrawInstanced(vtxCount, 1, vtxStartLocation, 0);
 	}
 
-	BufferView GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
+	void GraphicsContext::DrawIndexed(uint32 idxCount, uint32 startIdxLocation /* = 0 */, uint32 baseVtxLocation /* = 0 */)
 	{
-		VAST_ASSERT(size);
-		VAST_ASSERT(m_TempFrameAllocators[m_FrameId].size);
+		DrawIndexedInstanced(idxCount, 1, startIdxLocation, baseVtxLocation, 0);
+	}
 
-		uint32 allocSize = size + alignment;
-		uint32 offset = m_TempFrameAllocators[m_FrameId].offset;
-		if (alignment > 0)
-		{
-			offset = AlignU32(offset, alignment);
-		}
-		VAST_ASSERT(offset + size <= m_TempFrameAllocators[m_FrameId].size);
+	void GraphicsContext::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation /* = 0 */, uint32 instStartLocation /* = 0 */)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Instanced");
+		GraphicsBackend::DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
+	}
 
-		m_TempFrameAllocators[m_FrameId].offset += allocSize;
+	void GraphicsContext::DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Indexed Instanced");
+		GraphicsBackend::DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
+	}
 
-		BufferHandle h = m_TempFrameAllocators[m_FrameId].buffer;
+	void GraphicsContext::DrawFullscreenTriangle()
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Fullscreen Triangle");
+		GraphicsBackend::DrawFullscreenTriangle();
+	}
 
-		// TODO: We need to attach descriptors to the BufferViews if we want to use them as CBVs, SRVs...
-		return BufferView
-		{
-			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
-			h,
-			(uint8*)(GetBufferData(h) + offset),
-			offset,
-		};
+	void GraphicsContext::Dispatch(uint3 threadGroupCount)
+	{
+		GraphicsBackend::Dispatch(threadGroupCount);
+	}
+
+	//
+
+	uint2 GraphicsContext::GetBackBufferSize() const
+	{
+		return GraphicsBackend::GetBackBufferSize();
+	}
+
+	float GraphicsContext::GetBackBufferAspectRatio() const
+	{
+		auto size = GetBackBufferSize();
+		return float(size.x) / float(size.y);
+	}
+
+	TexFormat GraphicsContext::GetBackBufferFormat() const
+	{
+		return GraphicsBackend::GetBackBufferFormat();
 	}
 
 	//
@@ -402,13 +329,13 @@ namespace vast::gfx
 
 	uint32 GraphicsContext::BeginTimestamp()
 	{
-		BeginTimestamp_Internal(m_TimestampCount * 2);
+		GraphicsBackend::BeginTimestamp(m_TimestampCount * 2);
 		return m_TimestampCount++;
 	}
 
 	void GraphicsContext::EndTimestamp(uint32 timestampIdx)
 	{
-		EndTimestamp_Internal(timestampIdx * 2 + 1);
+		GraphicsBackend::EndTimestamp(timestampIdx * 2 + 1);
 	}
 
 	void GraphicsContext::CollectTimestamps()
@@ -416,13 +343,13 @@ namespace vast::gfx
 		if (m_TimestampCount == 0)
 			return;
 
-		CollectTimestamps_Internal(m_TimestampsReadbackBuf[m_FrameId], m_TimestampCount * 2);
+		GraphicsBackend::CollectTimestamps(m_TimestampsReadbackBuf[GraphicsBackend::GetFrameId()], m_TimestampCount * 2);
 		m_TimestampCount = 0;
 	}
 
-	double GraphicsContext::GetTimestampDuration(uint32 timestampIdx)
-	{
-		const uint64* data = m_TimestampData[m_FrameId];
+ 	double GraphicsContext::GetTimestampDuration(uint32 timestampIdx)
+ 	{
+		const uint64* data = m_TimestampData[GraphicsBackend::GetFrameId()];
 		VAST_ASSERT(data && m_TimestampFrequency);
 
 		uint64 tStart = data[timestampIdx * 2];
@@ -433,8 +360,8 @@ namespace vast::gfx
 			return double(tEnd - tStart) / m_TimestampFrequency;
 		}
 
-		return 0.0;
-	}
+ 		return 0.0;
+ 	}
 
 	double GraphicsContext::GetLastFrameDuration()
 	{

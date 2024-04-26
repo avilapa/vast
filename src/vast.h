@@ -7,5 +7,5 @@
 #include "Core/Window.h"
 
 #include "Graphics/GraphicsTypes.h"
-#include "Graphics/Resources.h"
 #include "Graphics/GraphicsContext.h"
+#include "Graphics/ResourceManager.h"
