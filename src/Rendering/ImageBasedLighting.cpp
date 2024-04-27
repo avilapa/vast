@@ -76,7 +76,7 @@ namespace vast::gfx
 		VAST_ASSERT(irradianceMap.IsValid());
 
 		{
-			VAST_PROFILE_GPU_SCOPE("Integrate Irradiance Map (CS)", &ctx);
+			VAST_PROFILE_GPU_SCOPE("Integrate Irradiance Map (CS)", ctx);
 			ctx.BindPipelineForCompute(s_IntegrateIrradiancePso);
 
 			ctx.AddBarrier(irradianceMap, ResourceState::UNORDERED_ACCESS);
@@ -131,7 +131,7 @@ namespace vast::gfx
 		VAST_ASSERT(prefilteredEnvironmentMap.IsValid());
 
 		{
-			VAST_PROFILE_GPU_SCOPE("Prefilter Environment Map (CS)", &ctx);
+			VAST_PROFILE_GPU_SCOPE("Prefilter Environment Map (CS)", ctx);
 			ctx.BindPipelineForCompute(s_PrefilterEnvironmentPso);
 
 			ctx.AddBarrier(prefilteredEnvironmentMap, ResourceState::UNORDERED_ACCESS);

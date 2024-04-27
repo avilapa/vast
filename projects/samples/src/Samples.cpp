@@ -55,6 +55,8 @@ void SamplesApp::Update()
 {
 	if (!m_SampleInitialized)
 	{
+		gfx::GraphicsContext& ctx = GetGraphicsContext();
+
 		if (m_CurrentSample)
 		{
 			m_CurrentSample = nullptr;
@@ -69,10 +71,10 @@ void SamplesApp::Update()
 
 		switch (m_CurrentSampleIdx)
 		{
-		case IDX(SampleScenes::HELLO_TRIANGLE): m_CurrentSample = MakePtr<HelloTriangle>(*m_GraphicsContext); break;
-		case IDX(SampleScenes::HELLO_3D):		m_CurrentSample = MakePtr<Hello3D>(*m_GraphicsContext); break;
-		case IDX(SampleScenes::INSTANCING):		m_CurrentSample = MakePtr<Instancing>(*m_GraphicsContext); break;
-		case IDX(SampleScenes::TEXTURES):		m_CurrentSample = MakePtr<Textures>(*m_GraphicsContext); break;
+		case IDX(SampleScenes::HELLO_TRIANGLE): m_CurrentSample = MakePtr<HelloTriangle>(ctx); break;
+		case IDX(SampleScenes::HELLO_3D):		m_CurrentSample = MakePtr<Hello3D>(ctx); break;
+		case IDX(SampleScenes::INSTANCING):		m_CurrentSample = MakePtr<Instancing>(ctx); break;
+		case IDX(SampleScenes::TEXTURES):		m_CurrentSample = MakePtr<Textures>(ctx); break;
 		default: return;
 		}
 
@@ -94,11 +96,11 @@ void SamplesApp::Draw()
 
 	m_CurrentSample->BeginFrame();
 	{
-		VAST_PROFILE_GPU_SCOPE("Sample", m_GraphicsContext.get());
+		VAST_PROFILE_GPU_SCOPE("Sample", GetGraphicsContext());
 		m_CurrentSample->Render();
 	}
 	{
-		VAST_PROFILE_GPU_SCOPE("Imgui", m_GraphicsContext.get());
+		VAST_PROFILE_GPU_SCOPE("Imgui", GetGraphicsContext());
 		m_ImguiRenderer->Render();
 	}
 	m_CurrentSample->EndFrame();
@@ -131,7 +133,7 @@ void SamplesApp::DrawSamplesEditorUI()
 			
 			if (ImGui::MenuItem("Reload Shaders"))
 			{
-				ReloadShadersEvent e(*m_GraphicsContext);
+				ReloadShadersEvent e(GetGraphicsContext());
 				VAST_FIRE_EVENT(ReloadShadersEvent, e);
 			}
 			ImGui::EndMenu();

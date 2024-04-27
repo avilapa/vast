@@ -66,7 +66,7 @@ namespace vast::gfx
 		VAST_ASSERT(envBrdfLut.IsValid());
 
 		{
-			VAST_PROFILE_GPU_SCOPE("Integrate Environment BRDF (CS)", &ctx);
+			VAST_PROFILE_GPU_SCOPE("Integrate Environment BRDF (CS)", ctx);
 			ctx.BindPipelineForCompute(s_IntegrateBrdfPso);
 
 			ctx.AddBarrier(envBrdfLut, ResourceState::UNORDERED_ACCESS);

@@ -18,7 +18,8 @@ namespace vast::gfx
 	};
 
 	class ResourceManager;
-
+	class GPUProfiler;
+	
 	class GraphicsContext
 	{
 	public:
@@ -28,12 +29,14 @@ namespace vast::gfx
 		void BeginFrame();
 		void EndFrame();
 
+		bool IsInFrame() const;
+		double GetLastFrameDuration();
+
 		void BeginRenderPass(PipelineHandle h, const RenderPassTargets targets);
 		// Renders to the back buffer as the only target
 		void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE);
 		void EndRenderPass();
 
-		bool IsInFrame() const;
 		bool IsInRenderPass() const;
 
 		// TODO: We may want to do Begin/End functions for compute to be analogous with graphics 
@@ -126,29 +129,18 @@ namespace vast::gfx
 		float GetBackBufferAspectRatio() const;
 		TexFormat GetBackBufferFormat() const;
 
-		// - Timestamps ------------------------------------------------------------------------ //
+		// - Submodules ------------------------------------------------------------------------ //
 
-		uint32 BeginTimestamp();
-		void EndTimestamp(uint32 timestampIdx);
-		// Call after EndFrame() and before the next BeginFrame() to collect data on the frame that just ended.
-		double GetTimestampDuration(uint32 timestampIdx);
-		double GetLastFrameDuration();
+		ResourceManager& GetResourceManager();
+		GPUProfiler& GetGPUProfiler();
 
 	private:
+		Ptr<ResourceManager> m_ResourceManager;
+		Ptr<GPUProfiler> m_GpuProfiler;
+
 		bool m_bHasFrameBegun = false;
 		bool m_bHasRenderPassBegun = false;
 
-		Ptr<ResourceManager> m_ResourceManager;
-
-		double m_TimestampFrequency = 0.0;
-
-		void CreateProfilingResources();
-		void DestroyProfilingResources();
-		void CollectTimestamps();
-
-		uint32 m_TimestampCount = 0;
-		uint32 m_GpuFrameTimestampIdx = 0;
-		Array<BufferHandle, NUM_FRAMES_IN_FLIGHT> m_TimestampsReadbackBuf;
-		Array<const uint64*, NUM_FRAMES_IN_FLIGHT> m_TimestampData;
+		uint32 m_GpuFrameTimestampIdx;
 	};
 }

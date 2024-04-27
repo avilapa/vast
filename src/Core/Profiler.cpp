@@ -3,6 +3,7 @@
 #include "Core/Types.h"
 #include "Core/Timer.h"
 #include "Graphics/GraphicsContext.h"
+#include "Graphics/GPUProfiler.h"
 #include "Rendering/Imgui.h"
 
 #include "minitrace/minitrace.h"
@@ -114,112 +115,12 @@ namespace vast
 		int64 tBegin = 0;
 		int64 tEnd = 0;
 		// GPU specific
-		gfx::GraphicsContext* ctx = nullptr;
 		uint32 timestampIdx = 0;
 	};
 
 	//
 
 	static Timer s_Timer;
-
-	//
-
-	template<typename ProfileBlockArray>
-	static ProfileBlock& FindOrAddProfile(ProfileBlockArray& profiles, uint32& profileCount, const char* name, bool& bFound)
-	{
-		for (uint32 i = 0; i < profileCount; ++i)
-		{
-			if (profiles[i].name == name)
-			{
-				bFound = true;
-				return profiles[i];
-			}
-		}
-		VAST_ASSERTF(profileCount < profiles.size(), "Exceeded max number of profiles ({}).", profiles.size());
-		bFound = false;
-		return profiles[profileCount++];
-	}
-
-	template<typename ProfileBlockArray>
-	static ProfileBlock* FindLastActiveEntry(ProfileBlockArray& profiles, const uint32 profileCount)
-	{
-		VAST_ASSERT(profileCount > 0);
-		for (int32 i = (profileCount - 1); i >= 0; --i)
-		{
-			if (profiles[i].state == ProfileBlock::State::ACTIVE)
-			{
-				return &profiles[i];
-			}
-		}
-		return nullptr;
-	}
-
-	static uint32 FindTreeDepth(const ProfileBlock* p, uint32 currDepth = 0)
-	{
-		if (p && p->parent)
-		{
-			currDepth = FindTreeDepth(p->parent, ++currDepth);
-		}
-		return currDepth;
-	}
-
-	template<typename ProfileBlockArray>
-	static void PushProfilingMarker_Internal(ProfileBlockArray& profiles, uint32& profileCount, const char* name, gfx::GraphicsContext* ctx, bool bIsGPU)
-	{
-		bool bFound;
-		ProfileBlock& p = FindOrAddProfile(profiles, profileCount, name, bFound);
-		if (!bFound)
-		{
-			p.name = name;
-			p.ctx = ctx;
-		}
-		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", p.name);
-		VAST_ASSERTF((p.ctx != nullptr) == bIsGPU, "Mismatched profiling context not allowed.");
-
-		if (p.ctx)
-		{
-			VAST_ASSERT(p.ctx);
-			p.timestampIdx = p.ctx->BeginTimestamp();
-		}
-		else
-		{
-			s_Timer.Update();
-			p.tBegin = s_Timer.GetElapsedMicroseconds<int64>();
-		}
-
-		// Find tree position
-		p.parent = FindLastActiveEntry(profiles, profileCount);
-		if (p.parent)
-		{
-			p.parent->childCount++;
-		}
-		p.treeDepth = FindTreeDepth(&p);
-
-		p.state = ProfileBlock::State::ACTIVE;
-	}
-
-	template<typename ProfileBlockArray>
-	static void PopProfilingMarker_Internal(ProfileBlockArray& profiles, const uint32 profileCount, bool bIsGPU)
-	{
-		if (ProfileBlock* p = FindLastActiveEntry(profiles, profileCount))
-		{
-			VAST_ASSERTF((p->ctx != nullptr) == bIsGPU, "Mismatched profiling context not allowed.");
-			if (p->ctx)
-			{
-				p->ctx->EndTimestamp(p->timestampIdx);
-			}
-			else
-			{
-				s_Timer.Update();
-				p->tEnd = s_Timer.GetElapsedMicroseconds<int64>();
-			}
-			p->state = ProfileBlock::State::FINISHED;
-		}
-		else
-		{
-			VAST_ASSERTF(0, "Active profile not found.");
-		}
-	}
 
 	//
 
@@ -250,25 +151,105 @@ namespace vast
 
 	//
 
-	void Profiler::PushProfilingMarkerCPU(const char* name)
+	template<typename ProfileBlockArray>
+	static ProfileBlock& FindOrAddProfile(ProfileBlockArray& profiles, uint32& profileCount, const char* name)
 	{
-		PushProfilingMarker_Internal(s_CpuProfiles, s_CpuProfileCount, name, nullptr, false);
+		for (uint32 i = 0; i < profileCount; ++i)
+		{
+			ProfileBlock& p = profiles[i];
+			if (p.name == name)
+			{
+				return profiles[i];
+			}
+		}
+		VAST_ASSERTF(profileCount < profiles.size(), "Exceeded max number of profiles ({}).", profiles.size());
+		ProfileBlock& p = profiles[profileCount++];
+		p.name = name;
+		return p;
 	}
 
-	void Profiler::PushProfilingMarkerGPU(const char* name, gfx::GraphicsContext* ctx)
+	template<typename ProfileBlockArray>
+	static ProfileBlock* FindLastActiveEntry(ProfileBlockArray& profiles, const uint32 profileCount)
 	{
-		VAST_ASSERT(ctx);
-		PushProfilingMarker_Internal(s_GpuProfiles, s_GpuProfileCount, name, ctx, true);
+		VAST_ASSERT(profileCount > 0);
+		for (int32 i = (profileCount - 1); i >= 0; --i)
+		{
+			if (profiles[i].state == ProfileBlock::State::ACTIVE)
+			{
+				return &profiles[i];
+			}
+		}
+		return nullptr;
+	}
+
+	// TODO: If we store the depth in the profile we can just +1 the parent.
+	static uint32 FindTreeDepth(const ProfileBlock* p, uint32 currDepth = 0)
+	{
+		if (p && p->parent)
+		{
+			currDepth = FindTreeDepth(p->parent, ++currDepth);
+		}
+		return currDepth;
+	}
+
+	void Profiler::PushProfilingMarkerCPU(const char* name)
+	{
+		ProfileBlock& p = FindOrAddProfile(s_CpuProfiles, s_CpuProfileCount, name);
+		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
+
+		s_Timer.Update();
+		p.tBegin = s_Timer.GetElapsedMicroseconds<int64>();
+
+		p.parent = FindLastActiveEntry(s_CpuProfiles, s_CpuProfileCount);
+		if (p.parent)
+		{
+			p.parent->childCount++;
+		}
+		p.treeDepth = FindTreeDepth(&p);
+		p.state = ProfileBlock::State::ACTIVE;
+	}
+
+	void Profiler::PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler)
+	{
+		ProfileBlock& p = FindOrAddProfile(s_GpuProfiles, s_GpuProfileCount, name);
+		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
+
+		p.timestampIdx = gpuProfiler.BeginTimestamp();
+
+		p.parent = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount);
+		if (p.parent)
+		{
+			p.parent->childCount++;
+		}
+		p.treeDepth = FindTreeDepth(&p);
+		p.state = ProfileBlock::State::ACTIVE;
 	}
 
 	void Profiler::PopProfilingMarkerCPU()
 	{
-		PopProfilingMarker_Internal(s_CpuProfiles, s_CpuProfileCount, false);
+		if (ProfileBlock* p = FindLastActiveEntry(s_CpuProfiles, s_CpuProfileCount))
+		{
+			s_Timer.Update();
+			p->tEnd = s_Timer.GetElapsedMicroseconds<int64>();
+			p->state = ProfileBlock::State::FINISHED;
+		}
+		else
+		{
+			VAST_ASSERTF(0, "Active profile not found.");
+		}
 	}
 
-	void Profiler::PopProfilingMarkerGPU()
+	void Profiler::PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler)
 	{
-		PopProfilingMarker_Internal(s_GpuProfiles, s_GpuProfileCount, true);
+		if (ProfileBlock* p = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount))
+		{
+			gpuProfiler.EndTimestamp(p->timestampIdx);
+			p->state = ProfileBlock::State::FINISHED;
+		}
+		else
+		{
+			VAST_ASSERTF(0, "Active profile not found.");
+		}
 	}
 
 	void Profiler::FlushProfiles()
@@ -346,39 +327,44 @@ namespace vast
 		}
 
 		// Record and update (if needed) user profile stats
-		auto UpdateProfilesStats = [&](auto& profiles, const uint32 profileCount, bool bIsGPU)
+		for (uint32 i = 0; i < s_CpuProfileCount; ++i)
 		{
-			for (uint32 i = 0; i < profileCount; ++i)
+			ProfileBlock& p = s_CpuProfiles[i];
+			// TODO: How do we treat profiles that run only once?
+			if (p.state == ProfileBlock::State::IDLE)
+				continue;
+
+			VAST_ASSERTF(p.state != ProfileBlock::State::ACTIVE, "Attempted to update a profile that is still active.");
+
+			p.stats.RecordTimeLast(double(p.tEnd - p.tBegin) / 1000.0);
+
+			if (bStatsNeedUpdateThisFrame)
 			{
-				ProfileBlock& p = profiles[i];
-
-				// TODO: How do we treat profiles that run only once?
-				if (p.state == ProfileBlock::State::IDLE)
-					continue;
-
-				VAST_ASSERTF(p.state != ProfileBlock::State::ACTIVE, "Attempted to update a profile that is still active.");
-				VAST_ASSERTF((p.ctx != nullptr) == bIsGPU, "Mismatched profiling context not allowed.");
-
-				if (p.ctx)
-				{
-					p.stats.RecordTimeLast(p.ctx->GetTimestampDuration(p.timestampIdx) * 1000.0);
-				}
-				else
-				{
-					p.stats.RecordTimeLast(double(p.tEnd - p.tBegin) / 1000.0);
-				}
-
-				if (bStatsNeedUpdateThisFrame)
-				{
-					p.stats.UpdateAverages();
-				}
-
-				p.state = ProfileBlock::State::IDLE;
+				p.stats.UpdateAverages();
 			}
-		};
 
-		UpdateProfilesStats(s_CpuProfiles, s_CpuProfileCount, false);
-		UpdateProfilesStats(s_GpuProfiles, s_GpuProfileCount, true);
+			p.state = ProfileBlock::State::IDLE;
+		}
+
+		gfx::GPUProfiler& gpuProfiler = ctx.GetGPUProfiler();
+		for (uint32 i = 0; i < s_GpuProfileCount; ++i)
+		{
+			ProfileBlock& p = s_GpuProfiles[i];
+			// TODO: How do we treat profiles that run only once?
+			if (p.state == ProfileBlock::State::IDLE)
+				continue;
+
+			VAST_ASSERTF(p.state != ProfileBlock::State::ACTIVE, "Attempted to update a profile that is still active.");
+
+			p.stats.RecordTimeLast(gpuProfiler.GetTimestampDuration(p.timestampIdx) * 1000.0);
+
+			if (bStatsNeedUpdateThisFrame)
+			{
+				p.stats.UpdateAverages();
+			}
+
+			p.state = ProfileBlock::State::IDLE;
+		}
 	}
 
 	//

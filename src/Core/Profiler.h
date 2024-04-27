@@ -7,9 +7,9 @@
 #define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::PushProfilingMarkerCPU(n)
 #define VAST_PROFILE_CPU_END()			vast::Profiler::PopProfilingMarkerCPU()
 
-#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::ProfileScopeGPU XCAT(_profGpu, __LINE__)(n, ctx)
-#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::PushProfilingMarkerGPU(n, ctx)
-#define VAST_PROFILE_GPU_END()			vast::Profiler::PopProfilingMarkerGPU()
+#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::ProfileScopeGPU XCAT(_profGpu, __LINE__)(n, ctx.GetGPUProfiler())
+#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::PushProfilingMarkerGPU(n, ctx.GetGPUProfiler())
+#define VAST_PROFILE_GPU_END()			vast::Profiler::PopProfilingMarkerGPU(ctx.GetGPUProfiler())
 // TODO: Single profile macro, select cpu/gpu
 #else
 #define VAST_PROFILE_CPU_SCOPE(n)	
@@ -36,6 +36,7 @@ namespace vast
 	namespace gfx
 	{
 		class GraphicsContext;
+		class GPUProfiler;
 	}
 
 	class Profiler
@@ -43,9 +44,9 @@ namespace vast
 		friend class WindowedApp;
 	public:
 		static void PushProfilingMarkerCPU(const char* name);
-		static void PushProfilingMarkerGPU(const char* name, gfx::GraphicsContext* ctx);
+		static void PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler);
 		static void PopProfilingMarkerCPU();
-		static void PopProfilingMarkerGPU();
+		static void PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler);
 
 		static void FlushProfiles();
 
@@ -74,15 +75,18 @@ namespace vast
 
 	struct ProfileScopeGPU
 	{
-		ProfileScopeGPU(const char* name, gfx::GraphicsContext* ctx)
+		ProfileScopeGPU(const char* name, gfx::GPUProfiler& gpuProfiler_) : gpuProfiler(gpuProfiler_)
 		{
-			Profiler::PushProfilingMarkerGPU(name, ctx);
+			Profiler::PushProfilingMarkerGPU(name, gpuProfiler);
 		}
 
 		~ProfileScopeGPU()
 		{
-			Profiler::PopProfilingMarkerGPU();
+			Profiler::PopProfilingMarkerGPU(gpuProfiler);
 		}
+
+	private:
+		gfx::GPUProfiler& gpuProfiler;
 	};
 
 	class TraceLogger
