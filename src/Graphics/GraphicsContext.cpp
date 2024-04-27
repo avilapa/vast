@@ -128,6 +128,19 @@ namespace vast::gfx
 		GraphicsBackend::WaitForIdle();
 	}
 
+	void GraphicsContext::FlushGPU()
+	{
+		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
+		GraphicsBackend::WaitForIdle();
+
+		m_ResourceManager->ProcessShaderReloads();
+
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			m_ResourceManager->ProcessDestructions(i);
+		}
+	}
+
 	//
 
 	// TODO: This is ugly!
@@ -141,8 +154,6 @@ namespace vast::gfx
 	void GraphicsContext::UpdateBuffer(BufferHandle h, void* data, const size_t size) { m_ResourceManager->UpdateBuffer(h, data, size); }
 	void GraphicsContext::ReloadShaders(PipelineHandle h) { m_ResourceManager->ReloadShaders(h); }
 	TextureHandle GraphicsContext::LoadTextureFromFile(const std::string& filePath, bool sRGB) { return m_ResourceManager->LoadTextureFromFile(filePath, sRGB); }
-	BufferView GraphicsContext::AllocTempBufferView(uint32 size, uint32 alignment) { return m_ResourceManager->AllocTempBufferView(size, alignment); }
-	void GraphicsContext::FlushGPU() { m_ResourceManager->FlushGPU(); }
 	void GraphicsContext::SetDebugName(BufferHandle h, const std::string& name) { m_ResourceManager->SetDebugName(h, name); }
 	void GraphicsContext::SetDebugName(TextureHandle h, const std::string& name) { m_ResourceManager->SetDebugName(h, name); }
 	const uint8* GraphicsContext::GetBufferData(BufferHandle h) { return m_ResourceManager->GetBufferData(h); }

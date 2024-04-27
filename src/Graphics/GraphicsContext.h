@@ -69,10 +69,6 @@ namespace vast::gfx
 		// TODO: This should be separate from the Context (ContentLoader?)
 		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
 
-		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of
-		// the frame and automatically invalidated after that.
-		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0);
-
 		void SetDebugName(BufferHandle h, const std::string& name);
 		void SetDebugName(TextureHandle h, const std::string& name);
 

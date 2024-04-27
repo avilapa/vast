@@ -4,8 +4,19 @@
 
 namespace vast::gfx
 {
+	struct TempAllocator
+	{
+		BufferHandle buffer;
+		uint32 bufferSize = 0;
+		uint32 usedMemory = 0;
+
+		uint32 Alloc(uint32 size, uint32 alignment = 0);
+		void Reset();
+	};
+
 	class ResourceManager
 	{
+		friend class GraphicsContext;
 	public:
 		ResourceManager();
 		~ResourceManager();
@@ -32,10 +43,6 @@ namespace vast::gfx
 		// the frame and automatically invalidated after that.
 		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0);
 
-		// Waits for all active GPU work to finish as well as any queued resource destructions and 
-		// shader reloads.
-		void FlushGPU(); // TODO: Is this still a good name?
-
 		void SetDebugName(BufferHandle h, const std::string& name);
 		void SetDebugName(TextureHandle h, const std::string& name);
 
@@ -48,9 +55,6 @@ namespace vast::gfx
 		TexFormat GetTextureFormat(TextureHandle h);
 
 	private:
-		void CreateFrameAllocators();
-		void DestroyFrameAllocators();
-
 		void ProcessDestructions(uint32 frameId);
 		void ProcessShaderReloads();
 
@@ -65,14 +69,6 @@ namespace vast::gfx
 
 		Vector<PipelineHandle> m_PipelinesMarkedForShaderReload;
 
-		struct TempAllocator
-		{
-			BufferHandle buffer;
-			uint32 size = 0;
-			uint32 offset = 0;
-
-			void Reset() { offset = 0; }
-		};
 		// TODO: Could this be replaced by a single, big dynamic buffer?
 		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators;
 	};

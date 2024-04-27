@@ -1,7 +1,8 @@
 #include "vastpch.h"
 #include "Rendering/ImguiRenderer.h"
-
 #include "Rendering/Imgui.h"
+
+#include "Graphics/ResourceManager.h"
 
 #define USE_IMGUI_STOCK_IMPL_WIN32	1
 
@@ -113,8 +114,10 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_BEGIN("ui", "Merge Buffers");
 		const uint32 vtxSize = sizeof(ImDrawVert) * drawData->TotalVtxCount;
 		const uint32 idxSize = sizeof(ImDrawIdx) * drawData->TotalIdxCount;
-		BufferView vtxView = ctx.AllocTempBufferView(vtxSize, 4); // TODO: Do we need 4 alignment?
-		BufferView idxView = ctx.AllocTempBufferView(idxSize, 4);
+
+		auto& resourceManager = ctx.GetResourceManager();
+		BufferView vtxView = resourceManager.AllocTempBufferView(vtxSize, 4); // TODO: Do we need 4 alignment?
+		BufferView idxView = resourceManager.AllocTempBufferView(idxSize, 4);
 
 		// Copy vertex and index buffer data to a single buffer
 		ImDrawVert* vtxCpuMem = reinterpret_cast<ImDrawVert*>(vtxView.data);
@@ -136,7 +139,7 @@ namespace vast::gfx
 
 			// Bind temporary CBV
 			const float4x4 mvp = ComputeProjectionMatrix(drawData);
-			BufferView cbv = ctx.AllocTempBufferView(sizeof(float4x4), CONSTANT_BUFFER_ALIGNMENT);
+			BufferView cbv = resourceManager.AllocTempBufferView(sizeof(float4x4), CONSTANT_BUFFER_ALIGNMENT);
 			memcpy(cbv.data, &mvp, sizeof(float4x4));
 			ctx.BindConstantBuffer(m_CbvProxy, cbv.buffer, cbv.offset);
 

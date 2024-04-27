@@ -26,14 +26,33 @@ namespace vast::gfx
 		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
 		m_PipelineHandles = MakePtr<HandlePool<Pipeline, NUM_PIPELINES>>();
 
-		CreateFrameAllocators();
+		// Create frame allocators
+		BufferDesc tempFrameBufferDesc =
+		{
+			.size = 1024 * 1024,
+			.usage = ResourceUsage::UPLOAD,
+			.isRawAccess = true,
+		};
+
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			auto& frameAllocator = m_TempFrameAllocators[i];
+			VAST_ASSERT(!frameAllocator.buffer.IsValid());
+			frameAllocator.buffer = CreateBuffer(tempFrameBufferDesc);
+			frameAllocator.bufferSize = tempFrameBufferDesc.size;
+			frameAllocator.usedMemory = 0;
+		}
 	}
 
 	ResourceManager::~ResourceManager()
 	{
 		GraphicsBackend::WaitForIdle();
 
-		DestroyFrameAllocators();
+		// Destroy frame allocators
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			DestroyBuffer(m_TempFrameAllocators[i].buffer);
+		}
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -61,6 +80,7 @@ namespace vast::gfx
 		// TODO: Figure out where the profiling for destructions should go (cpu/gpu?)
 		ProcessDestructions(frameId);
 
+		// Invalidate frame allocator memory
 		m_TempFrameAllocators[frameId].Reset();
 	}
 
@@ -261,62 +281,6 @@ namespace vast::gfx
 		m_PipelinesMarkedForDestruction[frameId].clear();
 	}
 
-	void ResourceManager::CreateFrameAllocators()
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Temp Frame Allocators");
-		uint32 tempFrameBufferSize = 1024 * 1024;
-
-		BufferDesc tempFrameBufferDesc =
-		{
-			.size = tempFrameBufferSize,
-			.usage = ResourceUsage::UPLOAD,
-			.isRawAccess = true,
-		};
-
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			auto& frameAllocator = m_TempFrameAllocators[i];
-			VAST_ASSERT(!frameAllocator.buffer.IsValid());
-			frameAllocator.buffer = CreateBuffer(tempFrameBufferDesc);
-			frameAllocator.size = tempFrameBufferSize;
-			frameAllocator.offset = 0;
-		}
-	}
-
-	void ResourceManager::DestroyFrameAllocators()
-	{
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			DestroyBuffer(m_TempFrameAllocators[i].buffer);
-		}
-	}
-
-	BufferView ResourceManager::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
-	{
-		VAST_ASSERT(size);
-		auto& frameAllocator = m_TempFrameAllocators[GraphicsBackend::GetFrameId()];
-		VAST_ASSERT(frameAllocator.buffer.IsValid() && frameAllocator.size);
-
-		uint32 allocSize = size + alignment;
-		uint32 offset = frameAllocator.offset;
-		if (alignment > 0)
-		{
-			offset = AlignU32(offset, alignment);
-		}
-		VAST_ASSERT(offset + size <= frameAllocator.size);
-
-		frameAllocator.offset += allocSize;
-
-		// TODO: We need to attach descriptors to the BufferViews if we want to use them as CBVs, SRVs...
-		return BufferView
-		{
-			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
-			.buffer = frameAllocator.buffer,
-			.data = (uint8*)(GetBufferData(frameAllocator.buffer) + offset),
-			.offset = offset,
-		};
-	}
-
 	void ResourceManager::ReloadShaders(PipelineHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
@@ -332,19 +296,6 @@ namespace vast::gfx
 			GraphicsBackend::ReloadShaders(h);
 		}
 		m_PipelinesMarkedForShaderReload.clear();
-	}
-
-	void ResourceManager::FlushGPU()
-	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
-		GraphicsBackend::WaitForIdle(); // TODO: Do we want to Idle in here, or expect the user to do it?
-
-		ProcessShaderReloads();
-
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			ProcessDestructions(i);
-		}
 	}
 
 	bool ResourceManager::GetIsReady(BufferHandle h)
@@ -381,6 +332,44 @@ namespace vast::gfx
 	{
 		VAST_ASSERT(h.IsValid());
 		return GraphicsBackend::GetTextureFormat(h);
+	}
+
+	//
+
+	BufferView ResourceManager::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
+	{
+		auto& frameAllocator = m_TempFrameAllocators[GraphicsBackend::GetFrameId()];
+		VAST_ASSERT(frameAllocator.buffer.IsValid() && frameAllocator.bufferSize);
+
+		uint32 allocStart = frameAllocator.Alloc(size, alignment);
+
+		// TODO: We need to attach descriptors to the BufferViews if we want to use them as CBVs, SRVs...
+		return BufferView
+		{
+			// TODO: If we separate handle from data in HandlePool, each BufferView could have its own handle, and we could even generalize BufferViews to just Buffer objects.
+			.buffer = frameAllocator.buffer,
+			.data = (uint8*)(GetBufferData(frameAllocator.buffer) + allocStart),
+			.offset = allocStart,
+		};
+	}
+
+	uint32 TempAllocator::Alloc(uint32 size, uint32 alignment /* = 0 */)
+	{
+		VAST_ASSERT(size);
+		uint32 offset = usedMemory;
+		if (alignment > 0)
+		{
+			offset = AlignU32(offset, alignment);
+		}
+		VAST_ASSERT(offset + size <= bufferSize);
+
+		usedMemory += size + alignment; // TODO: Is this just being conservative? Should be += offset delta from alignment + size
+		return offset;
+	}
+
+	void TempAllocator::Reset()
+	{
+		usedMemory = 0;
 	}
 
 }

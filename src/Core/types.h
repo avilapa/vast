@@ -111,4 +111,17 @@ namespace vast
 
 	// -------------------------------------------------------------------------------------------- //
 
+	// TODO: Moving these here until the need for a better place arises.
+	inline constexpr uint32 AlignU32(uint32 valueToAlign, uint32 alignment)
+	{
+		alignment -= 1;
+		return (uint32)((valueToAlign + alignment) & ~alignment);
+	}
+
+	inline constexpr uint64 AlignU64(uint64 valueToAlign, uint64 alignment)
+	{
+		alignment -= 1;
+		return (uint64)((valueToAlign + alignment) & ~alignment);
+	}
+
 }
