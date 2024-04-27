@@ -4,7 +4,6 @@
 
 // TODO: DX12ShaderManager shouldn't have to include this or be aware of compiler specific arguments, should be moved down to DX12ShaderCompiler.
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
-#include "dx12/DirectXAgilitySDK/include/d3d12shader.h"
 
 static const wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
 // TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
@@ -24,21 +23,7 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Shader Manager");
 		m_ShaderCompiler = MakePtr<DX12ShaderCompiler>();
 
-		m_SharedCompilerArgs =
-		{
-			L"-I", SHADER_SOURCE_PATH,
-#ifdef VAST_DEBUG
-			DXC_ARG_DEBUG,
-#else
-			DXC_ARG_OPTIMIZATION_LEVEL3,
-			//DXC_ARG_SKIP_OPTIMIZATIONS,
-#endif
-			DXC_ARG_WARNINGS_ARE_ERRORS,
-			L"-Qstrip_reflect",
-			//L"-Qstrip_debug"
-		};
-
-		AddGlobalShaderDefine("PushConstantRegister", std::string("b") + std::to_string(PUSH_CONSTANT_REGISTER_INDEX));
+		AddGlobalShaderDefine(L"PushConstantRegister=b" + std::to_wstring(PUSH_CONSTANT_REGISTER_INDEX));
 	}
 
 	DX12ShaderManager::~DX12ShaderManager()
@@ -55,21 +40,9 @@ namespace vast::gfx
 		m_ShaderCompiler = nullptr;
 	}
 
-	// From: https://stackoverflow.com/questions/27220/how-to-convert-stdstring-to-lpcwstr-in-c-unicode
-	static std::wstring StringToWString(const std::string& s, bool bIsUTF8 = true)
+	void DX12ShaderManager::AddGlobalShaderDefine(const std::wstring& define)
 	{
-		int32 slength = (int32)s.length() + 1;
-		int32 len = MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, 0, 0);
-		std::wstring buf;
-		buf.resize(len);
-		MultiByteToWideChar(bIsUTF8 ? CP_UTF8 : CP_ACP, 0, s.c_str(), slength, const_cast<wchar_t*>(buf.c_str()), len);
-		return buf;
-	}
-
-	void DX12ShaderManager::AddGlobalShaderDefine(const std::string& name, const std::string& value)
-	{
-		m_SharedCompilerArgs.push_back(L"-D");
-		m_SharedCompilerArgs.push_back(StringToWString(name + "=" + value));
+		m_GlobalShaderDefines.push_back(define);
 	}
 
 	Ref<DX12Shader> DX12ShaderManager::LoadShader(const ShaderDesc& desc)
@@ -139,19 +112,14 @@ namespace vast::gfx
 
 		IDxcBlobEncoding* sourceBlobEncoding = m_ShaderCompiler->LoadShader(fullPath);
 
-		Vector<LPCWSTR> args
-		{
-			shaderName.c_str(),										// Optional source file name used in error logging.
-			L"-E", entryPoint.c_str(),								// Entry point function name.
-			L"-T", DX12ShaderCompiler::ToShaderTarget(desc.type),	// Shader target profile.
-		};
+		ShaderCompilerArguments sca;
+		sca.shaderType = desc.type;
+		sca.shaderName = std::wstring(desc.shaderName.begin(), desc.shaderName.end());
+		sca.shaderEntryPoint = std::wstring(desc.entryPoint.begin(), desc.entryPoint.end());
+		sca.includeDirectories.push_back(SHADER_SOURCE_PATH);
+		sca.additionalDefines = m_GlobalShaderDefines;
 
-		for (auto& arg : m_SharedCompilerArgs)
-		{
-			args.push_back(arg.c_str());
-		}
-
-		IDxcResult* compiledShader = m_ShaderCompiler->CompileShader(sourceBlobEncoding, args);
+		IDxcResult* compiledShader = m_ShaderCompiler->CompileShader(sourceBlobEncoding, sca);
 
 		ID3D12ShaderReflection* shaderReflection = m_ShaderCompiler->ExtractShaderReflection(compiledShader);
 		IDxcBlob* shaderBlob = m_ShaderCompiler->ExtractShaderOutput(compiledShader);

@@ -12,6 +12,14 @@ struct ID3D12ShaderReflection;
 
 namespace vast::gfx
 {
+	struct ShaderCompilerArguments
+	{
+		ShaderType shaderType;
+		std::wstring shaderName;
+		std::wstring shaderEntryPoint;
+		Vector<std::wstring> includeDirectories;
+		Vector<std::wstring> additionalDefines;
+	};
 
 	class DX12ShaderCompiler
 	{
@@ -19,10 +27,8 @@ namespace vast::gfx
 		DX12ShaderCompiler();
 		~DX12ShaderCompiler();
 
-		static const wchar_t* ToShaderTarget(ShaderType type);
-
 		IDxcBlobEncoding* LoadShader(std::wstring& fullPath);
-		IDxcResult* CompileShader(IDxcBlobEncoding* sourceBlobEncoding, Vector<LPCWSTR>& args);
+		IDxcResult* CompileShader(IDxcBlobEncoding* sourceBlobEncoding, const ShaderCompilerArguments& sca);
 		ID3D12ShaderReflection* ExtractShaderReflection(IDxcResult* compiledShader);
 		IDxcBlob* ExtractShaderOutput(IDxcResult* compiledShader);
 		IDxcBlob* ExtractShaderPDB(IDxcResult* compiledShader);

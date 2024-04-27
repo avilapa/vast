@@ -24,7 +24,7 @@ namespace vast::gfx
 		DX12ShaderManager();
 		~DX12ShaderManager();
 
-		void AddGlobalShaderDefine(const std::string& name, const std::string& value);
+		void AddGlobalShaderDefine(const std::wstring& define);
 
 		Ref<DX12Shader> LoadShader(const ShaderDesc& desc);
 		bool ReloadShader(Ref<DX12Shader> shader);
@@ -43,7 +43,7 @@ namespace vast::gfx
 		std::unordered_map<std::string, uint32> m_ShaderKeys;
 		Vector<std::pair<Ref<DX12Shader>, ShaderDesc>> m_Shaders;
 
-		Vector<std::wstring> m_SharedCompilerArgs;
+		Vector<std::wstring> m_GlobalShaderDefines;
 	};
 
 }

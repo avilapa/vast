@@ -39,7 +39,7 @@ namespace vast::gfx
 		return sourceBlobEncoding;
 	}
 
-	const wchar_t* DX12ShaderCompiler::ToShaderTarget(ShaderType type)
+	static const wchar_t* ToShaderTarget(ShaderType type)
 	{
 		switch (type)
 		{
@@ -55,7 +55,7 @@ namespace vast::gfx
 		}
 	}
 
-	IDxcResult* DX12ShaderCompiler::CompileShader(IDxcBlobEncoding* sourceBlobEncoding, Vector<LPCWSTR>& args)
+	IDxcResult* DX12ShaderCompiler::CompileShader(IDxcBlobEncoding* sourceBlobEncoding, const ShaderCompilerArguments& sca)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Compile Shader");
 		VAST_ASSERT(sourceBlobEncoding);
@@ -66,6 +66,34 @@ namespace vast::gfx
 			.Size = sourceBlobEncoding->GetBufferSize(),
 			.Encoding = DXC_CP_ACP
 		};
+
+		Vector<LPCWSTR> args
+		{
+			sca.shaderName.c_str(),
+			L"-E", sca.shaderEntryPoint.c_str(),
+			L"-T", ToShaderTarget(sca.shaderType),
+#ifdef VAST_DEBUG
+			DXC_ARG_DEBUG,
+#else
+			DXC_ARG_OPTIMIZATION_LEVEL3,
+			//DXC_ARG_SKIP_OPTIMIZATIONS,
+#endif
+			DXC_ARG_WARNINGS_ARE_ERRORS,
+			L"-Qstrip_reflect",
+			//L"-Qstrip_debug"
+		};
+
+		for (const auto& arg : sca.includeDirectories)
+		{
+			args.push_back(L"-I");
+			args.push_back(arg.c_str());
+		}
+		
+		for (const auto& arg : sca.additionalDefines)
+		{
+			args.push_back(L"-D");
+			args.push_back(arg.c_str());
+		}
 
 		// Compile shader
 		IDxcResult* compiledShader = nullptr;

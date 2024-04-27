@@ -302,7 +302,11 @@ namespace vast::gfx
 			m_Device->CreateSampler(&samplerDescs[i], currentSamplerDescriptor);
 			currentSamplerDescriptor.ptr += m_SamplerRenderPassDescriptorHeap->GetDescriptorSize();
 
-			m_ShaderManager->AddGlobalShaderDefine(std::string(g_SamplerNames[i]), std::to_string(i));
+			size_t bufSize = strlen(g_SamplerNames[i]);
+			std::wstring samplerName(bufSize, L'\0');
+			MultiByteToWideChar(CP_UTF8, 0, g_SamplerNames[i], -1, &samplerName[0], static_cast<int>(bufSize));
+
+			m_ShaderManager->AddGlobalShaderDefine(samplerName + L"=" + std::to_wstring(i));
 		}
 	}
 
