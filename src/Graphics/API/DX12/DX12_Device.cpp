@@ -232,17 +232,27 @@ namespace vast::gfx
 		m_SamplerRenderPassDescriptorHeap = nullptr;
 
 		m_ShaderManager = nullptr;
+
 		DX12SafeRelease(m_Allocator);
+		DX12SafeRelease(m_DXGIFactory);
 
 #ifdef VAST_DEBUG
+		ID3D12InfoQueue* infoQueue;
+		if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&infoQueue))))
+		{
+			// Note: Avoid debugbreak on ReportLiveDeviceObjects warning.
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, false);
+			DX12SafeRelease(infoQueue);
+		}
 		ID3D12DebugDevice2* debugDevice;
 		DX12Check(m_Device->QueryInterface(IID_PPV_ARGS(&debugDevice)));
 		DX12SafeRelease(m_Device);
+		// Note: Only one live device object is expected, and that is the debugDevice itself.
 		DX12Check(debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL));
+		DX12SafeRelease(debugDevice);
 #else
 		DX12SafeRelease(m_Device);
 #endif
-		DX12SafeRelease(m_DXGIFactory);
 	}
 
 	void DX12Device::CreateSamplers()
