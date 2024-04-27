@@ -1,6 +1,5 @@
 #include "vastpch.h"
 #include "Graphics/API/DX12/DX12_Descriptors.h"
-#include "Graphics/API/DX12/DX12_GraphicsContext.h"
 
 namespace vast::gfx
 {

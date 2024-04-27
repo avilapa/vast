@@ -17,6 +17,21 @@ namespace vast::gfx
 
 	// - Graphics Enums ------------------------------------------------------------------------ //
 
+	enum class GPUAdapterPreferenceCriteria
+	{
+		MAX_PERF,
+		MAX_VRAM,
+		MIN_POWER,
+	};
+	static const char* g_GPUAdapterPreferenceCriteriaNames[]
+	{
+		"Highest Performance",
+		"Highest GPU Memory",
+		"Lowest Power Consumption",
+	};
+	static_assert(NELEM(g_GPUAdapterPreferenceCriteriaNames) == (CountBits(IDX(GPUAdapterPreferenceCriteria::MIN_POWER)) + 1));
+
+
 	enum class BufViewFlags
 	{
 		NONE = 0,

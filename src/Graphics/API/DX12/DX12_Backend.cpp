@@ -39,6 +39,8 @@ namespace vast::gfx
 	void GraphicsBackend::Init(const GraphicsParams& params)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Backend");
+		VAST_LOG_TRACE("[gfx] [dx12] Initializing DX12 backend...");
+
 		s_Buffers = MakePtr<ResourceHandler<DX12Buffer, Buffer, NUM_BUFFERS>>();
 		s_Textures = MakePtr<ResourceHandler<DX12Texture, Texture, NUM_TEXTURES>>();
 		s_Pipelines = MakePtr<ResourceHandler<DX12Pipeline, Pipeline, NUM_PIPELINES>>();

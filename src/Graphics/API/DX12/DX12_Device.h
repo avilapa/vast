@@ -42,9 +42,12 @@ namespace vast::gfx
 		void CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType);
 
 	private:
+		IDXGIAdapter4* SelectMainAdapter(GPUAdapterPreferenceCriteria pref);
+
 		void CopyDescriptorToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex);
 		void CreateSamplers();
 
+	private:
 		IDXGIFactory7* m_DXGIFactory;
 		ID3D12Device5* m_Device;
 		D3D12MA::Allocator* m_Allocator;

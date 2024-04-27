@@ -7,7 +7,6 @@
 #include "dx12/D3D12MemoryAllocator/include/D3D12MemAlloc.h"
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
-#include <dxgi1_6.h>
 #ifdef VAST_DEBUG
 #include <dxgidebug.h>
 #endif
@@ -19,6 +18,37 @@ namespace vast::gfx
 	constexpr uint32 NUM_SRV_STAGING_DESCRIPTORS = 4096;
 	constexpr uint32 NUM_RESERVED_SRV_DESCRIPTORS = 8192;
 	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
+
+	constexpr D3D_FEATURE_LEVEL GetMinFeatureLevel()
+	{
+		return D3D_FEATURE_LEVEL_11_0;
+	}
+
+	const D3D_FEATURE_LEVEL GetMaxFeatureLevel(IDXGIAdapter4* adapter)
+	{
+		VAST_ASSERT(adapter);
+		constexpr D3D_FEATURE_LEVEL availableFeatureLevels[]
+		{
+			D3D_FEATURE_LEVEL_11_0,
+			D3D_FEATURE_LEVEL_11_1,
+			D3D_FEATURE_LEVEL_12_0,
+			D3D_FEATURE_LEVEL_12_1,
+			D3D_FEATURE_LEVEL_12_2,
+		};
+
+		D3D12_FEATURE_DATA_FEATURE_LEVELS featureLevelsInfo = {};
+		featureLevelsInfo.NumFeatureLevels = NELEM(availableFeatureLevels);
+		featureLevelsInfo.pFeatureLevelsRequested = availableFeatureLevels;
+
+		ID3D12Device* device;
+		DX12Check(D3D12CreateDevice(adapter, GetMinFeatureLevel(), IID_PPV_ARGS(&device)));
+		DX12Check(device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featureLevelsInfo, sizeof(featureLevelsInfo)));
+		DX12SafeRelease(device);
+
+		return featureLevelsInfo.MaxSupportedFeatureLevel;
+	}
+
+	//
 
 	DX12Device::DX12Device()
 		: m_DXGIFactory(nullptr)
@@ -33,118 +63,73 @@ namespace vast::gfx
 		, m_SamplerRenderPassDescriptorHeap(nullptr)
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Device");
-		VAST_LOG_TRACE("[gfx] [dx12] Starting graphics device creation.");
 
+		UINT dxgiFactoryFlags = 0;
 #ifdef VAST_DEBUG
+		ID3D12Debug3* debugInterface;
+		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface))))
 		{
-			VAST_PROFILE_TRACE_SCOPE("Device", "Enable Debug Layer");
-			ID3D12Debug* debugController;
-			if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
-			{
-				debugController->EnableDebugLayer();
-				DX12SafeRelease(debugController);
-				VAST_LOG_WARNING("[gfx] [dx12] Debug layer enabled.");
-			}
-		}
-#endif // VAST_DEBUG
-
-		{
-			VAST_PROFILE_TRACE_SCOPE("Device", "Create DXGI Factory");
-			VAST_LOG_TRACE("[gfx] [dx12] Creating DXGI factory.");
-			UINT createFactoryFlags = 0;
-#ifdef VAST_DEBUG
-			createFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
-#endif // VAST_DEBUG
-			DX12Check(CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&m_DXGIFactory)));
+			// Note: Usage of debug layer requires "Graphics Tools" optional feature.
+			debugInterface->EnableDebugLayer();
+			//debugInterface->SetEnableGPUBasedValidation(true);
+			VAST_LOG_WARNING("[gfx] [dx12] Debug layer enabled.");
+			DX12SafeRelease(debugInterface);
 		}
 
-		IDXGIAdapter1* adapter = nullptr;
+		dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+#endif
+		VAST_LOG_TRACE("[gfx] [dx12] Creating DXGI factory.");
+		DX12Check(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_DXGIFactory)));
+
+		// TODO: Pass GPUAdapterPreferenceCriteria down through GraphicsContext as an option.
+		IDXGIAdapter4* adapter = SelectMainAdapter(GPUAdapterPreferenceCriteria::MAX_PERF);
+
+		VAST_LOG_TRACE("[gfx] [dx12] Creating main GFX device.");
+		DX12Check(D3D12CreateDevice(adapter, GetMaxFeatureLevel(adapter), IID_PPV_ARGS(&m_Device)));
+		m_Device->SetName(L"Main GFX Device");
+
+		VAST_PROFILE_TRACE_BEGIN("Device", "Create Memory Allocator");
+		VAST_LOG_TRACE("[gfx] [dx12] Creating memory allocator.");
+		D3D12MA::ALLOCATOR_DESC allocatorDesc =
 		{
-			VAST_PROFILE_TRACE_SCOPE("Device", "Query adapters");
-			uint32 bestAdapterIndex = 0;
-			size_t bestAdapterMemory = 0;
-
-			for (uint32 i = 0; m_DXGIFactory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
-			{
-				DXGI_ADAPTER_DESC1 adapterDesc;
-				DX12Check(adapter->GetDesc1(&adapterDesc));
-
-				// Choose adapter with the highest GPU memory.
-				if ((adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0
-					&& SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, __uuidof(ID3D12Device), nullptr))
-					&& adapterDesc.DedicatedVideoMemory > bestAdapterMemory)
-				{
-					bestAdapterIndex = i;
-					bestAdapterMemory = adapterDesc.DedicatedVideoMemory;
-				}
-
-				DX12SafeRelease(adapter);
-			}
-			// Note: If we are crashing here, it's likely the system was unable to load D3D12Core.dll.
-			// Check the logs and verify that D3D12SDKPath is correct.
-			VAST_ASSERTF(bestAdapterMemory != 0, "Failed to find an adapter.");
-
-			VAST_LOG_TRACE("[gfx] [dx12] GPU adapter found with index {}.", bestAdapterIndex);
-			m_DXGIFactory->EnumAdapters1(bestAdapterIndex, &adapter);
-		}
-
-		{
-			VAST_PROFILE_TRACE_SCOPE("Device", "Create Device");
-			VAST_LOG_TRACE("[gfx] [dx12] Creating device.");
-			DX12Check(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_Device)));
-		}
-
-		{
-			VAST_PROFILE_TRACE_SCOPE("Device", "Create Memory Allocator");
-			VAST_LOG_TRACE("[gfx] [dx12] Creating memory allocator.");
-			D3D12MA::ALLOCATOR_DESC desc = {};
-			desc.Flags = D3D12MA::ALLOCATOR_FLAG_NONE;
-			desc.pDevice = m_Device;
-			desc.pAdapter = adapter;
-			D3D12MA::CreateAllocator(&desc, &m_Allocator);
-		}
-
-		{
-			VAST_LOG_TRACE("[gfx] [dx12] Creating shader manager.");
-			m_ShaderManager = MakePtr<DX12ShaderManager>();
-		}
+			.Flags = D3D12MA::ALLOCATOR_FLAG_NONE,
+			.pDevice = m_Device,
+			.PreferredBlockSize = 0,
+			.pAllocationCallbacks = nullptr,
+			.pAdapter = adapter,
+		};
+		D3D12MA::CreateAllocator(&allocatorDesc, &m_Allocator);
+		VAST_PROFILE_TRACE_END("Device", "Create Memory Allocator");
 
 		DX12SafeRelease(adapter);
 
 #ifdef VAST_DEBUG
-		VAST_LOG_TRACE("[gfx] [dx12] Enabling debug messages.");
 		ID3D12InfoQueue* infoQueue;
 		if (SUCCEEDED(m_Device->QueryInterface(IID_PPV_ARGS(&infoQueue))))
 		{
-			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
-			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_INFO, TRUE);
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
 
-			//D3D12_MESSAGE_CATEGORY Categories[] = {};
-			D3D12_MESSAGE_SEVERITY Severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
-			//D3D12_MESSAGE_ID DenyIds[] = {};
+			D3D12_MESSAGE_SEVERITY Severities[] 
+			{ 
+				D3D12_MESSAGE_SEVERITY_INFO 
+			};
+
 			D3D12_INFO_QUEUE_FILTER filter = {};
-			//filter.DenyList.NumCategories = _countof(Categories);
-			//filter.DenyList.pCategoryList = Categories;
 			filter.DenyList.NumSeverities = _countof(Severities);
 			filter.DenyList.pSeverityList = Severities;
-			//filter.DenyList.NumIDs = _countof(DenyIds);
-			//filter.DenyList.pIDList = DenyIds;
 
 			DX12Check(infoQueue->PushStorageFilter(&filter));
 
 			DX12SafeRelease(infoQueue);
 		}
-#endif // VAST_DEBUG
+#endif
 
 		VAST_LOG_TRACE("[gfx] [dx12] Creating descriptor heaps.");
-		m_RTVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 
-			NUM_RTV_STAGING_DESCRIPTORS);
-		m_DSVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 
-			NUM_DSV_STAGING_DESCRIPTORS);
-		m_SRVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 
-			NUM_SRV_STAGING_DESCRIPTORS);
+		m_RTVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, NUM_RTV_STAGING_DESCRIPTORS);
+		m_DSVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, NUM_DSV_STAGING_DESCRIPTORS);
+		m_SRVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, NUM_SRV_STAGING_DESCRIPTORS);
 
 		m_FreeReservedDescriptorIndices.resize(NUM_RESERVED_SRV_DESCRIPTORS);
 		for (uint32 i = 0; i < m_FreeReservedDescriptorIndices.size(); ++i)
@@ -159,7 +144,76 @@ namespace vast::gfx
 		}
 
 		m_SamplerRenderPassDescriptorHeap = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 0, IDX(SamplerState::COUNT));
+		
+		VAST_LOG_TRACE("[gfx] [dx12] Creating shader manager.");
+		m_ShaderManager = MakePtr<DX12ShaderManager>();
+
+		VAST_LOG_TRACE("[gfx] [dx12] Creating default samplers.");
 		CreateSamplers();
+	}
+
+	IDXGIAdapter4* DX12Device::SelectMainAdapter(GPUAdapterPreferenceCriteria pref)
+	{
+		VAST_PROFILE_TRACE_SCOPE("Device", "Select Main Adapter");
+		VAST_LOG_TRACE("[gfx] [dx12] Selecting best GPU adapter (based on '{}' criteria).", g_GPUAdapterPreferenceCriteriaNames[IDX(pref)]);
+
+		// Note: If GPUAdapterPreferenceCriteria::HIGH_VRAM is selected we have to find it manually,
+		// DXGI_GPU_PREFERENCE is set to UNSPECIFIED, and instead of returning the first enumerated
+		// adapter we'll loop trough all of them and return one at the end, which makes this function
+		// more convoluted.
+		const DXGI_GPU_PREFERENCE dxgiGpuPref = TranslateToDX12(pref);
+		uint32 highestVramAdapterIdx = 0;
+		size_t highestVram = 0;
+
+		IDXGIAdapter4* adapter = nullptr;
+		for (uint32 i = 0; m_DXGIFactory->EnumAdapterByGpuPreference(i, dxgiGpuPref, IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND; ++i)
+		{
+			DXGI_ADAPTER_DESC1 desc;
+			DX12Check(adapter->GetDesc1(&desc));
+
+			if ((desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0)
+			{
+				DX12SafeRelease(adapter);
+				continue;
+			}
+
+			if (SUCCEEDED(D3D12CreateDevice(adapter, GetMinFeatureLevel(), __uuidof(ID3D12Device), nullptr)))
+			{
+				if (pref == GPUAdapterPreferenceCriteria::MAX_VRAM)
+				{
+					if (desc.DedicatedVideoMemory > highestVram)
+					{
+						highestVramAdapterIdx = i;
+						highestVram = desc.DedicatedVideoMemory;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			DX12SafeRelease(adapter);
+		}
+
+		if (pref == GPUAdapterPreferenceCriteria::MAX_VRAM)
+		{
+			VAST_ASSERTF(highestVram != 0, "Failed to find an adapter.");
+			m_DXGIFactory->EnumAdapterByGpuPreference(highestVramAdapterIdx, dxgiGpuPref, IID_PPV_ARGS(&adapter));
+		}
+
+		// Note: If we are crashing here, it's likely the system was unable to load D3D12Core.dll.
+		// Check the logs and verify that D3D12SDKPath is correct.
+		VAST_ASSERTF(adapter, "Failed to find an adapter.");
+
+		DXGI_ADAPTER_DESC1 desc;
+		DX12Check(adapter->GetDesc1(&desc));
+
+		std::string gpuName(128, 0);
+		WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, &gpuName[0], 128, nullptr, nullptr);
+
+		VAST_LOG_TRACE("[gfx] [dx12] Found: {} ({} GB)", gpuName, int(desc.DedicatedVideoMemory / 1e9));
+		return adapter;
 	}
 
 	DX12Device::~DX12Device()
@@ -179,7 +233,15 @@ namespace vast::gfx
 
 		m_ShaderManager = nullptr;
 		DX12SafeRelease(m_Allocator);
+
+#ifdef VAST_DEBUG
+		ID3D12DebugDevice2* debugDevice;
+		DX12Check(m_Device->QueryInterface(IID_PPV_ARGS(&debugDevice)));
 		DX12SafeRelease(m_Device);
+		DX12Check(debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL));
+#else
+		DX12SafeRelease(m_Device);
+#endif
 		DX12SafeRelease(m_DXGIFactory);
 	}
 
@@ -187,6 +249,7 @@ namespace vast::gfx
 	{
 		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Samplers");
 		D3D12_SAMPLER_DESC samplerDescs[IDX(SamplerState::COUNT)]{};
+
 		{
 			D3D12_SAMPLER_DESC& desc = samplerDescs[IDX(SamplerState::LINEAR_WRAP)];
 
@@ -233,6 +296,7 @@ namespace vast::gfx
 		DX12Descriptor samplerDescriptorBlock = m_SamplerRenderPassDescriptorHeap->GetUserDescriptorBlockStart(static_cast<uint32>(IDX(SamplerState::COUNT)));
 		D3D12_CPU_DESCRIPTOR_HANDLE currentSamplerDescriptor = samplerDescriptorBlock.cpuHandle;
 
+		VAST_ASSERT(m_Device && m_ShaderManager);
 		for (uint32 i = 0; i < IDX(SamplerState::COUNT); ++i)
 		{
 			m_Device->CreateSampler(&samplerDescs[i], currentSamplerDescriptor);

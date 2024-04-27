@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Graphics/GraphicsTypes.h"
 #include "Graphics/Resources.h"
 #include "Graphics/ShaderResourceProxy.h"
 
 #include "dx12/DirectXAgilitySDK/include/d3d12.h"
+#include <dxgi1_6.h>
 
 namespace D3D12MA
 {
@@ -175,6 +177,17 @@ namespace vast::gfx
 	{
 		alignment -= 1;
 		return (uint64)((valueToAlign + alignment) & ~alignment);
+	}
+
+	constexpr DXGI_GPU_PREFERENCE TranslateToDX12(const GPUAdapterPreferenceCriteria& v)
+	{
+		switch (v)
+		{
+		case GPUAdapterPreferenceCriteria::MAX_PERF:	return DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE;
+		case GPUAdapterPreferenceCriteria::MAX_VRAM:	return DXGI_GPU_PREFERENCE_UNSPECIFIED;
+		case GPUAdapterPreferenceCriteria::MIN_POWER:	return DXGI_GPU_PREFERENCE_MINIMUM_POWER;
+		default: VAST_ASSERTF(0, "Invalid GPUAdapterPreferenceCriteria."); return DXGI_GPU_PREFERENCE_UNSPECIFIED;
+		}
 	}
 
 	constexpr DXGI_FORMAT TranslateToDX12(const IndexBufFormat& v)
