@@ -27,7 +27,7 @@ namespace vast::gfx
 		, m_bHasRenderPassBegun(false)
 		, m_GpuFrameTimestampIdx(0)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Context");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_LOG_INFO("[gfx] Initializing GraphicsContext...");
 
 		GraphicsBackend::Init(params);
@@ -40,6 +40,8 @@ namespace vast::gfx
 
 	GraphicsContext::~GraphicsContext()
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		m_GpuProfiler = nullptr;
 		m_ResourceManager = nullptr;
 
@@ -48,20 +50,19 @@ namespace vast::gfx
 
 	void GraphicsContext::BeginFrame()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Begin Frame");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(!m_bHasFrameBegun, "A frame is already running");
+
 		m_bHasFrameBegun = true;
 
 		m_ResourceManager->BeginFrame();
-
 		GraphicsBackend::BeginFrame();
-
 		m_GpuFrameTimestampIdx = m_GpuProfiler->BeginTimestamp();
 	}
 
 	void GraphicsContext::EndFrame()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "End Frame");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(m_bHasFrameBegun, "No frame is currently running.");
 
 		m_GpuProfiler->EndTimestamp(m_GpuFrameTimestampIdx);
@@ -85,56 +86,64 @@ namespace vast::gfx
 
 	void GraphicsContext::BeginRenderPass(PipelineHandle h, const RenderPassTargets targets)
 	{
-		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_PROFILE_TRACE_BEGIN("Render Pass");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(!m_bHasRenderPassBegun, "A render pass is already running.");
-		m_bHasRenderPassBegun = true;
 		VAST_ASSERT(h.IsValid());
+
+		m_bHasRenderPassBegun = true;
 		GraphicsBackend::BeginRenderPass(h, targets);
 	}
 
 	void GraphicsContext::BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
 	{
-		VAST_PROFILE_TRACE_BEGIN("gfx", "Render Pass");
+		VAST_PROFILE_TRACE_BEGIN("Render Pass");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(!m_bHasRenderPassBegun, "A render pass is already running.");
-		m_bHasRenderPassBegun = true;
 		VAST_ASSERT(h.IsValid());
+
+		m_bHasRenderPassBegun = true;
 		GraphicsBackend::BeginRenderPassToBackBuffer(h, loadOp, storeOp);
 	}
 
 	void GraphicsContext::EndRenderPass()
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(m_bHasRenderPassBegun, "No render pass is currently running.");
+
 		m_bHasRenderPassBegun = false;
 		GraphicsBackend::EndRenderPass();
+
+		VAST_PROFILE_TRACE_END("Render Pass");
 	}
 
 	bool GraphicsContext::IsInRenderPass() const
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Compute Dispatch");
 		return m_bHasRenderPassBegun;
 	}
 
 	void GraphicsContext::BindPipelineForCompute(PipelineHandle h)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Pipeline For Compute");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(!m_bHasRenderPassBegun, "Cannot bind another pipeline in the middle of a render pass.");
 		VAST_ASSERT(h.IsValid());
+
 		GraphicsBackend::BindPipelineForCompute(h);
 	}
 
 	void GraphicsContext::WaitForIdle()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Wait CPU on GPU");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		GraphicsBackend::WaitForIdle();
 	}
 
 	void GraphicsContext::FlushGPU()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Flush GPU Work");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		GraphicsBackend::WaitForIdle();
-
 		m_ResourceManager->ProcessShaderReloads();
-
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
 			m_ResourceManager->ProcessDestructions(i);
@@ -191,35 +200,30 @@ namespace vast::gfx
 
 	void GraphicsContext::BindVertexBuffer(BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Vertex Buffer");
 		VAST_ASSERT(h.IsValid());
 		GraphicsBackend::BindVertexBuffer(h, offset, stride);
 	}
 
 	void GraphicsContext::BindIndexBuffer(BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Index Buffer");
 		VAST_ASSERT(h.IsValid());
 		GraphicsBackend::BindIndexBuffer(h, offset, format);
 	}
 
 	void GraphicsContext::BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset /* = 0 */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind Constant Buffer");
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
 		GraphicsBackend::BindConstantBuffer(proxy, h, offset);
 	}
 
 	void GraphicsContext::SetPushConstants(const void* data, const uint32 size)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Set Push Constants");
 		VAST_ASSERT(data && size);
 		GraphicsBackend::SetPushConstants(data, size);
 	}
 
 	void GraphicsContext::BindSRV(ShaderResourceProxy proxy, BufferHandle h)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind SRV");
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
 		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
 		GraphicsBackend::BindSRV(h);
@@ -227,7 +231,6 @@ namespace vast::gfx
 
 	void GraphicsContext::BindSRV(ShaderResourceProxy proxy, TextureHandle h)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind SRV");
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
 		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
 		GraphicsBackend::BindSRV(h);
@@ -235,7 +238,6 @@ namespace vast::gfx
 
 	void GraphicsContext::BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel /* = 0 */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind UAV");
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
 		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
 		GraphicsBackend::BindUAV(h, mipLevel);
@@ -285,19 +287,16 @@ namespace vast::gfx
 
 	void GraphicsContext::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation /* = 0 */, uint32 instStartLocation /* = 0 */)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Instanced");
 		GraphicsBackend::DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
 	}
 
 	void GraphicsContext::DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Indexed Instanced");
 		GraphicsBackend::DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
 	}
 
 	void GraphicsContext::DrawFullscreenTriangle()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Draw Fullscreen Triangle");
 		GraphicsBackend::DrawFullscreenTriangle();
 	}
 

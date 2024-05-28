@@ -6,10 +6,7 @@
 #include "Graphics/GPUProfiler.h"
 #include "Rendering/Imgui.h"
 
-#include "minitrace/minitrace.h"
-
 #include <queue>
-#include <deque>
 
 namespace vast
 {
@@ -259,18 +256,23 @@ namespace vast
 
 	void Profiler::Init()
 	{
+#if VAST_ENABLE_PROFILING
 		VAST_LOG_INFO("[profiler] Initializing Profiler...");
 		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
+#endif
 	}
 
 	void Profiler::BeginFrame()
 	{
+#if VAST_ENABLE_PROFILING
 		s_Timer.Update();
 		s_tFrameStart = s_Timer.GetElapsedMicroseconds<int64>();
+#endif
 	}
 
 	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
 	{
+#if VAST_ENABLE_PROFILING
 		s_Timer.Update();
 
 		// Record global stats, and update plots (if user interface is showing)
@@ -365,6 +367,7 @@ namespace vast
 
 			p.state = ProfileBlock::State::IDLE;
 		}
+#endif // VAST_ENABLE_PROFILING
 	}
 
 	//
@@ -591,33 +594,6 @@ namespace vast
 	float Profiler::GetTextMinimalLength()
 	{
 		return ImGui::CalcTextSize("Frame: 0.000f ms (GPU: 0.000f ms)").x;
-	}
-
-	//
-
-	void TraceLogger::BeginTrace(const char* category, const char* name)
-	{
-		MTR_BEGIN(category, name);
-	}
-
-	void TraceLogger::EndTrace(const char* category, const char* name)
-	{
-		MTR_END(category, name);
-	}
-
-	void TraceLogger::Init(const char* fileName)
-	{
-#if VAST_ENABLE_TRACING
-		mtr_init(fileName);
-#endif
-	}
-
-	void TraceLogger::Stop()
-	{
-#if VAST_ENABLE_TRACING
-		mtr_flush();
-		mtr_shutdown();
-#endif
 	}
 
 }

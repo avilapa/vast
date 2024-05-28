@@ -62,7 +62,7 @@ namespace vast::gfx
 		, m_SRVRenderPassDescriptorHeaps({ nullptr })
 		, m_SamplerRenderPassDescriptorHeap(nullptr)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Device");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		UINT dxgiFactoryFlags = 0;
 #ifdef VAST_DEBUG
@@ -88,7 +88,7 @@ namespace vast::gfx
 		DX12Check(D3D12CreateDevice(adapter, GetMaxFeatureLevel(adapter), IID_PPV_ARGS(&m_Device)));
 		m_Device->SetName(L"Main GFX Device");
 
-		VAST_PROFILE_TRACE_BEGIN("Device", "Create Memory Allocator");
+		VAST_PROFILE_TRACE_BEGIN("Create Memory Allocator");
 		VAST_LOG_TRACE("[gfx] [dx12] Creating memory allocator.");
 		D3D12MA::ALLOCATOR_DESC allocatorDesc =
 		{
@@ -99,7 +99,7 @@ namespace vast::gfx
 			.pAdapter = adapter,
 		};
 		D3D12MA::CreateAllocator(&allocatorDesc, &m_Allocator);
-		VAST_PROFILE_TRACE_END("Device", "Create Memory Allocator");
+		VAST_PROFILE_TRACE_END("Create Memory Allocator");
 
 		DX12SafeRelease(adapter);
 
@@ -154,7 +154,7 @@ namespace vast::gfx
 
 	IDXGIAdapter4* DX12Device::SelectMainAdapter(GPUAdapterPreferenceCriteria pref)
 	{
-		VAST_PROFILE_TRACE_SCOPE("Device", "Select Main Adapter");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_LOG_TRACE("[gfx] [dx12] Selecting best GPU adapter (based on '{}' criteria).", g_GPUAdapterPreferenceCriteriaNames[IDX(pref)]);
 
 		// Note: If GPUAdapterPreferenceCriteria::HIGH_VRAM is selected we have to find it manually,
@@ -218,7 +218,7 @@ namespace vast::gfx
 
 	DX12Device::~DX12Device()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Graphics Device");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_LOG_TRACE("[gfx] [dx12] Starting graphics device destruction.");
 
 		m_RTVStagingDescriptorHeap = nullptr;
@@ -257,7 +257,8 @@ namespace vast::gfx
 
 	void DX12Device::CreateSamplers()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Samplers");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		D3D12_SAMPLER_DESC samplerDescs[IDX(SamplerState::COUNT)]{};
 
 		{
@@ -322,7 +323,7 @@ namespace vast::gfx
 
 	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer& outBuf)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create Buffer");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
 		switch (desc.usage)
@@ -436,7 +437,7 @@ namespace vast::gfx
 
 	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture& outTex)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create Texture");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(desc.width > 0 && desc.height > 0 && desc.depthOrArraySize > 0, "Invalid texture size.");
 		VAST_ASSERTF(desc.mipCount <= MipLevelCount(desc.width, desc.height, desc.depthOrArraySize), "Invalid mip count.");
 
@@ -641,7 +642,7 @@ namespace vast::gfx
 
 	void DX12Device::CreateGraphicsPipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create Graphics Pipeline");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
@@ -749,7 +750,7 @@ namespace vast::gfx
 		psDesc.NodeMask = 0;
 
 		{
-			VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create PSO");
+			VAST_PROFILE_TRACE_SCOPE("CreateGraphicsPipelineState (DX12)$");
 			DX12Check(m_Device->CreateGraphicsPipelineState(&psDesc, IID_PPV_ARGS(&outPipeline.pipelineState)));
 		}
 		outPipeline.desc = psDesc;
@@ -757,7 +758,7 @@ namespace vast::gfx
 
 	void DX12Device::CreateComputePipeline(const ShaderDesc& csDesc, DX12Pipeline& outPipeline)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create Compute Pipeline");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC psDesc = {};
 
@@ -774,14 +775,14 @@ namespace vast::gfx
 		psDesc.NodeMask = 0;
 
 		{
-			VAST_PROFILE_TRACE_SCOPE("gfx", "Device Create PSO");
+			VAST_PROFILE_TRACE_SCOPE("CreateComputePipelineState (DX12)$");
 			DX12Check(m_Device->CreateComputePipelineState(&psDesc, IID_PPV_ARGS(&outPipeline.pipelineState)));
 		}
 	}
 
 	void DX12Device::ReloadShaders(DX12Pipeline& pipeline)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Reload Shaders");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		if (pipeline.IsCompute())
 		{
@@ -831,7 +832,7 @@ namespace vast::gfx
 
 	void DX12Device::DestroyBuffer(DX12Buffer& buf)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Destroy Buffer");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		if (buf.cbv.IsValid())
 		{
@@ -860,7 +861,7 @@ namespace vast::gfx
 
 	void DX12Device::DestroyTexture(DX12Texture& tex)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Destroy Texture");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		if (tex.rtv.IsValid())
 		{
@@ -893,7 +894,8 @@ namespace vast::gfx
 	
 	void DX12Device::DestroyPipeline(DX12Pipeline& pipeline)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Device Destroy Pipeline");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		pipeline.vs = nullptr;
 		pipeline.ps = nullptr;
 		pipeline.cs = nullptr;

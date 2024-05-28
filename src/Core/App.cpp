@@ -15,14 +15,14 @@ namespace vast
 	{
 		(void)argc; (void)argv; // TODO: Process input args.
 
-		// Initialize Trace Logger first so that we can profile initialization.
-		TraceLogger::Init("vast-profile.json");
-		VAST_PROFILE_TRACE_BEGIN("app", "App Startup");
+		// Initialize Tracing first so that we can profile initialization.
+		Tracing::Init("vast-profile.json");
+		VAST_PROFILE_TRACE_BEGIN("App Startup");
+
 		// Initialize Log next because all our systems make use of it to log progress.
 		Log::Init();
-#if VAST_ENABLE_PROFILING
 		Profiler::Init();
-#endif
+
 		VAST_SUBSCRIBE_TO_EVENT("windowedapp", WindowCloseEvent, VAST_EVENT_HANDLER_CB(WindowedApp::Quit));
 	}
 
@@ -32,14 +32,15 @@ namespace vast
 		m_GraphicsContext = nullptr;
 		m_Window = nullptr;
 
-		VAST_PROFILE_TRACE_END("app", "App Shutdown");
-		TraceLogger::Stop();
+		VAST_PROFILE_TRACE_END("App Shutdown");
+		Tracing::Flush(); // TODO: We could always flush in Stop(), and do periodic flushes in the App Loop.
+		Tracing::Stop();
 	}
 
 	void WindowedApp::Run()
 	{
-		VAST_PROFILE_TRACE_END("app", "App Startup");
-		VAST_PROFILE_TRACE_BEGIN("app", "App Loop");
+		VAST_PROFILE_TRACE_END("App Startup");
+		VAST_PROFILE_TRACE_BEGIN("App Loop");
 
 		Window& window = GetWindow();
 
@@ -47,27 +48,23 @@ namespace vast
 
 		while (m_bRunning)
 		{
-#if VAST_ENABLE_PROFILING
 			Profiler::BeginFrame();
-#endif
 			{
-				VAST_PROFILE_TRACE_SCOPE("app", "Update");
+				VAST_PROFILE_TRACE_SCOPE("Update");
 				VAST_PROFILE_CPU_SCOPE("Update");
 				window.Update();
 				Update();
 			}
 			{
-				VAST_PROFILE_TRACE_SCOPE("app", "Draw");
+				VAST_PROFILE_TRACE_SCOPE("Draw");
 				VAST_PROFILE_CPU_SCOPE("Draw");
 				Draw();
 			}
-#if VAST_ENABLE_PROFILING
 			Profiler::EndFrame(GetGraphicsContext());
-#endif
 		}
 
-		VAST_PROFILE_TRACE_END("app", "App Loop");
-		VAST_PROFILE_TRACE_BEGIN("app", "App Shutdown");
+		VAST_PROFILE_TRACE_END("App Loop");
+		VAST_PROFILE_TRACE_BEGIN("App Shutdown");
 	}
 
 	void WindowedApp::Quit()

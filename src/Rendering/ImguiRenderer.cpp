@@ -16,7 +16,8 @@ namespace vast::gfx
 	ImguiRenderer::ImguiRenderer(gfx::GraphicsContext& ctx_, HWND windowHandle /*= ::GetActiveWindow()*/)
 		: ctx(ctx_)
 	{
-		VAST_PROFILE_TRACE_SCOPE("ui", "Create Imgui Renderer");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::StyleColorsDark();
@@ -58,7 +59,8 @@ namespace vast::gfx
 
 	ImguiRenderer::~ImguiRenderer()
 	{
-		VAST_PROFILE_TRACE_SCOPE("ui", "Destroy Imgui Renderer");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		ctx.DestroyTexture(m_FontTex);
 		ctx.DestroyPipeline(m_Pipeline);
 
@@ -69,7 +71,8 @@ namespace vast::gfx
 
 	void ImguiRenderer::BeginCommandRecording()
 	{
-		VAST_PROFILE_TRACE_SCOPE("ui", "Begin Command Recording (UI)");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 #if USE_IMGUI_STOCK_IMPL_WIN32
 		ImGui_ImplWin32_NewFrame();
 #endif
@@ -78,7 +81,8 @@ namespace vast::gfx
 
 	void ImguiRenderer::EndCommandRecording()
 	{
-		VAST_PROFILE_TRACE_SCOPE("ui", "End Command Recording (UI)");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		ImGui::Render();
 	}
 
@@ -98,7 +102,8 @@ namespace vast::gfx
 
 	void ImguiRenderer::Render()
 	{
-		VAST_PROFILE_TRACE_SCOPE("ui", "Render (UI)");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		VAST_ASSERTF(ctx.IsInFrame() && !ctx.IsInRenderPass(), "This function must be invoked within Graphics Context frame bounds and out of a Render Pass.");
 
 		ImDrawData* drawData = ImGui::GetDrawData();
@@ -111,7 +116,7 @@ namespace vast::gfx
 			return;
 
 		// Get memory for vertex and index buffers
-		VAST_PROFILE_TRACE_BEGIN("ui", "Merge Buffers");
+		VAST_PROFILE_TRACE_BEGIN("Merge Buffers");
 		const uint32 vtxSize = sizeof(ImDrawVert) * drawData->TotalVtxCount;
 		const uint32 idxSize = sizeof(ImDrawIdx) * drawData->TotalIdxCount;
 
@@ -130,7 +135,7 @@ namespace vast::gfx
 			vtxCpuMem += drawList->VtxBuffer.Size;
 			idxCpuMem += drawList->IdxBuffer.Size;
 		}
-		VAST_PROFILE_TRACE_END("ui", "Merge Buffers");
+		VAST_PROFILE_TRACE_END("Merge Buffers");
 
 		ctx.BeginRenderPassToBackBuffer(m_Pipeline, LoadOp::LOAD, StoreOp::STORE);
 		{
@@ -146,7 +151,7 @@ namespace vast::gfx
 			ctx.SetBlendFactor(float4(0));
 			uint32 vtxOffset = 0, idxOffset = 0;
 			ImVec2 clipOff = drawData->DisplayPos;
-			VAST_PROFILE_TRACE_BEGIN("ui", "Draw Loop");
+			VAST_PROFILE_TRACE_BEGIN("Draw Loop");
 			for (int32 i = 0; i < drawData->CmdListsCount; ++i)
 			{
 				const ImDrawList* drawList = drawData->CmdLists[i];
@@ -185,7 +190,7 @@ namespace vast::gfx
 				idxOffset += drawList->IdxBuffer.Size;
 				vtxOffset += drawList->VtxBuffer.Size;
 			}
-			VAST_PROFILE_TRACE_END("ui", "Draw Loop");
+			VAST_PROFILE_TRACE_END("Draw Loop");
 		}
 		ctx.EndRenderPass();
 	}

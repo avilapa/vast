@@ -20,7 +20,7 @@ namespace vast::gfx
 	DX12ShaderManager::DX12ShaderManager()
 		: m_ShaderCompiler(nullptr)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Shader Manager");
+		VAST_PROFILE_TRACE_FUNCTION;
 		m_ShaderCompiler = MakePtr<DX12ShaderCompiler>();
 
 		AddGlobalShaderDefine(L"PushConstantRegister=b" + std::to_wstring(PUSH_CONSTANT_REGISTER_INDEX));
@@ -28,7 +28,7 @@ namespace vast::gfx
 
 	DX12ShaderManager::~DX12ShaderManager()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Shader Manager");
+		VAST_PROFILE_TRACE_FUNCTION;
 		for (auto shader : m_Shaders)
 		{
 			DX12SafeRelease(shader.first->blob);
@@ -47,7 +47,8 @@ namespace vast::gfx
 
 	Ref<DX12Shader> DX12ShaderManager::LoadShader(const ShaderDesc& desc)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Load Shader");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		Ref<DX12Shader> shaderRef;
  		auto key = MakeShaderKey(desc.shaderName, desc.entryPoint);
 		if (IsShaderRegistered(key))
@@ -80,8 +81,9 @@ namespace vast::gfx
 
 	bool DX12ShaderManager::ReloadShader(Ref<DX12Shader> shader)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Reload Shader");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(IsShaderRegistered(shader->key), "Attempted to reload invalid shader.");
+
 		auto desc = m_Shaders[m_ShaderKeys[shader->key]].second;
 		VAST_ASSERT(shader->key.compare(MakeShaderKey(desc.shaderName, desc.entryPoint)) == 0);
 		if (CompileShader(desc, shader.get()))
@@ -164,7 +166,8 @@ namespace vast::gfx
 
 	ID3DBlob* DX12ShaderManager::CreateRootSignatureFromReflection(DX12Pipeline& pipeline) const
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Reflect Root Signature");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12Shader* shaders[] = { pipeline.vs.get(), pipeline.ps.get(), pipeline.cs.get() };
 		Vector<D3D12_ROOT_PARAMETER1> rootParameters;
 		Vector<D3D12_DESCRIPTOR_RANGE1> descriptorRanges;

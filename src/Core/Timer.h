@@ -14,6 +14,7 @@ namespace vast
 			m_StartTime = std::chrono::high_resolution_clock::now();
 			m_DeltaTime = m_ElapsedTime = m_StartTime - m_StartTime;
 		}
+
 		void Update()
 		{
 			auto currentTime = std::chrono::high_resolution_clock::now() - m_StartTime;

@@ -12,7 +12,8 @@ namespace vast::gfx
 		, m_DxcCompiler(nullptr)
 		, m_DxcIncludeHandler(nullptr)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Shader Compiler");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12Check(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_DxcUtils)));
 		DX12Check(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_DxcCompiler)));
 		DX12Check(m_DxcUtils->CreateDefaultIncludeHandler(&m_DxcIncludeHandler));
@@ -20,7 +21,8 @@ namespace vast::gfx
 
 	DX12ShaderCompiler::~DX12ShaderCompiler()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Shader Compiler");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12SafeRelease(m_DxcIncludeHandler);
 		DX12SafeRelease(m_DxcCompiler);
 		DX12SafeRelease(m_DxcUtils);
@@ -28,7 +30,7 @@ namespace vast::gfx
 
 	IDxcBlobEncoding* DX12ShaderCompiler::LoadShader(std::wstring& fullPath)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Load Shader source");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(m_DxcUtils);
 
 		// Load shader source file
@@ -57,7 +59,7 @@ namespace vast::gfx
 
 	IDxcResult* DX12ShaderCompiler::CompileShader(IDxcBlobEncoding* sourceBlobEncoding, const ShaderCompilerArguments& sca)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Compile Shader");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(sourceBlobEncoding);
 
 		const DxcBuffer sourceBuffer
@@ -124,7 +126,7 @@ namespace vast::gfx
 
 	ID3D12ShaderReflection* DX12ShaderCompiler::ExtractShaderReflection(IDxcResult* compiledShader)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Extract Shader Reflection");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(compiledShader && m_DxcUtils);
 
 		IDxcBlob* reflectionBlob = nullptr;
@@ -145,7 +147,7 @@ namespace vast::gfx
 
 	IDxcBlob* DX12ShaderCompiler::ExtractShaderOutput(IDxcResult* compiledShader)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Extract Shader Output");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(compiledShader);
 
 		IDxcBlob* shaderBlob = nullptr;
@@ -155,7 +157,7 @@ namespace vast::gfx
 
 	IDxcBlob* DX12ShaderCompiler::ExtractShaderPDB(IDxcResult* compiledShader)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Extract Shader PDB");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(compiledShader);
 
 		IDxcBlob* pdbBlob = nullptr;

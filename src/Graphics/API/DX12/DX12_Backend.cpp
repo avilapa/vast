@@ -38,7 +38,8 @@ namespace vast::gfx
 
 	void GraphicsBackend::Init(const GraphicsParams& params)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Graphics Backend");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		VAST_LOG_TRACE("[gfx] [dx12] Initializing DX12 backend...");
 
 		s_Buffers = MakePtr<ResourceHandler<DX12Buffer, Buffer, NUM_BUFFERS>>();
@@ -66,7 +67,8 @@ namespace vast::gfx
 
 	void GraphicsBackend::Shutdown()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Destroy Graphics Backend");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		WaitForIdle();
 
 		s_QueryHeap = nullptr;
@@ -92,6 +94,8 @@ namespace vast::gfx
 
 	void GraphicsBackend::BeginFrame()
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		for (uint32 i = 0; i < IDX(QueueType::COUNT); ++i)
 		{
 			// Wait on fences from NUM_FRAMES_IN_FLIGHT frames ago
@@ -110,14 +114,14 @@ namespace vast::gfx
 		{
 		case D3D12_COMMAND_LIST_TYPE_DIRECT:
 		{
-			VAST_PROFILE_TRACE_SCOPE("gfx", "Execute Graphics Command List");
+			VAST_PROFILE_TRACE_SCOPE("ExecuteCommandList (Graphics)");
 			s_CommandQueues[IDX(QueueType::GRAPHICS)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
 		}
 		// TODO: Async Compute (case D3D12_COMMAND_LIST_TYPE_COMPUTE:)
 		case D3D12_COMMAND_LIST_TYPE_COPY:
 		{
-			VAST_PROFILE_TRACE_SCOPE("gfx", "Execute Upload Command List");
+			VAST_PROFILE_TRACE_SCOPE("ExecuteCommandList (Upload)");
 			s_CommandQueues[IDX(QueueType::UPLOAD)]->ExecuteCommandList(cmdList.GetCommandList());
 			break;
 		}
@@ -134,6 +138,8 @@ namespace vast::gfx
 
 	void GraphicsBackend::EndFrame()
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12Texture& backBuffer = m_SwapChain->GetCurrentBackBuffer();
 		s_GraphicsCommandList->AddBarrier(backBuffer, D3D12_RESOURCE_STATE_PRESENT);
 		s_GraphicsCommandList->FlushBarriers();
@@ -262,7 +268,6 @@ namespace vast::gfx
 		s_RenderPassEndBarriers.clear();
 
 		s_GraphicsCommandList->SetPipeline(nullptr);
-		VAST_PROFILE_TRACE_END("gfx", "Render Pass");
 	}
 
 	void GraphicsBackend::BindPipelineForCompute(PipelineHandle h)
@@ -517,7 +522,6 @@ namespace vast::gfx
 
 	void GraphicsBackend::BindSRV(BufferHandle h)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Bind SRV");
 		CopyToDescriptorTable(s_Buffers->LookupResource(h).srv);
 	}
 
@@ -573,11 +577,15 @@ namespace vast::gfx
 
 	void GraphicsBackend::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation/* = 0 */, uint32 instStartLocation /* = 0 */)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		s_GraphicsCommandList->GetCommandList()->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
 	}
 
 	void GraphicsBackend::DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		s_GraphicsCommandList->GetCommandList()->DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
 	}
 
@@ -634,6 +642,8 @@ namespace vast::gfx
 
 	void GraphicsBackend::CollectTimestamps(BufferHandle h, uint32 count)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		VAST_ASSERT(s_QueryHeap);
 		DX12Buffer& buf = s_Buffers->LookupResource(h);
 		VAST_ASSERTF(buf.usage == ResourceUsage::READBACK, "This call requires readback buffer usage.");

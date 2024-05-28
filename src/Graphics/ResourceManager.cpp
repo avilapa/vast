@@ -66,7 +66,7 @@ namespace vast::gfx
 
 	void ResourceManager::BeginFrame()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Begin Frame");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		if (!m_PipelinesMarkedForShaderReload.empty())
 		{
@@ -86,7 +86,8 @@ namespace vast::gfx
 
 	BufferHandle ResourceManager::CreateBuffer(const BufferDesc& desc, const void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Buffer");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		BufferHandle h = m_BufferHandles->AllocHandle();
 		GraphicsBackend::CreateBuffer(h, desc);
 		if (initialData != nullptr)
@@ -98,7 +99,8 @@ namespace vast::gfx
 
 	TextureHandle ResourceManager::CreateTexture(const TextureDesc& desc, const void* initialData /*= nullptr*/)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Texture");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		TextureHandle h = m_TextureHandles->AllocHandle();
 		GraphicsBackend::CreateTexture(h, desc);
 		if (initialData != nullptr)
@@ -110,7 +112,8 @@ namespace vast::gfx
 
 	PipelineHandle ResourceManager::CreatePipeline(const PipelineDesc& desc)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		PipelineHandle h = m_PipelineHandles->AllocHandle();
 		GraphicsBackend::CreatePipeline(h, desc);
 		return h;
@@ -118,7 +121,8 @@ namespace vast::gfx
 
 	PipelineHandle ResourceManager::CreatePipeline(const ShaderDesc& csDesc)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Create Pipeline");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		PipelineHandle h = m_PipelineHandles->AllocHandle();
 		GraphicsBackend::CreatePipeline(h, csDesc);
 		return h;
@@ -168,7 +172,7 @@ namespace vast::gfx
 			return TextureHandle();
 		}
 
-		VAST_PROFILE_TRACE_BEGIN("gfx", "Load Texture File");
+		VAST_PROFILE_TRACE_BEGIN("Load Texture File");
 		const std::wstring wext = GetFileExtension(wpath);
 		DirectX::ScratchImage image;
 		if (wext.compare(L"DDS") == 0 || wext.compare(L"dds") == 0)
@@ -187,7 +191,7 @@ namespace vast::gfx
 		{
 			DX12Check(DirectX::LoadFromWICFile(wpath.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, image));
 		}
-		VAST_PROFILE_TRACE_END("gfx", "Load Texture File");
+		VAST_PROFILE_TRACE_END("Load Texture File");
 
 		if (bFlipImage)
 		{
@@ -229,8 +233,9 @@ namespace vast::gfx
 
 	void ResourceManager::UpdateBuffer(BufferHandle h, void* data, const size_t size)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Update Buffer");
+		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(h.IsValid());
+
 		GraphicsBackend::UpdateBuffer(h, data, size);
 	}
 
@@ -254,7 +259,7 @@ namespace vast::gfx
 
 	void ResourceManager::ProcessDestructions(uint32 frameId)
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Process Destructions");
+		VAST_PROFILE_TRACE_FUNCTION;
 
 		for (auto& h : m_BuffersMarkedForDestruction[frameId])
 		{
@@ -289,7 +294,8 @@ namespace vast::gfx
 
 	void ResourceManager::ProcessShaderReloads()
 	{
-		VAST_PROFILE_TRACE_SCOPE("gfx", "Process Shader Reloads");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		for (auto& h : m_PipelinesMarkedForShaderReload)
 		{
 			VAST_ASSERT(h.IsValid());

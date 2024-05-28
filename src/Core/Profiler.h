@@ -21,16 +21,6 @@
 #define VAST_PROFILE_GPU_END()
 #endif
 
-#if VAST_ENABLE_TRACING
-#define VAST_PROFILE_TRACE_SCOPE(c, n)	vast::TraceScope XCAT(_profTrace, __LINE__)(c, n)
-#define VAST_PROFILE_TRACE_BEGIN(c, n)	vast::TraceLogger::BeginTrace(c, n)
-#define VAST_PROFILE_TRACE_END(c, n)	vast::TraceLogger::EndTrace(c, n)
-#else
-#define VAST_PROFILE_TRACE_SCOPE(c, n)
-#define VAST_PROFILE_TRACE_BEGIN(c, n)
-#define VAST_PROFILE_TRACE_END(c, n)
-#endif
-
 namespace vast
 {
 	namespace gfx
@@ -88,33 +78,4 @@ namespace vast
 	private:
 		gfx::GPUProfiler& gpuProfiler;
 	};
-
-	class TraceLogger
-	{
-		friend class WindowedApp;
-	public:
-		static void BeginTrace(const char* category, const char* name);
-		static void EndTrace(const char* category, const char* name);
-
-	private:
-		static void Init(const char* fileName);
-		static void Stop();
-	};
-
-	struct TraceScope
-	{
-		TraceScope(const char* category_, const char* name_) : category(category_), name(name_)
-		{
-			TraceLogger::BeginTrace(category, name);
-		}
-
-		~TraceScope()
-		{
-			TraceLogger::EndTrace(category, name);
-		}
-
-		const char* category;
-		const char* name;
-	};
-
 }

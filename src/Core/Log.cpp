@@ -11,7 +11,8 @@ namespace vast
 	void Log::Init()
 	{
 #ifdef VAST_ENABLE_LOGGING
-		VAST_PROFILE_TRACE_SCOPE("log", "Log Init");
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		std::string logOutputFileName = "vast.log";
 		Vector<spdlog::sink_ptr> logSinks;
 		logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
