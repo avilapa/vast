@@ -63,7 +63,7 @@ void SamplesApp::Update()
 			// Note: Flushing the GPU is not strictly necessary, but it ensures all resources used in the
 			// current scene are destroyed before loading a new scene.
 			m_GraphicsContext->FlushGPU();
-			Profiler::FlushProfiles();
+			profile::FlushProfiles();
 		}
 
 		VAST_LOG_WARNING("[Samples] Loading sample scene '{}'", s_SampleSceneNames[m_CurrentSampleIdx]);
@@ -91,7 +91,7 @@ void SamplesApp::Draw()
 	m_ImguiRenderer->BeginCommandRecording();
 	m_CurrentSample->OnGUI();
 	DrawSamplesEditorUI();
-	vast::Profiler::OnGUI();
+	vast::profile::ui::OnGUI();
 	m_ImguiRenderer->EndCommandRecording();
 
 	m_CurrentSample->BeginFrame();
@@ -139,9 +139,9 @@ void SamplesApp::DrawSamplesEditorUI()
 			ImGui::EndMenu();
 		}
 
-		ImGui::SameLine(ImGui::GetWindowSize().x - Profiler::GetTextMinimalLength() - ImGui::GetStyle().ItemSpacing.x);
+		ImGui::SameLine(ImGui::GetWindowSize().x - profile::ui::GetTextMinimalLength() - ImGui::GetStyle().ItemSpacing.x);
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (ImGui::GetTextLineHeightWithSpacing() - ImGui::GetTextLineHeight()) / 2);
-		Profiler::DrawTextMinimal();
+		profile::ui::DrawTextMinimal();
 
 		ImGui::EndMainMenuBar();
 	}

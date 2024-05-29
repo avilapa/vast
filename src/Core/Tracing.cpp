@@ -5,7 +5,7 @@
 
 namespace vast
 {
-	namespace Tracing
+	namespace trace
 	{
 		void Init(const char* fileName)
 		{
@@ -17,6 +17,7 @@ namespace vast
 		void Stop()
 		{
 #if VAST_ENABLE_TRACING
+			mtr_flush();
 			mtr_shutdown();
 #endif
 		}

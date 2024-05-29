@@ -6,31 +6,41 @@
 
 namespace vast
 {
-	Ref<spdlog::logger> Log::s_Logger;
+	Ref<spdlog::logger> log::g_Logger;
 
-	void Log::Init()
+	void log::Init(const char* logOutFileName)
 	{
-#ifdef VAST_ENABLE_LOGGING
+#if !VAST_ENABLE_LOGGING
+		return;
+#endif
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		std::string logOutputFileName = "vast.log";
-		Vector<spdlog::sink_ptr> logSinks;
-		logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-		logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>(logOutputFileName, true));
+		Ref<spdlog::sinks::sink> stdoutSink = MakeRef<spdlog::sinks::stdout_color_sink_mt>();
+		stdoutSink->set_pattern("%^[%T] %n: %v%$");
 
-		logSinks[0]->set_pattern("%^[%T] %n: %v%$");
-		logSinks[1]->set_pattern("[%T] [%l] %n: %v");
+		bool bTruncateFile = true; // i.e. clear file contents with every run.
+		Ref<spdlog::sinks::sink> fileSink = MakeRef<spdlog::sinks::basic_file_sink_mt>(logOutFileName, bTruncateFile);
+		fileSink->set_pattern("[%T] [%l] %n: %v");
 
-		s_Logger = std::make_shared<spdlog::logger>("vast", begin(logSinks), end(logSinks));
-		spdlog::register_logger(s_Logger);
+		Vector<Ref<spdlog::sinks::sink>> sinks = { stdoutSink, fileSink };
+		g_Logger = MakeRef<spdlog::logger>("vast", begin(sinks), end(sinks));
+		spdlog::register_logger(g_Logger);
+
 		VAST_LOG_INFO("[log] Hello there! Logger initialized successfully.");
-		VAST_LOG_TRACE("[log] Created output file '{}'", logOutputFileName);
+		VAST_LOG_TRACE("[log] Created output file '{}'", logOutFileName);
 
 		// TODO: Expose these options
 		spdlog::level::level_enum logLevel = spdlog::level::trace;
-		s_Logger->set_level(spdlog::level::trace);
+		g_Logger->set_level(logLevel);
+		g_Logger->flush_on(logLevel);
+
 		VAST_LOG_TRACE("[log] Logging level set to'{}'", spdlog::level::to_string_view(logLevel));
-		s_Logger->flush_on(spdlog::level::trace);
-#endif // VAST_ENABLE_LOGGING
-	}	
+	}
+		
+	void log::Stop()
+	{
+#if VAST_ENABLE_LOGGING
+		spdlog::shutdown();
+#endif
+	}
 }

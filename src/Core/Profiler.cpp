@@ -148,121 +148,7 @@ namespace vast
 
 	//
 
-	template<typename ProfileBlockArray>
-	static ProfileBlock& FindOrAddProfile(ProfileBlockArray& profiles, uint32& profileCount, const char* name)
-	{
-		for (uint32 i = 0; i < profileCount; ++i)
-		{
-			ProfileBlock& p = profiles[i];
-			if (p.name == name)
-			{
-				return profiles[i];
-			}
-		}
-		VAST_ASSERTF(profileCount < profiles.size(), "Exceeded max number of profiles ({}).", profiles.size());
-		ProfileBlock& p = profiles[profileCount++];
-		p.name = name;
-		return p;
-	}
-
-	template<typename ProfileBlockArray>
-	static ProfileBlock* FindLastActiveEntry(ProfileBlockArray& profiles, const uint32 profileCount)
-	{
-		VAST_ASSERT(profileCount > 0);
-		for (int32 i = (profileCount - 1); i >= 0; --i)
-		{
-			if (profiles[i].state == ProfileBlock::State::ACTIVE)
-			{
-				return &profiles[i];
-			}
-		}
-		return nullptr;
-	}
-
-	// TODO: If we store the depth in the profile we can just +1 the parent.
-	static uint32 FindTreeDepth(const ProfileBlock* p, uint32 currDepth = 0)
-	{
-		if (p && p->parent)
-		{
-			currDepth = FindTreeDepth(p->parent, ++currDepth);
-		}
-		return currDepth;
-	}
-
-	void Profiler::PushProfilingMarkerCPU(const char* name)
-	{
-		ProfileBlock& p = FindOrAddProfile(s_CpuProfiles, s_CpuProfileCount, name);
-		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
-
-		s_Timer.Update();
-		p.tBegin = s_Timer.GetElapsedMicroseconds<int64>();
-
-		p.parent = FindLastActiveEntry(s_CpuProfiles, s_CpuProfileCount);
-		if (p.parent)
-		{
-			p.parent->childCount++;
-		}
-		p.treeDepth = FindTreeDepth(&p);
-		p.state = ProfileBlock::State::ACTIVE;
-	}
-
-	void Profiler::PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler)
-	{
-		ProfileBlock& p = FindOrAddProfile(s_GpuProfiles, s_GpuProfileCount, name);
-		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
-
-		p.timestampIdx = gpuProfiler.BeginTimestamp();
-
-		p.parent = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount);
-		if (p.parent)
-		{
-			p.parent->childCount++;
-		}
-		p.treeDepth = FindTreeDepth(&p);
-		p.state = ProfileBlock::State::ACTIVE;
-	}
-
-	void Profiler::PopProfilingMarkerCPU()
-	{
-		if (ProfileBlock* p = FindLastActiveEntry(s_CpuProfiles, s_CpuProfileCount))
-		{
-			s_Timer.Update();
-			p->tEnd = s_Timer.GetElapsedMicroseconds<int64>();
-			p->state = ProfileBlock::State::FINISHED;
-		}
-		else
-		{
-			VAST_ASSERTF(0, "Active profile not found.");
-		}
-	}
-
-	void Profiler::PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler)
-	{
-		if (ProfileBlock* p = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount))
-		{
-			gpuProfiler.EndTimestamp(p->timestampIdx);
-			p->state = ProfileBlock::State::FINISHED;
-		}
-		else
-		{
-			VAST_ASSERTF(0, "Active profile not found.");
-		}
-	}
-
-	void Profiler::FlushProfiles()
-	{
-		s_bProfilesNeedFlush = true;
-	}
-
-	void Profiler::Init()
-	{
-#if VAST_ENABLE_PROFILING
-		VAST_LOG_INFO("[profiler] Initializing Profiler...");
-		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
-#endif
-	}
-
-	void Profiler::BeginFrame()
+	void profile::BeginFrame()
 	{
 #if VAST_ENABLE_PROFILING
 		s_Timer.Update();
@@ -270,9 +156,11 @@ namespace vast
 #endif
 	}
 
-	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
+	void profile::EndFrame(gfx::GraphicsContext& ctx)
 	{
-#if VAST_ENABLE_PROFILING
+#if !VAST_ENABLE_PROFILING
+		return;
+#endif
 		s_Timer.Update();
 
 		// Record global stats, and update plots (if user interface is showing)
@@ -367,7 +255,114 @@ namespace vast
 
 			p.state = ProfileBlock::State::IDLE;
 		}
-#endif // VAST_ENABLE_PROFILING
+	}
+
+	//
+
+	template<typename ProfileBlockArray>
+	static ProfileBlock& FindOrAddProfile(ProfileBlockArray& profiles, uint32& profileCount, const char* name)
+	{
+		for (uint32 i = 0; i < profileCount; ++i)
+		{
+			ProfileBlock& p = profiles[i];
+			if (p.name == name)
+			{
+				return profiles[i];
+			}
+		}
+		VAST_ASSERTF(profileCount < profiles.size(), "Exceeded max number of profiles ({}).", profiles.size());
+		ProfileBlock& p = profiles[profileCount++];
+		p.name = name;
+		return p;
+	}
+
+	template<typename ProfileBlockArray>
+	static ProfileBlock* FindLastActiveEntry(ProfileBlockArray& profiles, const uint32 profileCount)
+	{
+		VAST_ASSERT(profileCount > 0);
+		for (int32 i = (profileCount - 1); i >= 0; --i)
+		{
+			if (profiles[i].state == ProfileBlock::State::ACTIVE)
+			{
+				return &profiles[i];
+			}
+		}
+		return nullptr;
+	}
+
+	// TODO: If we store the depth in the profile we can just +1 the parent.
+	static uint32 FindTreeDepth(const ProfileBlock* p, uint32 currDepth = 0)
+	{
+		if (p && p->parent)
+		{
+			currDepth = FindTreeDepth(p->parent, ++currDepth);
+		}
+		return currDepth;
+	}
+
+	void profile::PushProfilingMarkerCPU(const char* name)
+	{
+		ProfileBlock& p = FindOrAddProfile(s_CpuProfiles, s_CpuProfileCount, name);
+		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
+
+		s_Timer.Update();
+		p.tBegin = s_Timer.GetElapsedMicroseconds<int64>();
+
+		p.parent = FindLastActiveEntry(s_CpuProfiles, s_CpuProfileCount);
+		if (p.parent)
+		{
+			p.parent->childCount++;
+		}
+		p.treeDepth = FindTreeDepth(&p);
+		p.state = ProfileBlock::State::ACTIVE;
+	}
+
+	void profile::PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler)
+	{
+		ProfileBlock& p = FindOrAddProfile(s_GpuProfiles, s_GpuProfileCount, name);
+		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
+
+		p.timestampIdx = gpuProfiler.BeginTimestamp();
+
+		p.parent = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount);
+		if (p.parent)
+		{
+			p.parent->childCount++;
+		}
+		p.treeDepth = FindTreeDepth(&p);
+		p.state = ProfileBlock::State::ACTIVE;
+	}
+
+	void profile::PopProfilingMarkerCPU()
+	{
+		if (ProfileBlock* p = FindLastActiveEntry(s_CpuProfiles, s_CpuProfileCount))
+		{
+			s_Timer.Update();
+			p->tEnd = s_Timer.GetElapsedMicroseconds<int64>();
+			p->state = ProfileBlock::State::FINISHED;
+		}
+		else
+		{
+			VAST_ASSERTF(0, "Active profile not found.");
+		}
+	}
+
+	void profile::PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler)
+	{
+		if (ProfileBlock* p = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount))
+		{
+			gpuProfiler.EndTimestamp(p->timestampIdx);
+			p->state = ProfileBlock::State::FINISHED;
+		}
+		else
+		{
+			VAST_ASSERTF(0, "Active profile not found.");
+		}
+	}
+
+	void profile::FlushProfiles()
+	{
+		s_bProfilesNeedFlush = true;
 	}
 
 	//
@@ -513,7 +508,15 @@ namespace vast
 		ImGui::PlotLines("", plot.history.data(), static_cast<int>(plot.kHistorySize), 0, overlay, std::min(plot.tMin, std::max(float(avg) - 1.5f, 0.0f)), std::max(plot.tMax, float(avg) + 1.5f), ImVec2(availableWidth, 80.0f));
 	}
 
-	void Profiler::OnGUI()
+	void profile::ui::Init()
+	{
+#if VAST_ENABLE_PROFILING
+		VAST_LOG_INFO("[profiler] Initializing Profiler...");
+		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
+#endif
+	}
+
+	void profile::ui::OnGUI()
 	{
 		if (!s_bShowProfiler)
 			return;
@@ -586,12 +589,12 @@ namespace vast
 		ImGui::End();
 	}
 
-	void Profiler::DrawTextMinimal()
+	void profile::ui::DrawTextMinimal()
 	{
 		ImGui::Text("Frame: %.3f ms (GPU: %.3f ms)", s_FrameStats.tAvg, s_GpuStats.tAvg);
 	}
 	
-	float Profiler::GetTextMinimalLength()
+	float profile::ui::GetTextMinimalLength()
 	{
 		return ImGui::CalcTextSize("Frame: 0.000f ms (GPU: 0.000f ms)").x;
 	}

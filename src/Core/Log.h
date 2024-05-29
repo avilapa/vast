@@ -6,15 +6,16 @@
 // Read more: https://github.com/gabime/spdlog/pull/2170
 #define SPDLOG_USE_STD_FORMAT
 #endif
+#define SPDLOG_WCHAR_TO_UTF8_SUPPORT
 #include "spdlog/include/spdlog/spdlog.h"
 
 // Formatting cheatsheet: https://hackingcpp.com/cpp/libs/fmt.html
 #if VAST_ENABLE_LOGGING
-#define VAST_LOG_TRACE(...)		::vast::Log::GetLogger()->trace(__VA_ARGS__)
-#define VAST_LOG_INFO(...)		::vast::Log::GetLogger()->info(__VA_ARGS__)
-#define VAST_LOG_WARNING(...)	::vast::Log::GetLogger()->warn(__VA_ARGS__)
-#define VAST_LOG_ERROR(...)		::vast::Log::GetLogger()->error(__VA_ARGS__)
-#define VAST_LOG_CRITICAL(...)	::vast::Log::GetLogger()->critical(__VA_ARGS__)
+#define VAST_LOG_TRACE(...)		::vast::log::g_Logger->log(spdlog::level::trace,	__VA_ARGS__)
+#define VAST_LOG_INFO(...)		::vast::log::g_Logger->log(spdlog::level::info,		__VA_ARGS__)
+#define VAST_LOG_WARNING(...)	::vast::log::g_Logger->log(spdlog::level::warn,		__VA_ARGS__)
+#define VAST_LOG_ERROR(...)		::vast::log::g_Logger->log(spdlog::level::err,		__VA_ARGS__)
+#define VAST_LOG_CRITICAL(...)	::vast::log::g_Logger->log(spdlog::level::critical, __VA_ARGS__)
 #else
 #define VAST_LOG_TRACE(...)
 #define VAST_LOG_INFO(...)
@@ -25,13 +26,11 @@
 
 namespace vast
 {
-	class Log
+	namespace log
 	{
-	public:
-		static void Init();
-		inline static Ref<spdlog::logger>& GetLogger() { return s_Logger; }
+		void Init(const char* logOutFileName);
+		void Stop();
 
-	private:
-		static Ref<spdlog::logger> s_Logger;
+		extern Ref<spdlog::logger> g_Logger;
 	};
 }

@@ -15,13 +15,12 @@ namespace vast
 	{
 		(void)argc; (void)argv; // TODO: Process input args.
 
-		// Initialize Tracing first so that we can profile initialization.
-		Tracing::Init("vast-profile.json");
+		// Initialize tracing first so that we can profile initialization, log next because most systems
+		// use it to log progress and any issues. 
+		trace::Init("vast-profile.json");
 		VAST_PROFILE_TRACE_BEGIN("App Startup");
-
-		// Initialize Log next because all our systems make use of it to log progress.
-		Log::Init();
-		Profiler::Init();
+		log::Init("vast.log");
+		profile::ui::Init();
 
 		VAST_SUBSCRIBE_TO_EVENT("windowedapp", WindowCloseEvent, VAST_EVENT_HANDLER_CB(WindowedApp::Quit));
 	}
@@ -32,9 +31,9 @@ namespace vast
 		m_GraphicsContext = nullptr;
 		m_Window = nullptr;
 
+		log::Stop();
 		VAST_PROFILE_TRACE_END("App Shutdown");
-		Tracing::Flush(); // TODO: We could always flush in Stop(), and do periodic flushes in the App Loop.
-		Tracing::Stop();
+		trace::Stop();
 	}
 
 	void WindowedApp::Run()
@@ -48,7 +47,7 @@ namespace vast
 
 		while (m_bRunning)
 		{
-			Profiler::BeginFrame();
+			profile::BeginFrame();
 			{
 				VAST_PROFILE_TRACE_SCOPE("Update");
 				VAST_PROFILE_CPU_SCOPE("Update");
@@ -60,7 +59,8 @@ namespace vast
 				VAST_PROFILE_CPU_SCOPE("Draw");
 				Draw();
 			}
-			Profiler::EndFrame(GetGraphicsContext());
+			profile::EndFrame(GetGraphicsContext());
+			// TODO: We should periodically call trace::Flush().
 		}
 
 		VAST_PROFILE_TRACE_END("App Loop");

@@ -3,14 +3,13 @@
 #include "Core/Defines.h"
 
 #if VAST_ENABLE_PROFILING
-#define VAST_PROFILE_CPU_SCOPE(n)		vast::ProfileScopeCPU XCAT(_profCpu, __LINE__)(n)
-#define VAST_PROFILE_CPU_BEGIN(n)		vast::Profiler::PushProfilingMarkerCPU(n)
-#define VAST_PROFILE_CPU_END()			vast::Profiler::PopProfilingMarkerCPU()
+#define VAST_PROFILE_CPU_SCOPE(n)		::vast::profile::ScopedCPUProf XCAT(_profCpuVar, __LINE__)(n)
+#define VAST_PROFILE_CPU_BEGIN(n)		::vast::profile::PushProfilingMarkerCPU(n)
+#define VAST_PROFILE_CPU_END()			::vast::profile::PopProfilingMarkerCPU()
 
-#define VAST_PROFILE_GPU_SCOPE(n, ctx)	vast::ProfileScopeGPU XCAT(_profGpu, __LINE__)(n, ctx.GetGPUProfiler())
-#define VAST_PROFILE_GPU_BEGIN(n, ctx)	vast::Profiler::PushProfilingMarkerGPU(n, ctx.GetGPUProfiler())
-#define VAST_PROFILE_GPU_END()			vast::Profiler::PopProfilingMarkerGPU(ctx.GetGPUProfiler())
-// TODO: Single profile macro, select cpu/gpu
+#define VAST_PROFILE_GPU_SCOPE(n, ctx)	::vast::profile::ScopedGPUProf XCAT(_profGpuVar, __LINE__)(n, ctx.GetGPUProfiler())
+#define VAST_PROFILE_GPU_BEGIN(n, ctx)	::vast::profile::PushProfilingMarkerGPU(n, ctx.GetGPUProfiler())
+#define VAST_PROFILE_GPU_END()			::vast::profile::PopProfilingMarkerGPU(ctx.GetGPUProfiler())
 #else
 #define VAST_PROFILE_CPU_SCOPE(n)	
 #define VAST_PROFILE_CPU_BEGIN(n)	
@@ -29,53 +28,41 @@ namespace vast
 		class GPUProfiler;
 	}
 
-	class Profiler
+	namespace profile
 	{
-		friend class WindowedApp;
-	public:
-		static void PushProfilingMarkerCPU(const char* name);
-		static void PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler);
-		static void PopProfilingMarkerCPU();
-		static void PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler);
+		void BeginFrame();
+		void EndFrame(gfx::GraphicsContext& ctx);
 
-		static void FlushProfiles();
+		// Resets all CPU and GPU profiles and recorded history.
+		void FlushProfiles();
 
-		static void OnGUI();
-		static void DrawTextMinimal();
-		static float GetTextMinimalLength();
-	private:
-		static void Init();
+		void PushProfilingMarkerCPU(const char* name);
+		void PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler);
+		void PopProfilingMarkerCPU();
+		void PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler);
 
-		static void BeginFrame();
-		static void EndFrame(gfx::GraphicsContext& ctx);
-	};
-
-	struct ProfileScopeCPU
-	{
-		ProfileScopeCPU(const char* name)
+		struct ScopedCPUProf
 		{
-			Profiler::PushProfilingMarkerCPU(name);
-		}
+			ScopedCPUProf(const char* name) { PushProfilingMarkerCPU(name); }
+			~ScopedCPUProf() { PopProfilingMarkerCPU(); }
+		};
 
-		~ProfileScopeCPU()
+		struct ScopedGPUProf
 		{
-			Profiler::PopProfilingMarkerCPU();
-		}
-	};
+			ScopedGPUProf(const char* name, gfx::GPUProfiler& gpuProfiler) : m_GpuProfiler(gpuProfiler) { PushProfilingMarkerGPU(name, m_GpuProfiler); }
+			~ScopedGPUProf() { PopProfilingMarkerGPU(m_GpuProfiler); }
 
-	struct ProfileScopeGPU
-	{
-		ProfileScopeGPU(const char* name, gfx::GPUProfiler& gpuProfiler_) : gpuProfiler(gpuProfiler_)
+		private:
+			gfx::GPUProfiler& m_GpuProfiler;
+		};
+
+		namespace ui
 		{
-			Profiler::PushProfilingMarkerGPU(name, gpuProfiler);
+			void Init();
+			void OnGUI();
+			void DrawTextMinimal();
+			float GetTextMinimalLength();
 		}
+	}
 
-		~ProfileScopeGPU()
-		{
-			Profiler::PopProfilingMarkerGPU(gpuProfiler);
-		}
-
-	private:
-		gfx::GPUProfiler& gpuProfiler;
-	};
 }
