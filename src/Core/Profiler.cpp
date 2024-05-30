@@ -143,36 +143,32 @@ namespace vast
 	static StatHistory s_FrameStats;
 	static PlotHistory s_FramePlot;
 
-	static bool s_bShowProfiler = false;
 	static bool s_bProfilesNeedFlush = false;
+
+	bool profile::ui::g_bShowProfiler = false;
 
 	//
 
 	void profile::BeginFrame()
 	{
-#if VAST_ENABLE_PROFILING
 		s_Timer.Update();
 		s_tFrameStart = s_Timer.GetElapsedMicroseconds<int64>();
-#endif
 	}
 
 	void profile::EndFrame(gfx::GraphicsContext& ctx)
 	{
-#if !VAST_ENABLE_PROFILING
-		return;
-#endif
 		s_Timer.Update();
 
 		// Record global stats, and update plots (if user interface is showing)
 		{
 			double durationMs = double(s_Timer.GetElapsedMicroseconds<int64>() - s_tFrameStart) / 1000.0;
 			s_FrameStats.RecordTimeLast(durationMs);
-			if (s_bShowProfiler) s_FramePlot.RecordTimeLast(static_cast<float>(durationMs));
+			if (profile::ui::g_bShowProfiler) s_FramePlot.RecordTimeLast(static_cast<float>(durationMs));
 		}
 		{
 			double durationMs = ctx.GetLastFrameDuration() * 1000.0;
 			s_GpuStats.RecordTimeLast(durationMs);
-			if (s_bShowProfiler) s_GpuPlot.RecordTimeLast(static_cast<float>(durationMs));
+			if (profile::ui::g_bShowProfiler) s_GpuPlot.RecordTimeLast(static_cast<float>(durationMs));
 		}
 
 		float tTimeNowSeconds = s_Timer.GetElapsedSeconds<float>();
@@ -187,7 +183,7 @@ namespace vast
 			s_GpuStats.UpdateAverages();
 		}
 		// Check if we should reset min/max value on plots this frame.
-		if (s_bShowProfiler && (tTimeNowSeconds - s_tLastPlotsMaxReset) >= s_PlotMaxResetFrequencySeconds)
+		if (profile::ui::g_bShowProfiler && (tTimeNowSeconds - s_tLastPlotsMaxReset) >= s_PlotMaxResetFrequencySeconds)
 		{
 			s_tLastPlotsMaxReset = tTimeNowSeconds;
 
@@ -508,17 +504,9 @@ namespace vast
 		ImGui::PlotLines("", plot.history.data(), static_cast<int>(plot.kHistorySize), 0, overlay, std::min(plot.tMin, std::max(float(avg) - 1.5f, 0.0f)), std::max(plot.tMax, float(avg) + 1.5f), ImVec2(availableWidth, 80.0f));
 	}
 
-	void profile::ui::Init()
-	{
-#if VAST_ENABLE_PROFILING
-		VAST_LOG_INFO("[profiler] Initializing Profiler...");
-		VAST_SUBSCRIBE_TO_EVENT("profiler", DebugActionEvent, VAST_EVENT_HANDLER_EXP_STATIC(s_bShowProfiler = !s_bShowProfiler));
-#endif
-	}
-
 	void profile::ui::OnGUI()
 	{
-		if (!s_bShowProfiler)
+		if (!g_bShowProfiler)
 			return;
 
 		if (!s_bWindowAllowMoving)

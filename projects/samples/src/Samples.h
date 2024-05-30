@@ -9,14 +9,12 @@ namespace vast::gfx
 
 using namespace vast;
 
-class SamplesApp final : public WindowedApp
+class SamplesApp final : public IApp
 {
 public:
-	SamplesApp(int argc, char** argv);
-	~SamplesApp();
-
-private:
-	void Update() override;
+	bool Init() override;
+	void Stop() override;
+	void Update(float dt) override;
 	void Draw() override;
 
 	void DrawSamplesEditorUI();

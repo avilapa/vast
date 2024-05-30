@@ -1,30 +1,20 @@
 #pragma once
 
-#define VAST_DEFINE_MAIN(function)				\
-int main(int argc, char** argv)					\
-{												\
-	function(argc, argv);						\
-	return 0;									\
-}
-
-#define VAST_DEFINE_APP_MAIN(className)			\
-void RunApp(int argc, char** argv)				\
-{												\
-	className* app = new className(argc, argv);	\
-	app->Run();									\
-	delete app;									\
-}												\
-VAST_DEFINE_MAIN(RunApp);
+#ifdef VAST_PLATFORM_WINDOWS
+#define VAST_DEFINE_APP_MAIN(className)							\
+extern int Win32_Main(int argc, char** argv, vast::IApp* app);	\
+																\
+int main(int argc, char** argv)									\
+{																\
+	static className app = {};									\
+	return Win32_Main(argc, argv, &app);						\
+}																
+#else
+#error "Unsupported platform!"
+#endif
 
 namespace vast
 {
-	class IApp
-	{
-	public:
-		IApp() = default;
-		virtual ~IApp() = default;
-		virtual void Run() = 0;
-	};
 
 	class Window;
 
@@ -33,26 +23,33 @@ namespace vast
 		class GraphicsContext;
 	}
 
-	class WindowedApp : public IApp
+	class IApp
 	{
 	public:
-		WindowedApp(int argc, char** argv);
-		~WindowedApp();
+		IApp() = default;
+		virtual ~IApp() = default;
 
-		void Run() override;
+		virtual bool Init() = 0;
+		virtual void Stop() = 0;
 
-		Window& GetWindow() const;
-		gfx::GraphicsContext& GetGraphicsContext() const;
+		virtual void Update(float dt) = 0;
+		virtual void Draw() = 0;
+
+		bool m_bQuit = false;
+
+		Window& GetWindow() const 
+		{	
+			return *m_Window; 
+		}
+		
+		gfx::GraphicsContext& GetGraphicsContext() const 
+		{ 
+			return *m_GraphicsContext; 
+		}
 
 	protected:
-		virtual void Update() = 0;
-		virtual void Draw() = 0;
-		void Quit();
-
 		Ptr<Window> m_Window;
 		Ptr<gfx::GraphicsContext> m_GraphicsContext;
-
-	private:
-		bool m_bRunning;
 	};
+
 }

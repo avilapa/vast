@@ -28,12 +28,12 @@ static const char* s_SampleSceneNames[]
 };
 static_assert(NELEM(s_SampleSceneNames) == IDX(SampleScenes::COUNT));
 
-SamplesApp::SamplesApp(int argc, char** argv) 
-	: WindowedApp(argc, argv)
-	, m_CurrentSample(nullptr)
-	, m_CurrentSampleIdx(0)
-	, m_SampleInitialized(false)
+bool SamplesApp::Init()
 {
+	m_CurrentSample = nullptr;
+	m_CurrentSampleIdx = 0;
+	m_SampleInitialized = false;
+
 	m_Window = Window::Create();
 
 	gfx::GraphicsParams params;
@@ -43,15 +43,19 @@ SamplesApp::SamplesApp(int argc, char** argv)
 	m_GraphicsContext = MakePtr<GraphicsContext>(params);
 
 	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
+
+	return true;
 }
 
-SamplesApp::~SamplesApp()
+void SamplesApp::Stop()
 {
 	m_CurrentSample = nullptr;
 	m_ImguiRenderer = nullptr;
+	m_GraphicsContext = nullptr;
+	m_Window = nullptr;
 }
 
-void SamplesApp::Update()
+void SamplesApp::Update(float dt)
 {
 	if (!m_SampleInitialized)
 	{

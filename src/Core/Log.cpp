@@ -10,9 +10,6 @@ namespace vast
 
 	void log::Init(const char* logOutFileName)
 	{
-#if !VAST_ENABLE_LOGGING
-		return;
-#endif
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		Ref<spdlog::sinks::sink> stdoutSink = MakeRef<spdlog::sinks::stdout_color_sink_mt>();
@@ -39,8 +36,6 @@ namespace vast
 		
 	void log::Stop()
 	{
-#if VAST_ENABLE_LOGGING
 		spdlog::shutdown();
-#endif
 	}
 }

@@ -58,10 +58,11 @@ namespace vast
 
 		namespace ui
 		{
-			void Init();
 			void OnGUI();
 			void DrawTextMinimal();
 			float GetTextMinimalLength();
+
+			extern bool g_bShowProfiler;
 		}
 	}
 
