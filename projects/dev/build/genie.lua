@@ -28,10 +28,10 @@ project "dev"
 	configuration "Debug"
 		targetdir 	(path.join(PROJ_DIR, "build/bin/Debug/"))
         objdir 		(path.join(PROJ_DIR, "build/obj/Debug/"))
-		CopyDLLs(PROJ_DIR)
+		CopyDebugDLLs(PROJ_DIR)
 		
 	configuration "Release"
 		targetdir 	(path.join(PROJ_DIR, "build/bin/Release/"))
 		objdir 		(path.join(PROJ_DIR, "build/obj/Release/"))
-		CopyDLLs(PROJ_DIR)
+		CopyReleaseDLLs(PROJ_DIR)
 	
