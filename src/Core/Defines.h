@@ -12,16 +12,6 @@
 #error "Invalid Platform: Unknown Platform"
 #endif
 
-// - Asserts ----------------------------------------------------------------------------------- //
-
-#ifdef VAST_DEBUG
-#define VAST_ENABLE_ASSERTS 1
-#define VAST_DEBUGBREAK() __debugbreak()
-#else
-#define VAST_ENABLE_ASSERTS 0
-#define VAST_DEBUGBREAK()
-#endif
-
 // - Logging ----------------------------------------------------------------------------------- //
 
 #define VAST_ENABLE_LOGGING 1
