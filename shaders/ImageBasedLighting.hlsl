@@ -174,14 +174,6 @@ float3 IntegratePrefilteredRadiance(uint numSamples, float roughness, float3 N, 
     {
         float2 Xi = Hammersley2d(i, numSamples);
         float3 H = TangentToWorld(HemisphereImportanceSample_GGX(Xi, roughness), TBN);
-        /*if (GetDebugToggle(2))
-        {
-            H = TangentToWorld(HemisphereImportanceSample_VisibleGGX(Xi, roughness.xx, TangentToWorld(V, TBN)), TBN);
-        }
-        else if (GetDebugToggle(3))
-        {
-            H = TangentToWorld(HemisphereImportanceSample_VisibleGGX_SphericalCaps(Xi, roughness.xx, TangentToWorld(V, TBN)), TBN);
-        }*/
         float3 L = reflect(-V, H);
 
         float NdotL = dot(N, L);

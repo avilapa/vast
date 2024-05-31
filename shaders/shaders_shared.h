@@ -36,7 +36,6 @@ struct MeshCB // TODO: Default values
 	float metallic;
 
 	float roughness;
-	uint32 noiseTexIdx;
 };
 
 struct IBL_PerFrame

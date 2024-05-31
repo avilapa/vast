@@ -11,13 +11,8 @@
 
 #define BSDF_USE_GGX_MULTISCATTER                               1
 #define BSDF_USE_JOINT_VISIBILITY_FUNCTIONS                     1
-#define BSDF_USE_HEIGHT_CORRELATED_SHADOWING_MASKING_FUNCTIONS  0
+#define BSDF_USE_HEIGHT_CORRELATED_SHADOWING_MASKING_FUNCTIONS  1
 #define BSDF_USE_VISIBILITY_SMITH_GGX_APPROX_CORRELATED         0
-
-float Pow2(float v)
-{
-    return v * v;
-}
 
 float Pow5(float v)
 {
@@ -187,17 +182,16 @@ float G_SmithSchlickBeckmann(float NdotV, float NdotL, float roughness)
 //
 
 // Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"
-float3 F_Schlick(float3 F0, float F90, float cosTheta)
+float3 F_Schlick(float3 f0, float f90, float cosTheta)
 {
-    float Fc = Pow5(1.0 - cosTheta);
-    return F0 + (F90 - F0) * Fc;
+    return f0 + (f90 - f0) * Pow5(1.0 - cosTheta);
 }
 
-// Version optimized for scalar operations when F90 = 1.0
-float3 F_Schlick(float3 F0, float cosTheta)
+// Version optimized for f90 = 1.0
+float3 F_Schlick(float3 f0, float cosTheta)
 {
-    float Fc = Pow5(1.0 - cosTheta);
-    return Fc + F0 * (1.0 - Fc);
+    float pow5 = Pow5(1.0 - cosTheta);
+    return pow5 + f0 * (1.0 - pow5);
 }
 
 float3 GetEnergyCompensationGGX(float3 f0, float2 envBrdf)
