@@ -5,9 +5,14 @@
 // TODO: DX12ShaderManager shouldn't have to include this or be aware of compiler specific arguments, should be moved down to DX12ShaderCompiler.
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
-static const wchar_t* SHADER_SOURCE_PATH = L"../../shaders/";
-// TODO: Perhaps it makes more sense to move the compiled shaders to the build folder and source to the src folder.
-static const wchar_t* SHADER_OUTPUT_PATH = L"../../shaders/compiled/";
+// TODO: Add project specific source path as well to differenciate from engine shaders.
+static const wchar_t* VAST_SHADERS_SOURCE_PATH = L"../../src/Shaders/";
+
+#ifdef VAST_DEBUG
+static const wchar_t* SHADER_OUTPUT_PATH = L"../bin/Debug/Shaders/";
+#else
+static const wchar_t* SHADER_OUTPUT_PATH = L"../bin/Release/Shaders/";
+#endif
 
 // Note: Root 32 Bit constants are identified on shaders by using a reserved binding point b999.
 // This is because DXC shader reflection has no way to tell apart a CBV from a Root 32 Bit Constant.
@@ -110,7 +115,7 @@ namespace vast::gfx
 	{
 		std::wstring shaderName(desc.shaderName.begin(), desc.shaderName.end());
 		std::wstring entryPoint(desc.entryPoint.begin(), desc.entryPoint.end());
-		std::wstring fullPath = SHADER_SOURCE_PATH + shaderName;
+		std::wstring fullPath = VAST_SHADERS_SOURCE_PATH + shaderName;
 
 		IDxcBlobEncoding* sourceBlobEncoding = m_ShaderCompiler->LoadShader(fullPath);
 
@@ -118,39 +123,43 @@ namespace vast::gfx
 		sca.shaderType = desc.type;
 		sca.shaderName = std::wstring(desc.shaderName.begin(), desc.shaderName.end());
 		sca.shaderEntryPoint = std::wstring(desc.entryPoint.begin(), desc.entryPoint.end());
-		sca.includeDirectories.push_back(SHADER_SOURCE_PATH);
+		sca.includeDirectories.push_back(VAST_SHADERS_SOURCE_PATH);
 		sca.additionalDefines = m_GlobalShaderDefines;
 
 		IDxcResult* compiledShader = m_ShaderCompiler->CompileShader(sourceBlobEncoding, sca);
 
 		ID3D12ShaderReflection* shaderReflection = m_ShaderCompiler->ExtractShaderReflection(compiledShader);
+
+		if (!std::filesystem::exists(SHADER_OUTPUT_PATH))
+		{
+			VAST_VERIFYF(std::filesystem::create_directory(SHADER_OUTPUT_PATH), "Failed to create compiled shaders directory.");
+		}
+
 		IDxcBlob* shaderBlob = m_ShaderCompiler->ExtractShaderOutput(compiledShader);
-		// TODO: Write out DXIL?
-// 		{
-// 			std::wstring dxilPath = SHADER_OUTPUT_PATH + shaderName;
-// 			dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
-// 			dxilPath.append(L".dxil"); // .bin?
-// 
-// 			FILE* fp = nullptr;
-// 			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
-// 			VAST_ASSERTF(fp, "Cannot find specified path.");
-// 			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
-// 			fclose(fp);
-// 		}
+		{
+			std::wstring dxilPath = SHADER_OUTPUT_PATH + shaderName;
+			dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
+			dxilPath.append(L".dxil"); // .bin?
+
+			FILE* fp = nullptr;
+			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
+			VAST_ASSERTF(fp, "Cannot find specified path.");
+			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
+			fclose(fp);
+		}
 #ifdef VAST_DEBUG
 		IDxcBlob* shaderDebugBlob = m_ShaderCompiler->ExtractShaderPDB(compiledShader);
-		// TODO: Write out PDB?
-// 		{
-// 			std::wstring pdbPath = SHADER_OUTPUT_PATH + shaderName;
-// 			pdbPath.erase(pdbPath.end() - 5, pdbPath.end());
-// 			pdbPath.append(L".pdb");
-// 
-// 			FILE* fp = nullptr;
-// 			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
-// 			VAST_ASSERTF(fp, "Cannot find specified path.");
-// 			fwrite(pdbBlob->GetBufferPointer(), pdbBlob->GetBufferSize(), 1, fp);
-// 			fclose(fp);
-// 		}
+		{
+			std::wstring pdbPath = SHADER_OUTPUT_PATH + shaderName;
+			pdbPath.erase(pdbPath.end() - 5, pdbPath.end());
+			pdbPath.append(L".pdb");
+
+			FILE* fp = nullptr;
+			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
+			VAST_ASSERTF(fp, "Cannot find specified path.");
+			fwrite(pdbBlob->GetBufferPointer(), pdbBlob->GetBufferSize(), 1, fp);
+			fclose(fp);
+		}
 		DX12SafeRelease(shaderDebugBlob);
 #endif
 
