@@ -5,7 +5,7 @@
 #include "Rendering/Skybox.h"
 #include "Rendering/Imgui.h"
 
-#include "shaders_shared.h"
+#include "Shaders/shaders_shared.h"
 
 using namespace vast::gfx;
 
