@@ -83,6 +83,9 @@ int Win32_Main(int argc, char** argv, vast::IApp* app)
 	{
 		VAST_PROFILE_TRACE_SCOPE("Main Shutdown");
 		app->Stop();
+		VAST_ASSERTF(!&app->GetWindow(), "Forgot to delete 'm_Window'!");
+		VAST_ASSERTF(!&app->GetGraphicsContext(), "Forgot to delete 'm_GraphicsContext'!");
+
 #if VAST_ENABLE_LOGGING
 		log::Stop();
 #endif

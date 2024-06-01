@@ -5,7 +5,7 @@
 // TODO: DX12ShaderManager shouldn't have to include this or be aware of compiler specific arguments, should be moved down to DX12ShaderCompiler.
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
-// TODO: Add project specific source path as well to differenciate from engine shaders.
+// TODO: Add project specific source path as well to differentiate from engine shaders.
 static const wchar_t* VAST_SHADERS_SOURCE_PATH = L"../../src/Shaders/";
 
 #ifdef VAST_DEBUG
@@ -157,7 +157,7 @@ namespace vast::gfx
 			FILE* fp = nullptr;
 			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
 			VAST_ASSERTF(fp, "Cannot find specified path.");
-			fwrite(pdbBlob->GetBufferPointer(), pdbBlob->GetBufferSize(), 1, fp);
+			fwrite(shaderDebugBlob->GetBufferPointer(), shaderDebugBlob->GetBufferSize(), 1, fp);
 			fclose(fp);
 		}
 		DX12SafeRelease(shaderDebugBlob);
