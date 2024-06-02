@@ -42,8 +42,8 @@ namespace vast::gfx
 		}
 
 		m_PSO = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "skybox.hlsl", .entryPoint = "VS_Cube"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "skybox.hlsl", .entryPoint = "PS_Cube"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Skybox.hlsl", .entryPoint = "VS_Cube"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Skybox.hlsl", .entryPoint = "PS_Cube"},
 			.depthStencilState = dsState,
 			.rasterizerState = {.cullMode = CullMode::BACK },
 			.renderPassLayout = {.rtFormats = { rtFormat }, .dsFormat = { dsFormat } }, 

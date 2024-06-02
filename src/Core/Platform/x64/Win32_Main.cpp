@@ -30,12 +30,12 @@ int Win32_Main(int argc, char** argv, vast::IApp* app)
 			return EXIT_FAILURE;
 		}
 
-		if (!VAST_VERIFYF(&app->GetWindow(), "App must initialize 'm_Window' via vast::Window::Create()."))
+		if (!VAST_VERIFYF(app->m_Window, "App must initialize 'm_Window' via vast::Window::Create()."))
 		{
 			return EXIT_FAILURE;
 		}
 
-		if (!VAST_VERIFYF(&app->GetGraphicsContext(), "App must initialize 'm_GraphicsContext' via vast::gfx::GraphicsContext::Create()."))
+		if (!VAST_VERIFYF(app->m_GraphicsContext, "App must initialize 'm_GraphicsContext' via vast::gfx::GraphicsContext::Create()."))
 		{
 			return EXIT_FAILURE;
 		}
@@ -83,8 +83,8 @@ int Win32_Main(int argc, char** argv, vast::IApp* app)
 	{
 		VAST_PROFILE_TRACE_SCOPE("Main Shutdown");
 		app->Stop();
-		VAST_ASSERTF(!&app->GetWindow(), "Forgot to delete 'm_Window'!");
-		VAST_ASSERTF(!&app->GetGraphicsContext(), "Forgot to delete 'm_GraphicsContext'!");
+		VAST_ASSERTF(!app->m_Window, "Forgot to delete 'm_Window'!");
+		VAST_ASSERTF(!app->m_GraphicsContext, "Forgot to delete 'm_GraphicsContext'!");
 
 #if VAST_ENABLE_LOGGING
 		log::Stop();

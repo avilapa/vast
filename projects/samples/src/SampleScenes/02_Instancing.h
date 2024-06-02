@@ -2,6 +2,7 @@
 
 #include "ISample.h"
 #include "Rendering/Camera.h"
+#include "Rendering/Shapes.h"
 #include "Rendering/Imgui.h"
 
 using namespace vast::gfx;
@@ -24,34 +25,6 @@ using namespace vast::gfx;
  * Topics: instancing, structured buffer, index buffer, reverse-z depth buffer, camera object
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-static Array<s_float3, 8> s_CubeVertexData =
-{ {
-	{-1.0f,  1.0f,  1.0f },
-	{ 1.0f,  1.0f,  1.0f },
-	{-1.0f, -1.0f,  1.0f },
-	{ 1.0f, -1.0f,  1.0f },
-	{-1.0f,  1.0f, -1.0f },
-	{ 1.0f,  1.0f, -1.0f },
-	{-1.0f, -1.0f, -1.0f },
-	{ 1.0f, -1.0f, -1.0f },
-} };
-
-static Array<uint16, 36> s_CubeIndexData =
-{ {
-	0, 1, 2,
-	1, 3, 2,
-	4, 6, 5,
-	5, 6, 7,
-	0, 2, 4,
-	4, 2, 6,
-	1, 5, 3,
-	5, 7, 3,
-	0, 4, 1,
-	4, 5, 1,
-	2, 3, 6,
-	6, 3, 7,
-} };
 
 class Instancing final : public ISample
 {
@@ -102,8 +75,8 @@ public:
 			ctx.GetBackBufferAspectRatio(), DEG_TO_RAD(45.0f), 0.001f, 10000.0f, m_bDepthUseReverseZ);
 
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Fullscreen.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Fullscreen.hlsl", .entryPoint = "PS_Main"},
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 		});
@@ -123,8 +96,8 @@ public:
 		// Create both standard and reverse-z PSOs with different Depth Stencil States.
 		PipelineDesc psoDesc =
 		{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "instancing.hlsl", .entryPoint = "VS_Cube"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "instancing.hlsl", .entryPoint = "PS_Cube"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/02_InstancedCube.hlsl", .entryPoint = "VS_Cube"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/02_InstancedCube.hlsl", .entryPoint = "PS_Cube"},
 			.renderPassLayout =
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },
@@ -140,12 +113,14 @@ public:
 		m_InstBufProxy = ctx.LookupShaderResource(m_CubeInstPso[0], "InstanceBuffer");
 		m_CbvBufProxy = ctx.LookupShaderResource(m_CubeInstPso[0], "ObjectConstantBuffer");
 
-		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(s_CubeVertexData), sizeof(s_CubeVertexData[0]));
-		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
+		// Create the cube vertex buffer with bindless access.
+		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_VerticesIndexed_Pos), sizeof(Cube::s_VerticesIndexed_Pos[0]));
+		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
 
 		// Create index buffer.
-		auto idxBufDesc = AllocIndexBufferDesc(static_cast<uint32>(s_CubeIndexData.size()));
-		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, s_CubeIndexData.data(), s_CubeIndexData.size() * sizeof(s_CubeIndexData[0]));
+		uint32 numIndices = static_cast<uint32>(Cube::s_Indices.size());
+		auto idxBufDesc = AllocIndexBufferDesc(numIndices);
+		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
 
 		// Create a structured buffer to hold our instance data and initialize it.
 		auto instBufDesc = AllocStructuredBufferDesc(sizeof(InstanceData) * s_NumInstances, sizeof(InstanceData), ResourceUsage::UPLOAD);
@@ -237,7 +212,7 @@ public:
 				ctx.BindSRV(m_InstBufProxy, m_CubeInstBuf);
 				// Set the index buffer and draw all instances in a single draw call.
 				ctx.BindIndexBuffer(m_CubeIdxBuf, 0, IndexBufFormat::R16_UINT);
-				ctx.DrawIndexedInstanced(static_cast<uint32>(s_CubeIndexData.size()), s_NumInstances, 0, 0, 0);
+				ctx.DrawIndexedInstanced(static_cast<uint32>(Cube::s_Indices.size()), s_NumInstances, 0, 0, 0);
 			}
 		}
 		ctx.EndRenderPass();

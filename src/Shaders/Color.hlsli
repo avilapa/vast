@@ -11,6 +11,16 @@ float3 ApplyGammaCorrection(float3 col)
     return pow(col, 1.0f / 2.2f);
 }
 
+float4 UnpackColorFromUint(uint v)
+{
+    uint4 color;
+    color.r = (v >> 24) & 0xFF;
+    color.g = (v >> 16) & 0xFF;
+    color.b = (v >> 8) & 0xFF;
+    color.a = v & 0xFF;
+    return color * (1.0f / 255.0f);
+}
+
 // - Perceptually Uniform Sequential Colormaps ------------------------------------------------- //
 
 // mattz 2019 - matplotlib colormaps

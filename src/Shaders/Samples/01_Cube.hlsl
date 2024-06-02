@@ -7,9 +7,14 @@ struct CubeCB
 };
 ConstantBuffer<CubeCB> ObjectConstantBuffer : register(b0);
 
-float4 UnpackColorFromUint(uint p)
+float4 UnpackColorFromUint(uint v)
 {
-    return float4((p & 0xff) / 255.0f, ((p >> 8) & 0xff) / 255.0f, ((p >> 16) & 0xff) / 255.0f, ((p >> 24) & 0xff) / 255.0f);
+    uint4 color;
+    color.r = (v >> 24) & 0xFF;
+    color.g = (v >> 16) & 0xFF;
+    color.b = (v >> 8) & 0xFF;
+    color.a = v & 0xFF;
+    return color * (1.0f / 255.0f);
 }
 
 uint WangHash(uint seed)

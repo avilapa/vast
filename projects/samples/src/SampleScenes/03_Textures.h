@@ -2,10 +2,9 @@
 
 #include "ISample.h"
 #include "Rendering/Camera.h"
+#include "Rendering/Shapes.h"
 #include "Rendering/Skybox.h"
 #include "Rendering/Imgui.h"
-
-#include "Shaders/shaders_shared.h"
 
 using namespace vast::gfx;
 
@@ -63,8 +62,8 @@ public:
 	{	
 		// Create full-screen pass PSO
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Fullscreen.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Fullscreen.hlsl", .entryPoint = "PS_Main"},
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 			});
@@ -92,8 +91,8 @@ public:
 
 		PipelineDesc pipelineDesc =
 		{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "03_textures.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "03_textures.hlsl", .entryPoint = "PS_Main"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/03_TexturedMesh.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/03_TexturedMesh.hlsl", .entryPoint = "PS_Main"},
 			.renderPassLayout =
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT)  },
@@ -106,53 +105,13 @@ public:
 		m_FrameCbvProxy = ctx.LookupShaderResource(m_TexturedMeshPso, "FrameConstantBuffer");
 
 		{
-			Array<Vtx3fPos3fNormal2fUv, 36> cubeVertexData =
-			{ {
-				{{ 1.0f,-1.0f, 1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 1.0f }},
-				{{ 1.0f,-1.0f,-1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{-1.0f,-1.0f, 1.0f }, { 0.0f,-1.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{-1.0f,-1.0f, 1.0f }, { 0.0f,-1.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{ 1.0f,-1.0f,-1.0f }, { 0.0f,-1.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{-1.0f,-1.0f,-1.0f }, { 0.0f,-1.0f, 0.0f }, { 0.0f, 0.0f }},
-				{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f }},
-				{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{-1.0f, 1.0f,-1.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{-1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f }},
-				{{-1.0f,-1.0f,-1.0f }, {-1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},
-				{{-1.0f, 1.0f,-1.0f }, {-1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{-1.0f,-1.0f, 1.0f }, {-1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{-1.0f,-1.0f, 1.0f }, {-1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{-1.0f, 1.0f,-1.0f }, {-1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{-1.0f, 1.0f, 1.0f }, {-1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
-				{{-1.0f,-1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f }},
-				{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},
-				{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
-				{{ 1.0f,-1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 1.0f }},
-				{{-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f }},
-				{{ 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f }},
-				{{ 1.0f,-1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }},
-				{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{ 1.0f,-1.0f,-1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }},
-				{{ 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }},
-				{{ 1.0f, 1.0f,-1.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }},
-				{{ 1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 1.0f, 1.0f }},
-				{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 1.0f, 0.0f }},
-				{{-1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 1.0f }},
-				{{-1.0f,-1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 1.0f }},
-				{{ 1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 1.0f, 0.0f }},
-				{{-1.0f, 1.0f,-1.0f }, { 0.0f, 0.0f,-1.0f }, { 0.0f, 0.0f }},
-			} };
-
 			// Create the cube vertex buffer with bindless access.
-			auto vtxBufDesc = AllocVertexBufferDesc(sizeof(cubeVertexData), sizeof(cubeVertexData[0]));
+			auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_Vertices_PosNormalUv), sizeof(Cube::s_Vertices_PosNormalUv[0]));
 			auto cbvBufDesc = AllocCbvBufferDesc(sizeof(Drawable::CB));
 
-			m_TexturedDrawables[0].vtxBuf = ctx.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
+			m_TexturedDrawables[0].vtxBuf = ctx.CreateBuffer(vtxBufDesc, &Cube::s_Vertices_PosNormalUv, sizeof(Cube::s_Vertices_PosNormalUv));
 			// Note: This time, we render the cube without an index buffer.
-			m_TexturedDrawables[0].numIndices = static_cast<uint32>(cubeVertexData.size());
+			m_TexturedDrawables[0].numIndices = static_cast<uint32>(Cube::s_Vertices_PosNormalUv.size());
 
 			m_TexturedDrawables[0].colorTex = ctx.LoadTextureFromFile("image.tga");
 
@@ -167,7 +126,7 @@ public:
 		{
 			Vector<Vtx3fPos3fNormal2fUv> sphereVertexData;
 			Vector<uint16> sphereIndexData;
-			ConstructUVSphere(1.5f, 18, 36, sphereVertexData, sphereIndexData);
+			Sphere::ConstructUVSphere(1.5f, 18, 36, sphereVertexData, sphereIndexData);
 
 			const uint32 vtxSize = static_cast<uint32>(sphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
 			const uint32 numIndices = static_cast<uint32>(sphereIndexData.size());
@@ -294,60 +253,6 @@ public:
 	{
 		ctx.ReloadShaders(m_FullscreenPso);
 		ctx.ReloadShaders(m_TexturedMeshPso);
-	}
-
-	void ConstructUVSphere(const float radius, const uint32 vCount, const uint32 hCount, Vector<Vtx3fPos3fNormal2fUv>& vtx, Vector<uint16>& idx)
-	{
-		// Generate vertices
-		float invR = 1.0f / radius;
-		float vStep = float(PI) / vCount;
-		float hStep = 2.0f * float(PI) / hCount;
-
-		for (uint32 v = 0; v < vCount + 1; ++v)
-		{
-			float vAngle = float(PI) * 0.5f - float(v) * vStep;
-			float xz = radius * cos(vAngle);
-			float y = radius * sin(vAngle);
-			for (uint32 h = 0; h < hCount + 1; ++h)
-			{
-				float hAngle = h * hStep;
-				float x = xz * cos(hAngle);
-				float z = xz * sin(hAngle);
-
-				Vtx3fPos3fNormal2fUv i;
-				i.pos = s_float3(x, y, z);
-				i.normal = s_float3(x * invR, y * invR, z * invR);
-				i.uv = s_float2(float(h) / hCount, float(v) / vCount);
-				vtx.push_back(i);
-			}
-		}
-		Vtx3fPos3fNormal2fUv i;
-		i.pos = s_float3(0.0f, -1.0f, 0.0f);
-		vtx.push_back(i);
-
-		// Generate indices
-		uint32 k1, k2;
-		for (uint32 v = 0; v < vCount; ++v)
-		{
-			k1 = v * (hCount + 1);
-			k2 = k1 + hCount + 1;
-			for (uint32 h = 0; h < hCount + 1; ++h, ++k1, ++k2)
-			{
-				if (v != 0)
-				{
-					idx.push_back(static_cast<uint16>(k1));
-					idx.push_back(static_cast<uint16>(k2));
-					idx.push_back(static_cast<uint16>(k1 + 1));
-				}
-
-				if (v != (vCount - 1))
-				{
-					idx.push_back(static_cast<uint16>(k1 + 1));
-					idx.push_back(static_cast<uint16>(k2));
-					idx.push_back(static_cast<uint16>(k2 + 1));
-				}
-			}
-		}
 	}
 
 };

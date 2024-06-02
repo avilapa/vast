@@ -39,15 +39,17 @@ namespace vast
 
 		Window& GetWindow() const 
 		{	
+			VAST_ASSERT(m_Window);
 			return *m_Window; 
 		}
 		
 		gfx::GraphicsContext& GetGraphicsContext() const 
-		{ 
+		{
+			VAST_ASSERT(m_GraphicsContext);
 			return *m_GraphicsContext; 
 		}
 
-	protected:
+	public:
 		Ptr<Window> m_Window;
 		Ptr<gfx::GraphicsContext> m_GraphicsContext;
 	};

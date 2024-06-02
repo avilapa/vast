@@ -31,8 +31,8 @@ namespace vast::gfx
 
 		PipelineDesc pipelineDesc =
 		{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "imgui.hlsl", .entryPoint = "VS_Imgui"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "imgui.hlsl", .entryPoint = "PS_Imgui"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Imgui.hlsl", .entryPoint = "VS_Imgui"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Imgui.hlsl", .entryPoint = "PS_Imgui"},
 			.blendStates = { bs },
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },

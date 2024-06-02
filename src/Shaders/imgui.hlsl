@@ -23,6 +23,7 @@ struct VertexOutputImgui
 	float4 col : COLOR0;
 };
 
+// TODO: Use IM_COL32_R_SHIFT macros?
 float4 UnpackColorFromUint(uint v) 
 {
 	return uint4(v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255) * (1.0f / 255.0f);

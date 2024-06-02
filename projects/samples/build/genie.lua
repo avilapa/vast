@@ -19,7 +19,6 @@ project "samples"
 	{
 		path.join(PROJ_DIR, "src"),
 		path.join(ROOT_DIR, "src"),
-		path.join(ROOT_DIR, "shaders"),
 		path.join(ROOT_DIR, "vendor"),
 	}
 	

@@ -16,11 +16,11 @@ using namespace vast;
 #define PerObjectSpace space0 // TODO: Implement spaces!
 #define PerFrameSpace space1 // TODO: Implement spaces!
 
-struct Vtx3fPos3fNormal2fUv
+struct UnlitCB
 {
-	s_float3 pos;
-	s_float3 normal;
-	s_float2 uv;
+	float4x4 modelMatrix;
+	uint32 vtxBufIdx;
+	uint32 color;
 };
 
 struct MeshCB // TODO: Default values

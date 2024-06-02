@@ -14,15 +14,13 @@ project "vast"
 	{
 		path.join(ROOT_DIR, "src/**.h"),
 		path.join(ROOT_DIR, "src/**.cpp"),
-		path.join(ROOT_DIR, "shaders/**.h"),
-		path.join(ROOT_DIR, "shaders/**.hlsl"),
-		path.join(ROOT_DIR, "shaders/**.hlsli"),
+		path.join(ROOT_DIR, "src/**.hlsl"),
+		path.join(ROOT_DIR, "src/**.hlsli"),
 	}
 	
 	includedirs
 	{
 		path.join(ROOT_DIR, "src"),
-		path.join(ROOT_DIR, "shaders"),
 		path.join(ROOT_DIR, "vendor"),
 		path.join(ROOT_DIR, "vendor/imgui"), -- Only necessary while we use Imgui stock implementation on win32
 	}

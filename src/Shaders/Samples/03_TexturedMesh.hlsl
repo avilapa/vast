@@ -1,5 +1,6 @@
 #include "Common.hlsli"
 #include "Color.hlsli"
+#include "VertexInputs_shared.h"
 
 struct FrameCB
 {
@@ -17,13 +18,6 @@ struct TexturedMeshCB
 	uint colorSamplerIdx;
 };
 ConstantBuffer<TexturedMeshCB> ObjectConstantBuffer : register(b1);
-
-struct Vtx3fPos3fNormal2fUv
-{
-    float3 pos;
-    float3 normal;
-    float2 uv;
-};
 
 struct VertexOutput
 {

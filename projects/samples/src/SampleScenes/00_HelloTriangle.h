@@ -45,8 +45,8 @@ public:
 		PipelineDesc trianglePipelineDesc =
 		{
 			// TODO: Move triangle.hlsl to a project local shaders folder?
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "triangle.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "triangle.hlsl", .entryPoint = "PS_Main"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/00_Triangle.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/00_Triangle.hlsl", .entryPoint = "PS_Main"},
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() }, },
 		};

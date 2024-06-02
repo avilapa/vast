@@ -1,4 +1,5 @@
 #include "shaders_shared.h"
+#include "VertexInputs_shared.h"
 #include "Common.hlsli"
 #include "Color.hlsli"
 #include "BSDF.hlsli"

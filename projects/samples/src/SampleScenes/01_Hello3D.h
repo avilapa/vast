@@ -2,6 +2,7 @@
 
 #include "ISample.h"
 #include "Rendering/Camera.h"
+#include "Rendering/Shapes.h"
 
 using namespace vast::gfx;
 
@@ -48,8 +49,8 @@ public:
 	{	
 		// Create full-screen pass PSO
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Fullscreen.hlsl", .entryPoint = "VS_Main"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Fullscreen.hlsl", .entryPoint = "PS_Main"},
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 		});
@@ -62,8 +63,8 @@ public:
 
 		// Create cube PSO with depth testing enabled.
 		m_CubePso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "cube.hlsl", .entryPoint = "VS_Cube"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "cube.hlsl", .entryPoint = "PS_Cube"},
+			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/01_Cube.hlsl", .entryPoint = "VS_Cube"},
+			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/01_Cube.hlsl", .entryPoint = "PS_Cube"},
 			.renderPassLayout = 
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },
@@ -74,41 +75,13 @@ public:
 		m_CubeCbvBufProxy = ctx.LookupShaderResource(m_CubePso, "ObjectConstantBuffer");
 
 		// Create the cube vertex buffer with bindless access.
-		Array<s_float3, 8> cubeVertexData =
-		{ {
-			{-1.0f,  1.0f,  1.0f },
-			{ 1.0f,  1.0f,  1.0f },
-			{-1.0f, -1.0f,  1.0f },
-			{ 1.0f, -1.0f,  1.0f },
-			{-1.0f,  1.0f, -1.0f },
-			{ 1.0f,  1.0f, -1.0f },
-			{-1.0f, -1.0f, -1.0f },
-			{ 1.0f, -1.0f, -1.0f },
-		} };
-
-		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(cubeVertexData), sizeof(cubeVertexData[0]));
-		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &cubeVertexData, sizeof(cubeVertexData));
+		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_VerticesIndexed_Pos), sizeof(Cube::s_VerticesIndexed_Pos[0]));
+		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
 
 		// Create the index buffer.
-		Array<uint16, 36> cubeIndexData =
-		{ {
-			0, 1, 2,
-			1, 3, 2,
-			4, 6, 5,
-			5, 6, 7,
-			0, 2, 4,
-			4, 2, 6,
-			1, 5, 3,
-			5, 7, 3,
-			0, 4, 1,
-			4, 5, 1,
-			2, 3, 6,
-			6, 3, 7,
-		} };
-
-		uint32 numIndices = static_cast<uint32>(cubeIndexData.size());
+		uint32 numIndices = static_cast<uint32>(Cube::s_Indices.size());
 		auto idxBufDesc = AllocIndexBufferDesc(numIndices);
-		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &cubeIndexData, numIndices * sizeof(uint16));
+		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
 
 		// Create a constant buffer and fill it with the necessary data for rendering the cube.
 		m_CubeCB.viewProjMatrix = ComputeViewProjectionMatrix();

@@ -130,38 +130,39 @@ namespace vast::gfx
 
 		ID3D12ShaderReflection* shaderReflection = m_ShaderCompiler->ExtractShaderReflection(compiledShader);
 
-		if (!std::filesystem::exists(SHADER_OUTPUT_PATH))
-		{
-			VAST_VERIFYF(std::filesystem::create_directory(SHADER_OUTPUT_PATH), "Failed to create compiled shaders directory.");
-		}
+		// TODO: Support loading shaders from different folders.
+// 		if (!std::filesystem::exists(SHADER_OUTPUT_PATH))
+// 		{
+// 			VAST_VERIFYF(std::filesystem::create_directory(SHADER_OUTPUT_PATH), "Failed to create compiled shaders directory.");
+// 		}
 
 		IDxcBlob* shaderBlob = m_ShaderCompiler->ExtractShaderOutput(compiledShader);
-		{
-			std::wstring dxilPath = SHADER_OUTPUT_PATH + shaderName;
-			dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
-			dxilPath.append(L".dxil"); // .bin?
-
-			FILE* fp = nullptr;
-			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
-			VAST_ASSERTF(fp, "Cannot find specified path.");
-			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
-			fclose(fp);
-		}
-#ifdef VAST_DEBUG
-		IDxcBlob* shaderDebugBlob = m_ShaderCompiler->ExtractShaderPDB(compiledShader);
-		{
-			std::wstring pdbPath = SHADER_OUTPUT_PATH + shaderName;
-			pdbPath.erase(pdbPath.end() - 5, pdbPath.end());
-			pdbPath.append(L".pdb");
-
-			FILE* fp = nullptr;
-			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
-			VAST_ASSERTF(fp, "Cannot find specified path.");
-			fwrite(shaderDebugBlob->GetBufferPointer(), shaderDebugBlob->GetBufferSize(), 1, fp);
-			fclose(fp);
-		}
-		DX12SafeRelease(shaderDebugBlob);
-#endif
+// 		{
+// 			std::wstring dxilPath = SHADER_OUTPUT_PATH + shaderName;
+// 			dxilPath.erase(dxilPath.end() - 5, dxilPath.end());
+// 			dxilPath.append(L".dxil"); // .bin?
+// 
+// 			FILE* fp = nullptr;
+// 			_wfopen_s(&fp, dxilPath.c_str(), L"wb");
+// 			VAST_ASSERTF(fp, "Cannot find specified path.");
+// 			fwrite(shaderBlob->GetBufferPointer(), shaderBlob->GetBufferSize(), 1, fp);
+// 			fclose(fp);
+// 		}
+// #ifdef VAST_DEBUG
+// 		IDxcBlob* shaderDebugBlob = m_ShaderCompiler->ExtractShaderPDB(compiledShader);
+// 		{
+// 			std::wstring pdbPath = SHADER_OUTPUT_PATH + shaderName;
+// 			pdbPath.erase(pdbPath.end() - 5, pdbPath.end());
+// 			pdbPath.append(L".pdb");
+// 
+// 			FILE* fp = nullptr;
+// 			_wfopen_s(&fp, pdbPath.c_str(), L"wb");
+// 			VAST_ASSERTF(fp, "Cannot find specified path.");
+// 			fwrite(shaderDebugBlob->GetBufferPointer(), shaderDebugBlob->GetBufferSize(), 1, fp);
+// 			fclose(fp);
+// 		}
+// 		DX12SafeRelease(shaderDebugBlob);
+// #endif
 
 		DX12SafeRelease(sourceBlobEncoding);
 		DX12SafeRelease(compiledShader);

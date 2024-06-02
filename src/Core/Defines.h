@@ -14,7 +14,7 @@
 
 // - Logging ----------------------------------------------------------------------------------- //
 
-#define VAST_ENABLE_LOGGING 0
+#define VAST_ENABLE_LOGGING 1
 #define VAST_ENABLE_LOGGING_RESOURCE_BARRIERS (0 && VAST_ENABLE_LOGGING)
 
 // - Profiling --------------------------------------------------------------------------------- //
