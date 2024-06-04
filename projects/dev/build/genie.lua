@@ -13,6 +13,8 @@ project "dev"
 	{
 		path.join(PROJ_DIR, "src/**.h"),
 		path.join(PROJ_DIR, "src/**.cpp"),
+		path.join(PROJ_DIR, "src/**.hlsl"),
+		path.join(PROJ_DIR, "src/**.hlsli"),
 	}
 	
 	includedirs

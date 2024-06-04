@@ -27,7 +27,7 @@ namespace vast::gfx
 		DX12ShaderCompiler();
 		~DX12ShaderCompiler();
 
-		IDxcBlobEncoding* LoadShader(std::wstring& fullPath);
+		IDxcBlobEncoding* LoadShader(const std::wstring& fullPath);
 		IDxcResult* CompileShader(IDxcBlobEncoding* sourceBlobEncoding, const ShaderCompilerArguments& sca);
 		ID3D12ShaderReflection* ExtractShaderReflection(IDxcResult* compiledShader);
 		IDxcBlob* ExtractShaderOutput(IDxcResult* compiledShader);

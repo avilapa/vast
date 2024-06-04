@@ -5,9 +5,6 @@
 // TODO: DX12ShaderManager shouldn't have to include this or be aware of compiler specific arguments, should be moved down to DX12ShaderCompiler.
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 
-// TODO: Add project specific source path as well to differentiate from engine shaders.
-static const wchar_t* VAST_SHADERS_SOURCE_PATH = L"../../src/Shaders/";
-
 #ifdef VAST_DEBUG
 static const wchar_t* SHADER_OUTPUT_PATH = L"../bin/Debug/Shaders/";
 #else
@@ -113,17 +110,19 @@ namespace vast::gfx
 
 	bool DX12ShaderManager::CompileShader(const ShaderDesc& desc, DX12Shader* outShader)
 	{
-		std::wstring shaderName(desc.shaderName.begin(), desc.shaderName.end());
-		std::wstring entryPoint(desc.entryPoint.begin(), desc.entryPoint.end());
-		std::wstring fullPath = VAST_SHADERS_SOURCE_PATH + shaderName;
+		const std::wstring shaderName(desc.shaderName.begin(), desc.shaderName.end());
+		const std::wstring fullPath = std::wstring(desc.filePath.begin(), desc.filePath.end()) + shaderName;
 
 		IDxcBlobEncoding* sourceBlobEncoding = m_ShaderCompiler->LoadShader(fullPath);
 
+		const std::string defaultShaderSourcePath = VAST_DEFAULT_SHADERS_SOURCE_PATH;
+
 		ShaderCompilerArguments sca;
 		sca.shaderType = desc.type;
-		sca.shaderName = std::wstring(desc.shaderName.begin(), desc.shaderName.end());
+		sca.shaderName = shaderName;
 		sca.shaderEntryPoint = std::wstring(desc.entryPoint.begin(), desc.entryPoint.end());
-		sca.includeDirectories.push_back(VAST_SHADERS_SOURCE_PATH);
+		// TODO: Add additional include directories (at least one for the project source).
+		sca.includeDirectories.push_back(std::wstring(defaultShaderSourcePath.begin(), defaultShaderSourcePath.end()));
 		sca.additionalDefines = m_GlobalShaderDefines;
 
 		IDxcResult* compiledShader = m_ShaderCompiler->CompileShader(sourceBlobEncoding, sca);

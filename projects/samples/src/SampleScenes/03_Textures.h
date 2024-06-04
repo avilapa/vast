@@ -62,8 +62,8 @@ public:
 	{	
 		// Create full-screen pass PSO
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.vs = AllocVertexShaderDesc("Fullscreen.hlsl"),
+			.ps = AllocPixelShaderDesc("Fullscreen.hlsl"),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 			});
@@ -91,8 +91,8 @@ public:
 
 		PipelineDesc pipelineDesc =
 		{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/03_TexturedMesh.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/03_TexturedMesh.hlsl", .entryPoint = "PS_Main"},
+			.vs = AllocVertexShaderDesc("03_TexturedMesh.hlsl", GetSamplesShaderSourcePath()),
+			.ps = AllocPixelShaderDesc("03_TexturedMesh.hlsl", GetSamplesShaderSourcePath()),
 			.renderPassLayout =
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT)  },

@@ -14,7 +14,7 @@ struct VertexOutput
     float3 uv	: TEXCOORD0;
 };
 
-VertexOutput VS_Cube(float3 pos : POSITION)
+VertexOutput VS_Main(float3 pos : POSITION)
 {
     VertexOutput OUT;
     OUT.pos = mul(ProjMatrix, float4(mul(ViewMatrix, float4(pos, 0.0f)).xyz, 1.0f));
@@ -32,7 +32,7 @@ VertexOutput VS_Cube(float3 pos : POSITION)
     return OUT;
 }
 
-float4 PS_Cube(VertexOutput IN) : SV_TARGET
+float4 PS_Main(VertexOutput IN) : SV_TARGET
 {
     TextureCube<float4> skyboxTex = ResourceDescriptorHeap[EnvironmentTexIdx];
     SamplerState skyboxSampler = SamplerDescriptorHeap[LinearClampSampler];

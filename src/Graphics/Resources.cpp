@@ -57,9 +57,8 @@ namespace vast::gfx
 
 	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear /* = DEFAULT_CLEAR_COLOR_VALUE */)
 	{
-#ifdef VAST_DEBUG
-		VAST_ASSERTF(!IsTexFormatDepth(format), "Attempted to create a RTV with a DSV format");
-#endif
+		VAST_VERIFYF(!IsTexFormatDepth(format), "Attempted to create a RTV with a DSV format");
+
 		return TextureDesc
 		{
 			.type = TexType::TEXTURE_2D,
@@ -75,9 +74,8 @@ namespace vast::gfx
 
 	TextureDesc AllocDepthStencilTargetDesc(TexFormat format, uint2 dimensions, ClearDepthStencil clear /* = { DEFAULT_CLEAR_DEPTH_VALUE, 0 } */)
 	{
-#ifdef VAST_DEBUG
-		VAST_ASSERTF(IsTexFormatDepth(format), "Attempted to create a DSV with a RTV format");
-#endif
+		VAST_VERIFYF(IsTexFormatDepth(format), "Attempted to create a DSV with a RTV format");
+
 		return TextureDesc
 		{
 			.type = TexType::TEXTURE_2D,
@@ -90,4 +88,33 @@ namespace vast::gfx
 			.clear = {.ds = clear },
 		};
 	}
+
+	static ShaderDesc AllocShaderDesc(const ShaderType shaderType, const char* shaderName, const char* filePath, const char* entryPoint)
+	{
+		// TODO: Assert if shaderName doesn't include .hlsl extension
+
+		return ShaderDesc
+		{
+			.type = shaderType,
+			.filePath = filePath,
+			.shaderName = shaderName,
+			.entryPoint = entryPoint,
+		};
+	}
+
+	ShaderDesc AllocComputeShaderDesc(const char* shaderName, const char* filePath /* = VAST_DEFAULT_SHADERS_SOURCE_PATH */, const char* entryPoint /* = "CS_Main" */)
+	{
+		return AllocShaderDesc(ShaderType::COMPUTE, shaderName, filePath, entryPoint);
+	}
+
+	ShaderDesc AllocVertexShaderDesc(const char* shaderName, const char* filePath /* = VAST_DEFAULT_SHADERS_SOURCE_PATH */, const char* entryPoint /* = "VS_Main" */)
+	{
+		return AllocShaderDesc(ShaderType::VERTEX, shaderName, filePath, entryPoint);
+	}
+
+	ShaderDesc AllocPixelShaderDesc(const char* shaderName, const char* filePath /* = VAST_DEFAULT_SHADERS_SOURCE_PATH */, const char* entryPoint /* = "PS_Main" */)
+	{
+		return AllocShaderDesc(ShaderType::PIXEL, shaderName, filePath, entryPoint);
+	}
+
 }

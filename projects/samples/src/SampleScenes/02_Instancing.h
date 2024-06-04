@@ -75,8 +75,8 @@ public:
 			ctx.GetBackBufferAspectRatio(), DEG_TO_RAD(45.0f), 0.001f, 10000.0f, m_bDepthUseReverseZ);
 
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.vs = AllocVertexShaderDesc("Fullscreen.hlsl"),
+			.ps = AllocPixelShaderDesc("Fullscreen.hlsl"),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 		});
@@ -96,8 +96,8 @@ public:
 		// Create both standard and reverse-z PSOs with different Depth Stencil States.
 		PipelineDesc psoDesc =
 		{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/02_InstancedCube.hlsl", .entryPoint = "VS_Cube"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/02_InstancedCube.hlsl", .entryPoint = "PS_Cube"},
+			.vs = AllocVertexShaderDesc("02_InstancedCube.hlsl", GetSamplesShaderSourcePath()),
+			.ps = AllocPixelShaderDesc("02_InstancedCube.hlsl", GetSamplesShaderSourcePath()),
 			.renderPassLayout =
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },

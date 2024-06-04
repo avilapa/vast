@@ -28,7 +28,7 @@ namespace vast::gfx
 		DX12SafeRelease(m_DxcUtils);
 	}
 
-	IDxcBlobEncoding* DX12ShaderCompiler::LoadShader(std::wstring& fullPath)
+	IDxcBlobEncoding* DX12ShaderCompiler::LoadShader(const std::wstring& fullPath)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(m_DxcUtils);

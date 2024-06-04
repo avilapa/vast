@@ -58,9 +58,14 @@ namespace vast::gfx
 	struct ShaderDesc
 	{
 		ShaderType type = ShaderType::UNKNOWN;
+		std::string filePath = VAST_DEFAULT_SHADERS_SOURCE_PATH;
 		std::string shaderName = "";
 		std::string entryPoint = "";
 	};
+
+	ShaderDesc AllocComputeShaderDesc(const char* shaderName, const char* filePath = VAST_DEFAULT_SHADERS_SOURCE_PATH, const char* entryPoint = "CS_Main");
+	ShaderDesc AllocVertexShaderDesc(const char* shaderName, const char* filePath = VAST_DEFAULT_SHADERS_SOURCE_PATH, const char* entryPoint = "VS_Main");
+	ShaderDesc AllocPixelShaderDesc(const char* shaderName, const char* filePath = VAST_DEFAULT_SHADERS_SOURCE_PATH, const char* entryPoint = "PS_Main");
 
 	struct DepthStencilState
 	{

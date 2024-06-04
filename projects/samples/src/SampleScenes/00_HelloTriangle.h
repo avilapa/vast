@@ -44,9 +44,8 @@ public:
 		// Create triangle pipeline state object and prepare it to render to the back buffer.
 		PipelineDesc trianglePipelineDesc =
 		{
-			// TODO: Move triangle.hlsl to a project local shaders folder?
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/00_Triangle.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/00_Triangle.hlsl", .entryPoint = "PS_Main"},
+			.vs = AllocVertexShaderDesc("00_Triangle.hlsl", GetSamplesShaderSourcePath()),
+			.ps = AllocPixelShaderDesc("00_Triangle.hlsl", GetSamplesShaderSourcePath()),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() }, },
 		};

@@ -49,8 +49,8 @@ public:
 	{	
 		// Create full-screen pass PSO
 		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Fullscreen.hlsl", .entryPoint = "VS_Main"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Fullscreen.hlsl", .entryPoint = "PS_Main"},
+			.vs = AllocVertexShaderDesc("Fullscreen.hlsl"),
+			.ps = AllocPixelShaderDesc("Fullscreen.hlsl"),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 		});
@@ -63,8 +63,8 @@ public:
 
 		// Create cube PSO with depth testing enabled.
 		m_CubePso = ctx.CreatePipeline(PipelineDesc{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Samples/01_Cube.hlsl", .entryPoint = "VS_Cube"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Samples/01_Cube.hlsl", .entryPoint = "PS_Cube"},
+			.vs = AllocVertexShaderDesc("01_Cube.hlsl", GetSamplesShaderSourcePath()),
+			.ps = AllocPixelShaderDesc("01_Cube.hlsl", GetSamplesShaderSourcePath()),
 			.renderPassLayout = 
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },

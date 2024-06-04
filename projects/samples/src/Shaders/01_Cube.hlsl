@@ -33,7 +33,7 @@ struct VertexOutput
     float4 color : COLOR;
 };
 
-VertexOutput VS_Cube(uint vtxId : SV_VERTEXID)
+VertexOutput VS_Main(uint vtxId : SV_VERTEXID)
 {
     ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[ObjectConstantBuffer.vtxBufIdx];
 	float3 pos = vtxBuf.Load<float3>(vtxId * sizeof(float3));
@@ -46,7 +46,7 @@ VertexOutput VS_Cube(uint vtxId : SV_VERTEXID)
     return OUT;
 }
 
-float4 PS_Cube(VertexOutput IN) : SV_TARGET
+float4 PS_Main(VertexOutput IN) : SV_TARGET
 {   
     return IN.color;
 }

@@ -15,6 +15,8 @@ namespace vast::gfx
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
+	static const char* VAST_DEFAULT_SHADERS_SOURCE_PATH = "../../src/Shaders/";
+
 	// - Graphics Enums ------------------------------------------------------------------------ //
 
 	enum class GPUAdapterPreferenceCriteria
