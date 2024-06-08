@@ -16,14 +16,29 @@ static const wchar_t* SHADER_OUTPUT_PATH = L"../bin/Release/Shaders/";
 // TODO: We could also identify push constants by giving a descriptive name to the buffer itself, in case in the future more than one binding point is needed.
 static constexpr int PUSH_CONSTANT_REGISTER_INDEX = 999;
 
+vast::Arg g_AdditionalShaderIncludeDirectories("AdditionalShaderIncludeDirectories");
+
 namespace vast::gfx
 {
 
 	DX12ShaderManager::DX12ShaderManager()
 		: m_ShaderCompiler(nullptr)
+		, m_ShaderKeys({})
+		, m_Shaders({})
+		, m_GlobalShaderDefines({})
+		, m_ShaderIncludeDirectories({})
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 		m_ShaderCompiler = MakePtr<DX12ShaderCompiler>();
+
+		const std::string shaderSourcePath = VAST_SHADERS_SOURCE_PATH;
+		m_ShaderIncludeDirectories.push_back(std::wstring(shaderSourcePath.begin(), shaderSourcePath.end()));
+
+		std::string projectShaderSourcePath;
+		if (g_AdditionalShaderIncludeDirectories.Get(projectShaderSourcePath))
+		{
+			m_ShaderIncludeDirectories.push_back(std::wstring(projectShaderSourcePath.begin(), projectShaderSourcePath.end()));
+		}
 
 		AddGlobalShaderDefine(L"PushConstantRegister=b" + std::to_wstring(PUSH_CONSTANT_REGISTER_INDEX));
 	}
@@ -115,14 +130,11 @@ namespace vast::gfx
 
 		IDxcBlobEncoding* sourceBlobEncoding = m_ShaderCompiler->LoadShader(fullPath);
 
-		const std::string defaultShaderSourcePath = VAST_DEFAULT_SHADERS_SOURCE_PATH;
-
 		ShaderCompilerArguments sca;
 		sca.shaderType = desc.type;
 		sca.shaderName = shaderName;
 		sca.shaderEntryPoint = std::wstring(desc.entryPoint.begin(), desc.entryPoint.end());
-		// TODO: Add additional include directories (at least one for the project source).
-		sca.includeDirectories.push_back(std::wstring(defaultShaderSourcePath.begin(), defaultShaderSourcePath.end()));
+		sca.includeDirectories = m_ShaderIncludeDirectories;
 		sca.additionalDefines = m_GlobalShaderDefines;
 
 		IDxcResult* compiledShader = m_ShaderCompiler->CompileShader(sourceBlobEncoding, sca);

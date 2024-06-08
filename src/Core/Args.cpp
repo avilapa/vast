@@ -105,6 +105,16 @@ namespace vast
 		}
 		return false;
 	}
+	
+	bool Arg::Get(std::string& v)
+	{
+		if (!m_Value.empty())
+		{
+			v = m_Value;
+			return true;
+		}
+		return false;
+	}
 
 	template<typename T>
 	static constexpr T StringTo(const std::string& value) 

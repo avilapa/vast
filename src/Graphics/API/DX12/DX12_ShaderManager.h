@@ -33,17 +33,17 @@ namespace vast::gfx
 		Vector<D3D12_SIGNATURE_PARAMETER_DESC> GetInputParametersFromReflection(ID3D12ShaderReflection* reflection) const;
 
 	private:
-		Ptr<DX12ShaderCompiler> m_ShaderCompiler;
-
 		bool CompileShader(const ShaderDesc& desc, DX12Shader* outShader);
 
 		std::string MakeShaderKey(const std::string& shaderName, const std::string& entryPoint) const;
 		bool IsShaderRegistered(const std::string key) const;
 
+	private:
+		Ptr<DX12ShaderCompiler> m_ShaderCompiler;
 		std::unordered_map<std::string, uint32> m_ShaderKeys;
 		Vector<std::pair<Ref<DX12Shader>, ShaderDesc>> m_Shaders;
-
 		Vector<std::wstring> m_GlobalShaderDefines;
+		Vector<std::wstring> m_ShaderIncludeDirectories;
 	};
 
 }

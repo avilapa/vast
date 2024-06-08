@@ -2,7 +2,6 @@
 
 #include "Core/Defines.h"
 #include "Core/Types.h"
-#include <unordered_map>
 
 namespace vast
 {
@@ -16,6 +15,7 @@ namespace vast
 		~Arg();
 
 		bool Get();
+		bool Get(std::string& v);
 		bool Get(int32& v);
 		bool Get(int2& v);
 		bool Get(int3& v);
@@ -30,6 +30,8 @@ namespace vast
 		bool Get(float4& v);
 
 	private:
+		Arg() = delete;
+
 		bool m_bInitialized;
 		std::string m_Name;
 		std::string m_Value;
