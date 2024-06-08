@@ -1,5 +1,9 @@
 #include "vastpch.h"
+
 #include "Core/Core.h"
+#include "Core/App.h"
+#include "Core/EventTypes.h"
+
 #include "Core/Platform/x64/Win32_Window.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
@@ -11,10 +15,8 @@ static void ToggleProfilerGUI()
 	profile::ui::g_bShowProfiler = !profile::ui::g_bShowProfiler;
 }
 
-int Win32_Main(int argc, char** argv, vast::IApp* app)
-{
-	(void)argc; (void)argv; // TODO: Process input args.
-	
+int Win32_Main(int argc, char** argv, IApp* app)
+{	
 #if VAST_ENABLE_TRACING
 	// Initialize tracing first so that we can profile startup.
 	trace::Init("vast-profile.json");
@@ -25,6 +27,20 @@ int Win32_Main(int argc, char** argv, vast::IApp* app)
 		const char* outputLogFileName = "vast.log";
 		log::Init(outputLogFileName);
 #endif
+
+		if (argc > 1)
+		{
+			std::string argsFileName = argv[1];
+			if (!Arg::Init(argsFileName))
+			{
+				return EXIT_FAILURE;
+			}
+		}
+		else
+		{
+			VAST_LOG_WARNING("No response file found!");
+		}
+
 		if (!app->Init())
 		{
 			return EXIT_FAILURE;

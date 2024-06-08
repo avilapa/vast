@@ -26,6 +26,8 @@ project "dev"
 	
 	links {	"vast" }
 	
+	debugargs { path.join(PROJ_DIR, "build/args.txt") }
+	
 	configuration "Debug"
 		targetdir 	(path.join(PROJ_DIR, "build/bin/Debug/"))
         objdir 		(path.join(PROJ_DIR, "build/obj/Debug/"))

@@ -106,68 +106,34 @@ namespace vast
 		return false;
 	}
 
-	bool Arg::Get(uint32& v)
+	template<typename T>
+	static bool GetVector(const std::string& argValue, const uint32 n, T& v)
 	{
-		if (!m_Value.empty())
+		if (!argValue.empty())
 		{
-			v = std::stoul(m_Value);
-			return true;
-		}
-		return false;
-	}
-
-	static void GetUint(const std::string& argValue, const uint32 count, uint32* v)
-	{
-		std::istringstream iss(argValue);
-		for (uint32 i = 0; i < count; ++i)
-		{
-			std::string value;
-			if (std::getline(iss, value, ','))
-			{
-				v[i] = std::stoul(value);
-			}
-			else
-			{
-				VAST_ASSERTF(0, "Incorrect value format for requested argument.");
-			}
-		}
-	}
-	
-	bool Arg::Get(uint2& v)
-	{
-		if (!m_Value.empty())
-		{
-			std::istringstream iss(m_Value);
-			for (uint32 i = 0; i < 2; ++i)
+			std::istringstream iss(argValue);
+			for (uint32 i = 0; i < n; ++i)
 			{
 				std::string value;
 				if (std::getline(iss, value, ','))
 				{
-					v[i] = std::stoul(value);
-				}
-				else
-				{
-					VAST_ASSERTF(0, "Incorrect value format for requested argument.");
-				}
-			}
-
-			GetUint(m_Value, 2, (uint32*)v);
-			return true;
-		}
-		return false;
-	}
-		
-	bool Arg::Get(uint3& v)
-	{
-		if (!m_Value.empty())
-		{
-			std::istringstream iss(m_Value);
-			for (uint32 i = 0; i < 3; ++i)
-			{
-				std::string value;
-				if (std::getline(iss, value, ','))
-				{
-					v[i] = std::stoul(value);
+					using vtype = std::remove_reference_t<decltype(v[i])>;
+					if constexpr (std::is_same_v<vtype, uint32>)
+					{
+						v[i] = std::stoul(value);
+					}
+					else if constexpr (std::is_same_v<vtype, int32>)
+					{
+						v[i] = std::stoi(value);
+					}
+					else if constexpr (std::is_same_v<vtype, float>)
+					{
+						v[i] = std::stof(value);
+					}
+					else
+					{
+						static_assert(std::is_same_v<vtype, void>, "Unsupported type");
+					}
 				}
 				else
 				{
@@ -178,15 +144,18 @@ namespace vast
 		}
 		return false;
 	}
-	
-	bool Arg::Get(float& v)
-	{
-		if (!m_Value.empty())
-		{
-			v = std::stof(m_Value);
-			return true;
-		}
-		return false;
-	}
+
+	bool Arg::Get(int32& v)		{ return GetVector(m_Value, 1, v); }	
+	bool Arg::Get(int2& v)		{ return GetVector(m_Value, 2, v); }
+	bool Arg::Get(int3& v)		{ return GetVector(m_Value, 3, v); }
+	bool Arg::Get(int4& v)		{ return GetVector(m_Value, 4, v); }
+	bool Arg::Get(uint32& v)	{ return GetVector(m_Value, 1, v); }	
+	bool Arg::Get(uint2& v)		{ return GetVector(m_Value, 2, v); }
+	bool Arg::Get(uint3& v)		{ return GetVector(m_Value, 3, v); }
+	bool Arg::Get(uint4& v)		{ return GetVector(m_Value, 4, v); }
+	bool Arg::Get(float& v)		{ return GetVector(m_Value, 1, v); }	
+	bool Arg::Get(float2& v)	{ return GetVector(m_Value, 2, v); }
+	bool Arg::Get(float3& v)	{ return GetVector(m_Value, 3, v); }
+	bool Arg::Get(float4& v)	{ return GetVector(m_Value, 4, v); }
 
 }

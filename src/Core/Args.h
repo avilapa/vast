@@ -16,6 +16,10 @@ namespace vast
 		~Arg();
 
 		bool Get();
+		bool Get(int32& v);
+		bool Get(int2& v);
+		bool Get(int3& v);
+		bool Get(int4& v);
 		bool Get(uint32& v);
 		bool Get(uint2& v);
 		bool Get(uint3& v);

@@ -23,8 +23,10 @@ project "samples"
 		path.join(ROOT_DIR, "src"),
 		path.join(ROOT_DIR, "vendor"),
 	}
-	
+
 	links {	"vast" }
+	
+	debugargs { path.join(PROJ_DIR, "build/args.txt") }
 	
 	configuration "Debug"
 		targetdir 	(path.join(PROJ_DIR, "build/bin/Debug/"))
