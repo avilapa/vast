@@ -1,6 +1,8 @@
 #include "vastpch.h"
 #include "Rendering/EnvironmentBRDF.h"
 
+#include "Core/EventTypes.h"
+
 namespace vast::gfx
 {
 

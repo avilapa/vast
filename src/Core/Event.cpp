@@ -2,6 +2,9 @@
 #include "Core/Event.h"
 #include "Core/EventTypes.h"
 
+#include "Core/Assert.h"
+#include "Core/Tracing.h"
+
 #include <map>
 
 namespace vast

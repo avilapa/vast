@@ -1,8 +1,7 @@
 #pragma once
 
-#include "Core/Core.h"
-
-#include <functional>
+#include "Core/Defines.h"
+#include "Core/Log.h"
 
 // ==================================== EVENT SYSTEM USAGE ========================================
 //

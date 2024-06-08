@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Core/Defines.h"
-
 #include <chrono>
 
 namespace vast

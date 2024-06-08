@@ -1,9 +1,13 @@
 #include "vastpch.h"
 #include "Core/Profiler.h"
+
 #include "Core/Types.h"
+#include "Core/Assert.h"
 #include "Core/Timer.h"
+
 #include "Graphics/GraphicsContext.h"
 #include "Graphics/GPUProfiler.h"
+
 #include "Rendering/Imgui.h"
 
 #include <queue>

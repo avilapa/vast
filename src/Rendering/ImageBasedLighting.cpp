@@ -1,6 +1,8 @@
 #include "vastpch.h"
 #include "Rendering/ImageBasedLighting.h"
 
+#include "Core/EventTypes.h"
+
 namespace vast::gfx
 {
 	static PipelineHandle s_IntegrateIrradiancePso;

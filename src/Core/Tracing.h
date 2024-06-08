@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Core/Defines.h"
-
 #if VAST_ENABLE_TRACING
 #define VAST_PROFILE_TRACE_FUNCTION	::vast::trace::ScopedTrace XCAT(_traceVar, __LINE__)(__FUNCTION__)
 #define VAST_PROFILE_TRACE_SCOPE(n)	::vast::trace::ScopedTrace XCAT(_traceVar, __LINE__)(n)

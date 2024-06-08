@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Core/Core.h"
+#include "Core/Defines.h"
+#include "Core/Types.h"
 
 #if (_MSC_VER >= 1929) && (__cplusplus >= 202002L) // VS2019 16.10 && C++20
 // Read more: https://github.com/gabime/spdlog/pull/2170

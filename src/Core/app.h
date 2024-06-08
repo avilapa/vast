@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Core/Defines.h"
+#include "Core/Assert.h"
+
 #ifdef VAST_PLATFORM_WINDOWS
 #define VAST_DEFINE_APP_MAIN(className)							\
 extern int Win32_Main(int argc, char** argv, vast::IApp* app);	\

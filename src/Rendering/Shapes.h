@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/Types.h"
+#include "Core/Core.h"
 #include "Shaders/VertexInputs_shared.h"
 
 namespace vast::gfx
