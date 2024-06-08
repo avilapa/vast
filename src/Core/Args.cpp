@@ -107,33 +107,68 @@ namespace vast
 	}
 
 	template<typename T>
-	static bool GetVector(const std::string& argValue, const uint32 n, T& v)
+	static constexpr T StringTo(const std::string& value) 
 	{
-		if (!argValue.empty())
+		if constexpr (std::is_same_v<T, uint32>) 
 		{
-			std::istringstream iss(argValue);
+			return static_cast<uint32>(std::stoul(value));
+		}
+		else if constexpr (std::is_same_v<T, int32>) 
+		{
+			return static_cast<int32>(std::stoi(value));
+		}
+		else if constexpr (std::is_same_v<T, float>) 
+		{
+			return std::stof(value);
+		}
+		else 
+		{
+			static_assert(std::is_same_v<T, void>, "Unsupported type");
+		}
+	}
+
+	bool Arg::Get(int32& v)
+	{
+		if (!m_Value.empty())
+		{
+			v = StringTo<int32>(m_Value);
+			return true;
+		}
+		return false;
+	}
+	
+	bool Arg::Get(uint32& v)
+	{
+		if (!m_Value.empty())
+		{
+			v = StringTo<uint32>(m_Value);
+			return true;
+		}
+		return false;
+	}
+	
+	bool Arg::Get(float& v)
+	{
+		if (!m_Value.empty())
+		{
+			v = StringTo<float>(m_Value);
+			return true;
+		}
+		return false;
+	}
+
+	template<typename T>
+	static bool GetVector(const std::string& argValues, const uint32 n, T& v)
+	{
+		if (!argValues.empty())
+		{
+			std::istringstream iss(argValues);
 			for (uint32 i = 0; i < n; ++i)
 			{
-				std::string value;
-				if (std::getline(iss, value, ','))
+				std::string tokenValue;
+				if (std::getline(iss, tokenValue, ','))
 				{
-					using vtype = std::remove_reference_t<decltype(v[i])>;
-					if constexpr (std::is_same_v<vtype, uint32>)
-					{
-						v[i] = std::stoul(value);
-					}
-					else if constexpr (std::is_same_v<vtype, int32>)
-					{
-						v[i] = std::stoi(value);
-					}
-					else if constexpr (std::is_same_v<vtype, float>)
-					{
-						v[i] = std::stof(value);
-					}
-					else
-					{
-						static_assert(std::is_same_v<vtype, void>, "Unsupported type");
-					}
+					v[i] = StringTo<std::remove_reference_t<decltype(v[i])>>(tokenValue);
 				}
 				else
 				{
@@ -145,15 +180,14 @@ namespace vast
 		return false;
 	}
 
-	bool Arg::Get(int32& v)		{ return GetVector(m_Value, 1, v); }	
 	bool Arg::Get(int2& v)		{ return GetVector(m_Value, 2, v); }
 	bool Arg::Get(int3& v)		{ return GetVector(m_Value, 3, v); }
 	bool Arg::Get(int4& v)		{ return GetVector(m_Value, 4, v); }
-	bool Arg::Get(uint32& v)	{ return GetVector(m_Value, 1, v); }	
+
 	bool Arg::Get(uint2& v)		{ return GetVector(m_Value, 2, v); }
 	bool Arg::Get(uint3& v)		{ return GetVector(m_Value, 3, v); }
 	bool Arg::Get(uint4& v)		{ return GetVector(m_Value, 4, v); }
-	bool Arg::Get(float& v)		{ return GetVector(m_Value, 1, v); }	
+
 	bool Arg::Get(float2& v)	{ return GetVector(m_Value, 2, v); }
 	bool Arg::Get(float3& v)	{ return GetVector(m_Value, 3, v); }
 	bool Arg::Get(float4& v)	{ return GetVector(m_Value, 4, v); }

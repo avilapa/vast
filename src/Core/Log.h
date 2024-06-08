@@ -12,11 +12,11 @@
 
 // Formatting cheatsheet: https://hackingcpp.com/cpp/libs/fmt.html
 #if VAST_ENABLE_LOGGING
-#define VAST_LOG_TRACE(...)		::vast::log::g_Logger->log(spdlog::level::trace,	__VA_ARGS__)
-#define VAST_LOG_INFO(...)		::vast::log::g_Logger->log(spdlog::level::info,		__VA_ARGS__)
-#define VAST_LOG_WARNING(...)	::vast::log::g_Logger->log(spdlog::level::warn,		__VA_ARGS__)
-#define VAST_LOG_ERROR(...)		::vast::log::g_Logger->log(spdlog::level::err,		__VA_ARGS__)
-#define VAST_LOG_CRITICAL(...)	::vast::log::g_Logger->log(spdlog::level::critical, __VA_ARGS__)
+#define VAST_LOG_TRACE(...)		::vast::log::GetLogger()->log(spdlog::level::trace,		__VA_ARGS__)
+#define VAST_LOG_INFO(...)		::vast::log::GetLogger()->log(spdlog::level::info,		__VA_ARGS__)
+#define VAST_LOG_WARNING(...)	::vast::log::GetLogger()->log(spdlog::level::warn,		__VA_ARGS__)
+#define VAST_LOG_ERROR(...)		::vast::log::GetLogger()->log(spdlog::level::err,		__VA_ARGS__)
+#define VAST_LOG_CRITICAL(...)	::vast::log::GetLogger()->log(spdlog::level::critical,	__VA_ARGS__)
 #else
 #define VAST_LOG_TRACE(...)
 #define VAST_LOG_INFO(...)
@@ -32,6 +32,6 @@ namespace vast
 		void Init(const char* logOutFileName);
 		void Stop();
 
-		extern Ref<spdlog::logger> g_Logger;
+		Ref<spdlog::logger>& GetLogger();
 	};
 }

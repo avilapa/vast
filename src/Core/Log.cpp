@@ -7,7 +7,13 @@
 
 namespace vast
 {
-	Ref<spdlog::logger> log::g_Logger;
+	static Ref<spdlog::logger> s_Logger;
+
+	Ref<spdlog::logger>& log::GetLogger()
+	{
+		VAST_ASSERTF(s_Logger, "Logger not yet initialized!");
+		return s_Logger;
+	}
 
 	void log::Init(const char* logOutFileName)
 	{
@@ -21,16 +27,16 @@ namespace vast
 		fileSink->set_pattern("[%T] [%l] %n: %v");
 
 		Vector<Ref<spdlog::sinks::sink>> sinks = { stdoutSink, fileSink };
-		g_Logger = MakeRef<spdlog::logger>("vast", begin(sinks), end(sinks));
-		spdlog::register_logger(g_Logger);
+		s_Logger = MakeRef<spdlog::logger>("vast", begin(sinks), end(sinks));
+		spdlog::register_logger(s_Logger);
 
 		VAST_LOG_INFO("[log] Hello there! Logger initialized successfully.");
 		VAST_LOG_TRACE("[log] Created output file '{}'", logOutFileName);
 
 		// TODO: Expose these options
 		spdlog::level::level_enum logLevel = spdlog::level::trace;
-		g_Logger->set_level(logLevel);
-		g_Logger->flush_on(logLevel);
+		s_Logger->set_level(logLevel);
+		s_Logger->flush_on(logLevel);
 
 		VAST_LOG_TRACE("[log] Logging level set to'{}'", spdlog::level::to_string_view(logLevel));
 	}
