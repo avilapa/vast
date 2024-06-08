@@ -3,6 +3,7 @@
 #include "Core/Defines.h"
 #include "Core/Log.h"
 
+// TODO: Move this include to a .cpp to avoid including filesystem everywhere
 #include <filesystem>
 #define VAST_GET_FILE_FROM_PATH std::filesystem::path(__FILE__).filename().string().c_str()
 
