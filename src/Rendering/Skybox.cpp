@@ -1,35 +1,9 @@
 #include "vastpch.h"
 #include "Rendering/Skybox.h"
+#include "Rendering/Shapes.h"
 
 namespace vast::gfx
 {
-	static const Array<s_float3, 8> s_CubeVertexData =
-	{ {
-		{-1.0f,  1.0f,  1.0f },
-		{ 1.0f,  1.0f,  1.0f },
-		{-1.0f, -1.0f,  1.0f },
-		{ 1.0f, -1.0f,  1.0f },
-		{-1.0f,  1.0f, -1.0f },
-		{ 1.0f,  1.0f, -1.0f },
-		{-1.0f, -1.0f, -1.0f },
-		{ 1.0f, -1.0f, -1.0f },
-	} };
-
-	static const Array<uint16, 36> s_CubeIndexData =
-	{ {
-		0, 1, 2,
-		1, 3, 2,
-		4, 6, 5,
-		5, 6, 7,
-		0, 2, 4,
-		4, 2, 6,
-		1, 5, 3,
-		5, 7, 3,
-		0, 4, 1,
-		4, 5, 1,
-		2, 3, 6,
-		6, 3, 7,
-	} };
 
 	Skybox::Skybox(gfx::GraphicsContext& ctx_, TexFormat rtFormat, TexFormat dsFormat, bool bUseReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
 		: ctx(ctx_)
@@ -49,12 +23,12 @@ namespace vast::gfx
 			.renderPassLayout = {.rtFormats = { rtFormat }, .dsFormat = { dsFormat } }, 
 		});
 
-		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(s_CubeVertexData), sizeof(s_CubeVertexData[0]));
-		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &s_CubeVertexData, sizeof(s_CubeVertexData));
+		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_VerticesIndexed_Pos), sizeof(Cube::s_VerticesIndexed_Pos[0]));
+		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
 
-		uint32 numIndices = static_cast<uint32>(s_CubeIndexData.size());
+		uint32 numIndices = static_cast<uint32>(Cube::s_Indices.size());
 		auto idxBufDesc = AllocIndexBufferDesc(numIndices);
-		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &s_CubeIndexData, numIndices * sizeof(uint16));
+		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
 	}
 
 	Skybox::~Skybox()
@@ -90,7 +64,7 @@ namespace vast::gfx
 
 			ctx.BindVertexBuffer(m_CubeVtxBuf);
 			ctx.BindIndexBuffer(m_CubeIdxBuf);
-			ctx.DrawIndexed(static_cast<uint32>(s_CubeIndexData.size()));
+			ctx.DrawIndexed(static_cast<uint32>(Cube::s_Indices.size()));
 		}
 		ctx.EndRenderPass();
 	}
