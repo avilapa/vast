@@ -47,30 +47,4 @@ struct IBL_PerFrame
 	uint32 prefilterNumMips;
 };
 
-struct ShaderDebug_PerFrame
-{
-	float4 var0;
-	float4 var1;
-
-	uint32 flags;
-	uint32 _pad0, _pad1, _pad2;
-};
-
-struct SimpleRenderer_PerFrame
-{
-	float4x4 viewProjMatrix;
-	
-	s_float3 cameraPos;
-	uint32 skyboxTexIdx;
-
-	IBL_PerFrame ibl;
-	ShaderDebug_PerFrame debug;
-};
-
-#if !defined(__cplusplus)
-ConstantBuffer<SimpleRenderer_PerFrame> FrameConstantBuffer : register(b0, PerObjectSpace);
-
-#define GetDebugToggle(n) ((FrameConstantBuffer.debug.flags & (1 << n)) != 0)
-#endif
-
 #endif
