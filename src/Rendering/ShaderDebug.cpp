@@ -87,14 +87,6 @@ namespace vast::gfx
 		"Shader Debug Toggle 31",
 	};
 
-	static void DrawDebugToggle(uint32& flags, const uint32 i)
-	{
-		ImGui::CheckboxFlags(s_ShaderDebugToggleTags[i], &flags, (1 << i));
-		ImGui::SameLine();
-		// TODO: Allow setting persistent names to each var, with a button to clear
-		ImGui::Text(s_ShaderDebugToggleDefaultText[i]);
-	}
-
 	static const char* s_ShaderDebugVarTags[] =
 	{
 		"##shaderdebugvar0x",
@@ -118,6 +110,14 @@ namespace vast::gfx
 		"Shader Debug Var 1 Z",
 		"Shader Debug Var 1 W",
 	};
+
+	static void DrawDebugToggle(uint32& flags, const uint32 i)
+	{
+		ImGui::CheckboxFlags(s_ShaderDebugToggleTags[i], &flags, (1 << i));
+		ImGui::SameLine();
+		// TODO: Allow setting persistent names to each var, with a button to clear
+		ImGui::Text(s_ShaderDebugToggleDefaultText[i]);
+	}
 
 	static void DrawDebugVar(float4& data, const uint32 i)
 	{

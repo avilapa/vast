@@ -14,7 +14,7 @@ namespace vast
 	class WindowImpl_Win32 : public Window
 	{
 	public:
-		WindowImpl_Win32(const WindowParams& params);
+		WindowImpl_Win32();
 		virtual ~WindowImpl_Win32();
 
 		void Update() override;
@@ -38,7 +38,6 @@ namespace vast
 
 		HWND m_Handle;
 		uint2 m_WindowSize;
-		std::wstring m_WindowName;
 	};
 }
 

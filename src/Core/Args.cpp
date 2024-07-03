@@ -1,5 +1,7 @@
 #include "vastpch.h"
 #include "Core/Args.h"
+#include "Core/Tracing.h"
+#include "Core/Log.h"
 
 #include <fstream>
 #include <sstream>
@@ -24,8 +26,12 @@ namespace vast
 		return nullptr;
 	}
 
+	static bool s_bInitialized = false;
+
 	bool Arg::Init(const std::string& argsFileName)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		std::ifstream file(argsFileName);
 		if (!VAST_VERIFYF(file.is_open(), "Couldn't find file {}.", argsFileName))
 		{
@@ -75,42 +81,48 @@ namespace vast
 		}
 
 		file.close();
+		s_bInitialized = true;
 
 		return true;
 	}
 
-	Arg::Arg(const std::string& name)
-		: m_bInitialized(false)
-		, m_Name(name)
+	Arg::Arg(const char* name)
+		: m_Name()
 		, m_Value()
 	{
-		auto result = GetArgsMap().emplace(m_Name, this);
-
-		m_bInitialized = VAST_VERIFYF(result.second, "Arg '{}' already exists in this application (use 'extern' to access it from multiple places).", m_Name);
+		if (VAST_VERIFYF(GetArgsMap().emplace(name, this).second, "Arg '{}' already exists in this application (use 'extern' to access it from multiple places).", name))
+		{
+			m_Name = name;
+		}
 	}
 
 	Arg::~Arg()
 	{
-		if (m_bInitialized)
+		if (!m_Name.empty())
 		{
 			GetArgsMap().erase(m_Name);
 		}
 	}
 
-	bool Arg::Get()
+	bool Arg::Get(std::string& v)
 	{
+		VAST_ASSERTF(!m_Name.empty() && s_bInitialized, "Invalid arg or not system initialized yet.");
+
 		if (!m_Value.empty())
 		{
-			return m_Value == "1";
+			v = m_Value;
+			return true;
 		}
 		return false;
 	}
 	
-	bool Arg::Get(std::string& v)
+	bool Arg::Get(std::wstring& v)
 	{
+		VAST_ASSERTF(!m_Name.empty() && s_bInitialized, "Invalid arg or not system initialized yet.");
+
 		if (!m_Value.empty())
 		{
-			v = m_Value;
+			v = std::wstring(m_Value.begin(), m_Value.end());
 			return true;
 		}
 		return false;
@@ -139,6 +151,8 @@ namespace vast
 
 	bool Arg::Get(int32& v)
 	{
+		VAST_ASSERTF(!m_Name.empty() && s_bInitialized, "Invalid arg or not system initialized yet.");
+
 		if (!m_Value.empty())
 		{
 			v = StringTo<int32>(m_Value);
@@ -149,6 +163,8 @@ namespace vast
 	
 	bool Arg::Get(uint32& v)
 	{
+		VAST_ASSERTF(!m_Name.empty() && s_bInitialized, "Invalid arg or not system initialized yet.");
+
 		if (!m_Value.empty())
 		{
 			v = StringTo<uint32>(m_Value);
@@ -159,6 +175,8 @@ namespace vast
 	
 	bool Arg::Get(float& v)
 	{
+		VAST_ASSERTF(!m_Name.empty() && s_bInitialized, "Invalid arg or not system initialized yet.");
+
 		if (!m_Value.empty())
 		{
 			v = StringTo<float>(m_Value);
@@ -168,8 +186,11 @@ namespace vast
 	}
 
 	template<typename T>
-	static bool GetVector(const std::string& argValues, const uint32 n, T& v)
+	static bool GetVector(const std::string& argName, const std::string& argValues, const uint32 n, T& v)
 	{
+		VAST_ASSERTF(!argName.empty() && s_bInitialized, "Invalid arg or not system initialized yet.");
+		(void)argName;
+
 		if (!argValues.empty())
 		{
 			std::istringstream iss(argValues);
@@ -190,16 +211,16 @@ namespace vast
 		return false;
 	}
 
-	bool Arg::Get(int2& v)		{ return GetVector(m_Value, 2, v); }
-	bool Arg::Get(int3& v)		{ return GetVector(m_Value, 3, v); }
-	bool Arg::Get(int4& v)		{ return GetVector(m_Value, 4, v); }
+	bool Arg::Get(int2& v)		{ return GetVector(m_Name, m_Value, 2, v); }
+	bool Arg::Get(int3& v)		{ return GetVector(m_Name, m_Value, 3, v); }
+	bool Arg::Get(int4& v)		{ return GetVector(m_Name, m_Value, 4, v); }
 
-	bool Arg::Get(uint2& v)		{ return GetVector(m_Value, 2, v); }
-	bool Arg::Get(uint3& v)		{ return GetVector(m_Value, 3, v); }
-	bool Arg::Get(uint4& v)		{ return GetVector(m_Value, 4, v); }
+	bool Arg::Get(uint2& v)		{ return GetVector(m_Name, m_Value, 2, v); }
+	bool Arg::Get(uint3& v)		{ return GetVector(m_Name, m_Value, 3, v); }
+	bool Arg::Get(uint4& v)		{ return GetVector(m_Name, m_Value, 4, v); }
 
-	bool Arg::Get(float2& v)	{ return GetVector(m_Value, 2, v); }
-	bool Arg::Get(float3& v)	{ return GetVector(m_Value, 3, v); }
-	bool Arg::Get(float4& v)	{ return GetVector(m_Value, 4, v); }
+	bool Arg::Get(float2& v)	{ return GetVector(m_Name, m_Value, 2, v); }
+	bool Arg::Get(float3& v)	{ return GetVector(m_Name, m_Value, 3, v); }
+	bool Arg::Get(float4& v)	{ return GetVector(m_Name, m_Value, 4, v); }
 
 }

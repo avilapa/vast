@@ -1,5 +1,6 @@
 #include "vastpch.h"
 #include "Core/Platform/x64/Win32_Window.h"
+
 #include "Core/EventTypes.h"
 
 #ifdef VAST_PLATFORM_WINDOWS
@@ -7,8 +8,12 @@
 #include "imgui/backends/imgui_impl_win32.h" // TODO: USE_IMGUI_STOCK_IMPL_WIN32
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+vast::Arg g_WindowSize("WindowSize");
+vast::Arg g_WindowTitle("WindowTitle");
+
 namespace vast
 {
+
 	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lparam)
 	{
 		if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lparam))
@@ -55,17 +60,21 @@ namespace vast
 		return DefWindowProcW(hWnd, msg, wParam, lparam);
 	}
 
-	WindowImpl_Win32::WindowImpl_Win32(const WindowParams& params)
-		: m_WindowSize(params.size)
-		, m_WindowName(std::wstring(params.name.begin(), params.name.end()))
+	WindowImpl_Win32::WindowImpl_Win32()
+		: m_WindowSize(1600, 900)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
+
+		// Process input arguments
+		g_WindowSize.Get(m_WindowSize);
+		std::string windowTitle = "vast Engine";
+		g_WindowTitle.Get(windowTitle);
 
 		HINSTANCE hInst = GetModuleHandle(nullptr);
 
 		const wchar_t* windowClassName = L"default";
 		Register(hInst, windowClassName);
-		Create(hInst, windowClassName, m_WindowName.c_str(), m_WindowSize);
+		Create(hInst, windowClassName, std::wstring(windowTitle.begin(), windowTitle.end()).c_str(), m_WindowSize);
 
 		{
 			VAST_PROFILE_TRACE_SCOPE("ShowWindow");
@@ -74,7 +83,7 @@ namespace vast
 		SetForegroundWindow(m_Handle);
 		SetFocus(m_Handle);
 		ShowCursor(true);
-		VAST_LOG_TRACE("[window] [win32] New window '{}' created successfully with resolution {}x{}.", params.name, params.size.x, params.size.y);
+		VAST_LOG_TRACE("[window] [win32] New window '{}' created successfully with resolution {}x{}.", windowTitle.c_str(), m_WindowSize.x, m_WindowSize.y);
 	}
 
 	WindowImpl_Win32::~WindowImpl_Win32()

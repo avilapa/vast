@@ -10,7 +10,11 @@ namespace vast::gfx
 
 	struct GraphicsParams
 	{
-		GraphicsParams() : swapChainSize(1600, 900), swapChainFormat(TexFormat::RGBA8_UNORM), backBufferFormat(TexFormat::RGBA8_UNORM_SRGB) {}
+		GraphicsParams()
+			: swapChainSize(1600, 900)
+			, swapChainFormat(TexFormat::RGBA8_UNORM)
+			, backBufferFormat(TexFormat::RGBA8_UNORM_SRGB)
+		{}
 
 		uint2 swapChainSize;
 		TexFormat swapChainFormat;

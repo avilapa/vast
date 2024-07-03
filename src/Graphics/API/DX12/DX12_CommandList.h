@@ -5,7 +5,7 @@
 namespace vast::gfx
 {
 	constexpr uint32 MAX_QUEUED_BARRIERS = 16;
-	constexpr uint32 MAX_TEXTURE_SUBRESOURCE_COUNT = 32;
+	constexpr uint32 MAX_TEXTURE_SUBRESOURCE_COUNT = 128;
 
 	class DX12Device;
 	class DX12QueryHeap;

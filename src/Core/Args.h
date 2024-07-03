@@ -11,7 +11,7 @@ namespace vast
 	public:
 		static bool Init(const std::string& argsFileName);
 
-		Arg(const std::string& name);
+		Arg(const char* name);
 		~Arg();
 
 		bool Get();
@@ -32,7 +32,6 @@ namespace vast
 	private:
 		Arg() = delete;
 
-		bool m_bInitialized;
 		std::string m_Name;
 		std::string m_Value;
 	};

@@ -9,11 +9,11 @@
 
 namespace vast
 {
-	Ptr<Window> Window::Create(const WindowParams& params /* = WindowParams() */)
+	Ptr<Window> Window::Create()
 	{
 		VAST_LOG_INFO("[window] Initializing Window...");
 #ifdef VAST_PLATFORM_WINDOWS
-		return MakePtr<WindowImpl_Win32>(params);
+		return MakePtr<WindowImpl_Win32>();
 #else
 		VAST_ASSERTF(0, "Invalid Platform: Unknown Platform");
 		return nullptr;

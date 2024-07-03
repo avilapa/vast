@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Core.h"
+
 namespace vast::gfx
 {
 	// - Graphics constants -------------------------------------------------------------------- //
@@ -15,7 +17,7 @@ namespace vast::gfx
 	constexpr bool ENABLE_VSYNC = true;
 	constexpr bool ALLOW_TEARING = false;
 
-	static const char* VAST_DEFAULT_SHADERS_SOURCE_PATH = "../../src/Shaders/";
+	constexpr const char* VAST_SHADERS_SOURCE_PATH = "../../src/Shaders/";
 
 	// - Graphics Enums ------------------------------------------------------------------------ //
 
@@ -32,7 +34,6 @@ namespace vast::gfx
 		"Lowest Power Consumption",
 	};
 	static_assert(NELEM(g_GPUAdapterPreferenceCriteriaNames) == (CountBits(IDX(GPUAdapterPreferenceCriteria::MIN_POWER)) + 1));
-
 
 	enum class BufViewFlags
 	{
