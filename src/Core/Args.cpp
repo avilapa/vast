@@ -115,18 +115,6 @@ namespace vast
 		}
 		return false;
 	}
-	
-	bool Arg::Get(std::wstring& v)
-	{
-		VAST_ASSERTF(!m_Name.empty() && s_bInitialized, "Invalid arg or not system initialized yet.");
-
-		if (!m_Value.empty())
-		{
-			v = std::wstring(m_Value.begin(), m_Value.end());
-			return true;
-		}
-		return false;
-	}
 
 	template<typename T>
 	static constexpr T StringTo(const std::string& value) 
