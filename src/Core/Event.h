@@ -95,7 +95,7 @@ namespace vast
 			UnsubscribeFromEevent(key);
 			VAST_LOG_TRACE("[events] {} deregistered '{}' subscriber (Count: {}).", T::GetName(), subscriberIdx, GetSubscriberCount(eventIdx));
 		}
-
+		
 		template<typename T>
 		static void FireEvent(IEvent& data)
 		{

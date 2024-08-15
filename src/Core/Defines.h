@@ -25,12 +25,33 @@
 // - Logging ----------------------------------------------------------------------------------- //
 
 #define VAST_ENABLE_LOGGING 1
+
+#if VAST_ENABLE_LOGGING
+#define VAST_LOGGING_ONLY(x) x
+#else
+#define VAST_LOGGING_ONLY(x)
+#endif
+
 #define VAST_ENABLE_LOGGING_RESOURCE_BARRIERS (0 && VAST_ENABLE_LOGGING)
 
 // - Profiling --------------------------------------------------------------------------------- //
 
 #define VAST_ENABLE_PROFILING 1
+
+#if VAST_ENABLE_PROFILING
+#define VAST_PROFILING_ONLY(x) x
+#else
+#define VAST_PROFILING_ONLY(x)
+#endif
+
 #define VAST_ENABLE_TRACING	1
+
+#if VAST_ENABLE_TRACING
+#define VAST_TRACING_ONLY(x) x
+#else
+#define VAST_TRACING_ONLY(x)
+#endif
+
 
 // - Graphics ---------------------------------------------------------------------------------- //
 

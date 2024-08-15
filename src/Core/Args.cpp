@@ -1,6 +1,5 @@
 #include "vastpch.h"
 #include "Core/Args.h"
-#include "Core/Tracing.h"
 #include "Core/Log.h"
 
 #include <fstream>
@@ -30,8 +29,6 @@ namespace vast
 
 	bool Arg::Init(const std::string& argsFileName)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
 		std::ifstream file(argsFileName);
 		if (!VAST_VERIFYF(file.is_open(), "Couldn't find file {}.", argsFileName))
 		{

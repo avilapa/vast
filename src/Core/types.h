@@ -4,6 +4,7 @@
 #include <memory>
 #include <array>
 #include <vector>
+#include <string>
 
 #define HLSLPP_FEATURE_TRANSFORM
 #include "hlslpp/include/hlsl++_vector_int.h"

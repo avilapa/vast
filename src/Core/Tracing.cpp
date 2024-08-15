@@ -7,9 +7,9 @@ namespace vast
 {
 	namespace trace
 	{
-		void Init(const char* fileName)
+		void Init(const std::string& fileName)
 		{
-			mtr_init(fileName);
+			mtr_init(fileName.c_str());
 		}
 
 		void Stop()

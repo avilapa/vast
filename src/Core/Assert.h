@@ -1,13 +1,10 @@
 #pragma once
 
 #include "Core/Defines.h"
+#include "Core/Filesystem.h"
 
 #include <iostream>
 #include <format>
-
-// TODO: Move this include to a .cpp to avoid including filesystem everywhere
-#include <filesystem>
-#define VAST_GET_FILE_FROM_PATH std::filesystem::path(__FILE__).filename().string().c_str()
 
 template <typename... Args>
 static void LogFatalError(const std::string_view fmt, Args&&... args)
@@ -24,29 +21,29 @@ static void LogFatalError(const std::string_view fmt, Args&&... args)
 #if VAST_ENABLE_ASSERTS
 
 // TODO: Look into likely/unlikely for asserts.
-#define __VAST_ASSERT_IMPL(expr, fmt, ...)							\
-	do																\
-	{																\
-		if(!(expr))													\
-		{															\
-			LogFatalError("Assert '{}' FAILED ({}, line {}). " 		\
-			fmt, STR(expr), VAST_GET_FILE_FROM_PATH, __VA_ARGS__);	\
-			VAST_DEBUGBREAK();										\
-		}															\
+#define __VAST_ASSERT_IMPL(expr, fmt, ...)									\
+	do																		\
+	{																		\
+		if(!(expr))															\
+		{																	\
+			LogFatalError("Assert '{}' FAILED ({}, line {}). " 				\
+			fmt, STR(expr), Filesystem::GetCurrentFilename(), __VA_ARGS__);	\
+			VAST_DEBUGBREAK();												\
+		}																	\
 	} while(0)
 
-#define __VAST_VERIFY_IMPL(expr, fmt, ...) ((expr) ||				\
-	(LogFatalError("Verify '{}' FAILED ({}, line {}). " 			\
-	fmt, STR(expr), VAST_GET_FILE_FROM_PATH, __VA_ARGS__),			\
+#define __VAST_VERIFY_IMPL(expr, fmt, ...) ((expr) ||						\
+	(LogFatalError("Verify '{}' FAILED ({}, line {}). " 					\
+	fmt, STR(expr), Filesystem::GetCurrentFilename(), __VA_ARGS__),			\
 	VAST_DEBUGBREAK(), 0))
 
 #else
 
 #define __VAST_ASSERT_IMPL(expr, fmt, ...)
 
-#define __VAST_VERIFY_IMPL(expr, fmt, ...) ((expr) ||				\
-	(LogFatalError("Verify"" '{}' FAILED ({}, line {}). " 			\
-	fmt, STR(expr), VAST_GET_FILE_FROM_PATH, __VA_ARGS__), 0))
+#define __VAST_VERIFY_IMPL(expr, fmt, ...) ((expr) ||						\
+	(LogFatalError("Verify"" '{}' FAILED ({}, line {}). " 					\
+	fmt, STR(expr), Filesystem::GetCurrentFilename(), __VA_ARGS__), 0))
 
 #endif // VAST_ENABLE_ASSERTS
 

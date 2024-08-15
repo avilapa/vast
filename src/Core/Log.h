@@ -29,8 +29,10 @@ namespace vast
 {
 	namespace log
 	{
-		void Init(const char* logOutFileName);
+		void Init();
 		void Stop();
+
+		void CreateFileSink(const std::string& filePath);
 
 		Ref<spdlog::logger>& GetLogger();
 	};
