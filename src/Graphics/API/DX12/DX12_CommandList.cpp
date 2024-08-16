@@ -3,7 +3,7 @@
 #include "Graphics/API/DX12/DX12_Device.h"
 #include "Graphics/API/DX12/DX12_Descriptors.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	DX12CommandList::DX12CommandList(DX12Device& device, D3D12_COMMAND_LIST_TYPE commandListType)

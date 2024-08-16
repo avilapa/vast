@@ -44,17 +44,14 @@ namespace vast
 		EVENT_CLASS_DECL_STATIC_TYPE(DebugAction);
 	};
 
-	namespace gfx
-	{
-		class GraphicsContext;
-	}
+	class GraphicsContext;
 
 	class ReloadShadersEvent final : public IEvent
 	{
 	public:
 		ReloadShadersEvent() = default;
 		EVENT_CLASS_DECL_STATIC_TYPE(ReloadShaders);
-		ReloadShadersEvent(gfx::GraphicsContext& ctx_) : ctx(ctx_) {}
-		gfx::GraphicsContext& ctx;
+		ReloadShadersEvent(GraphicsContext& ctx_) : ctx(ctx_) {}
+		GraphicsContext& ctx;
 	};
 }

@@ -3,7 +3,7 @@
 #include "Graphics/Handles.h"
 #include "Graphics/GraphicsTypes.h"
 
-namespace vast::gfx
+namespace vast
 {
 	// - Resource Handles ------------------------------------------------------------------------- //
 

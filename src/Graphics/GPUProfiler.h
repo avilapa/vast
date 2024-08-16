@@ -3,7 +3,7 @@
 #include "Core/Core.h"
 #include "Graphics/Resources.h"
 
-namespace vast::gfx
+namespace vast
 {
 	class ResourceManager;
 

@@ -20,11 +20,7 @@ namespace vast
 {
 
 	class Window;
-
-	namespace gfx
-	{
-		class GraphicsContext;
-	}
+	class GraphicsContext;
 
 	class IApp
 	{
@@ -38,15 +34,13 @@ namespace vast
 		virtual void Update(float dt) = 0;
 		virtual void Draw() = 0;
 
-		bool m_bQuit = false;
-
 		Window& GetWindow() const 
 		{	
 			VAST_ASSERT(m_Window);
 			return *m_Window; 
 		}
 		
-		gfx::GraphicsContext& GetGraphicsContext() const 
+		GraphicsContext& GetGraphicsContext() const 
 		{
 			VAST_ASSERT(m_GraphicsContext);
 			return *m_GraphicsContext; 
@@ -54,7 +48,9 @@ namespace vast
 
 	public:
 		Ptr<Window> m_Window;
-		Ptr<gfx::GraphicsContext> m_GraphicsContext;
+		Ptr<GraphicsContext> m_GraphicsContext;
+
+		bool m_bQuit = false;
 	};
 
 }

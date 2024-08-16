@@ -2,7 +2,7 @@
 
 #include "Graphics/API/DX12/DX12_Common.h"
 
-namespace vast::gfx
+namespace vast
 {
 	constexpr uint32 MAX_QUEUED_BARRIERS = 16;
 	constexpr uint32 MAX_TEXTURE_SUBRESOURCE_COUNT = 128;

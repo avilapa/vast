@@ -10,7 +10,7 @@ namespace D3D12MA
 	class Allocator;
 }
 
-namespace vast::gfx
+namespace vast
 {
 	class DX12ShaderManager;
 

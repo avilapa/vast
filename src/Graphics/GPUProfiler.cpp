@@ -3,8 +3,9 @@
 #include "Graphics/GraphicsBackend.h"
 #include "Graphics/ResourceManager.h"
 
-namespace vast::gfx
+namespace vast
 {
+
 	GPUProfiler::GPUProfiler(ResourceManager& resourceManager)
 		: m_ResourceManager(resourceManager)
 		, m_TimestampCount(0)
@@ -12,7 +13,7 @@ namespace vast::gfx
 		, m_TimestampsReadbackBuf({})
 		, m_TimestampData({ nullptr })
 	{
-		m_TimestampFrequency = GraphicsBackend::GetTimestampFrequency();
+		m_TimestampFrequency = gfx::GetTimestampFrequency();
 
 		BufferDesc readbackBufferDesc
 		{
@@ -37,13 +38,13 @@ namespace vast::gfx
 
 	uint32 GPUProfiler::BeginTimestamp()
 	{
-		GraphicsBackend::BeginTimestamp(m_TimestampCount * 2);
+		gfx::BeginTimestamp(m_TimestampCount * 2);
 		return m_TimestampCount++;
 	}
 
 	void GPUProfiler::EndTimestamp(uint32 timestampIdx)
 	{
-		GraphicsBackend::EndTimestamp(timestampIdx * 2 + 1);
+		gfx::EndTimestamp(timestampIdx * 2 + 1);
 	}
 
 	void GPUProfiler::CollectTimestamps()
@@ -51,13 +52,13 @@ namespace vast::gfx
 		if (m_TimestampCount == 0)
 			return;
 
-		GraphicsBackend::CollectTimestamps(m_TimestampsReadbackBuf[GraphicsBackend::GetFrameId()], m_TimestampCount * 2);
+		gfx::CollectTimestamps(m_TimestampsReadbackBuf[gfx::GetFrameId()], m_TimestampCount * 2);
 		m_TimestampCount = 0;
 	}
 
 	double GPUProfiler::GetTimestampDuration(uint32 timestampIdx)
 	{
-		const uint64* data = m_TimestampData[GraphicsBackend::GetFrameId()];
+		const uint64* data = m_TimestampData[gfx::GetFrameId()];
 		VAST_ASSERT(data && m_TimestampFrequency);
 
 		uint64 tStart = data[timestampIdx * 2];

@@ -10,7 +10,7 @@ struct IDxcBlobEncoding;
 struct IDxcResult;
 struct ID3D12ShaderReflection;
 
-namespace vast::gfx
+namespace vast
 {
 	struct ShaderCompilerArguments
 	{

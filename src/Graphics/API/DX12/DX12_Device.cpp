@@ -11,7 +11,7 @@
 #include <dxgidebug.h>
 #endif
 
-namespace vast::gfx
+namespace vast
 {
 	constexpr uint32 NUM_RTV_STAGING_DESCRIPTORS = 256;
 	constexpr uint32 NUM_DSV_STAGING_DESCRIPTORS = 32;

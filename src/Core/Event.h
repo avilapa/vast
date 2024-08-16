@@ -50,11 +50,11 @@ namespace vast
 #define VAST_EVENT_HANDLER_EXP(expression) [this](const IEvent&) { expression; }
 #define VAST_EVENT_HANDLER_EXP_STATIC(expression) [](const IEvent&) { expression; }
 
-#define VAST_SUBSCRIBE_TO_EVENT(subId, eventType, fn) EventSystem::SubscribeToEvent<eventType>(subId, fn)
-#define VAST_UNSUBSCRIBE_FROM_EVENT(subId, eventType) EventSystem::UnsubscribeFromEvent<eventType>(subId)
+#define VAST_SUBSCRIBE_TO_EVENT(subId, eventType, fn)	EventSystem::SubscribeToEvent<eventType>(subId, fn)
+#define VAST_UNSUBSCRIBE_FROM_EVENT(subId, eventType)	EventSystem::UnsubscribeFromEvent<eventType>(subId)
 
-#define __VAST_FIRE_EVENT_DATA(eventType, data)	EventSystem::FireEvent<eventType>(data)
-#define __VAST_FIRE_EVENT(eventType) EventSystem::FireEvent<eventType>()
+#define __VAST_FIRE_EVENT_DATA(eventType, data)			EventSystem::FireEvent<eventType>(data)
+#define __VAST_FIRE_EVENT(eventType)					EventSystem::FireEvent<eventType>()
 
 #define VAST_FIRE_EVENT(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_FIRE_EVENT_DATA, __VAST_FIRE_EVENT)(__VA_ARGS__))
 

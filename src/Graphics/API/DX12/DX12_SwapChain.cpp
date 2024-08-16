@@ -8,7 +8,7 @@
 #include <dxgidebug.h>
 #endif
 
-namespace vast::gfx
+namespace vast
 {
 	static_assert(NUM_BACK_BUFFERS <= DXGI_MAX_SWAP_CHAIN_BUFFERS);
 

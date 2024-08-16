@@ -2,7 +2,7 @@
 
 #include "Core/Core.h"
 
-namespace vast::gfx
+namespace vast
 {
 	
 	class Camera

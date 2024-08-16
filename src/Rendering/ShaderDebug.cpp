@@ -4,7 +4,7 @@
 #include "Shaders/ShaderDebug_shared.h"
 #include "Rendering/Imgui.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	void ShaderDebug::Reset(ShaderDebug_PerFrame& data)

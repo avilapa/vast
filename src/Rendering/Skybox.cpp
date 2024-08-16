@@ -2,10 +2,10 @@
 #include "Rendering/Skybox.h"
 #include "Rendering/Shapes.h"
 
-namespace vast::gfx
+namespace vast
 {
 
-	Skybox::Skybox(gfx::GraphicsContext& ctx_, TexFormat rtFormat, TexFormat dsFormat, bool bUseReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
+	Skybox::Skybox(GraphicsContext& ctx_, TexFormat rtFormat, TexFormat dsFormat, bool bUseReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
 		: ctx(ctx_)
 		, m_bUsingReverseZ(bUseReverseZ)
 	{

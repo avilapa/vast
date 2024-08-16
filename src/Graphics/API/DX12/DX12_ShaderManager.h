@@ -12,7 +12,7 @@ struct ID3D12ShaderReflection;
 // - Shader "Manager" class should be higher level (not owned by device), and GFX API agnostic
 // - Shaders are loaded and compiled in advance
 
-namespace vast::gfx
+namespace vast
 {
 	class DX12ShaderCompiler;
 	struct DX12Shader;

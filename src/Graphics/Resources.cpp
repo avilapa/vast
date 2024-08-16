@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Graphics/Resources.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, ResourceUsage usage /* = ResourceUsage::DEFAULT */, bool bBindless /* = true */)

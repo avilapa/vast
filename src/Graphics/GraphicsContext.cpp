@@ -6,17 +6,17 @@
 
 #include "Core/EventTypes.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	static void OnWindowResizeEvent(const WindowResizeEvent& event)
 	{
-		const uint2 scSize = GraphicsBackend::GetBackBufferSize();
+		const uint2 scSize = gfx::GetBackBufferSize();
 
 		if (event.m_WindowSize.x != scSize.x || event.m_WindowSize.y != scSize.y)
 		{
-			GraphicsBackend::WaitForIdle();
-			GraphicsBackend::ResizeSwapChainAndBackBuffers(event.m_WindowSize);
+			gfx::WaitForIdle();
+			gfx::ResizeSwapChainAndBackBuffers(event.m_WindowSize);
 		}
 	}
 
@@ -30,7 +30,7 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_LOG_INFO("[gfx] Initializing GraphicsContext...");
 
-		GraphicsBackend::Init(params);
+		gfx::Init(params);
 
 		m_ResourceManager = MakePtr<ResourceManager>();
 		m_GpuProfiler = MakePtr<GPUProfiler>(*m_ResourceManager);
@@ -45,7 +45,7 @@ namespace vast::gfx
 		m_GpuProfiler = nullptr;
 		m_ResourceManager = nullptr;
 
-		GraphicsBackend::Shutdown();
+		gfx::Shutdown();
 	}
 
 	void GraphicsContext::BeginFrame()
@@ -56,7 +56,7 @@ namespace vast::gfx
 		m_bHasFrameBegun = true;
 
 		m_ResourceManager->BeginFrame();
-		GraphicsBackend::BeginFrame();
+		gfx::BeginFrame();
 		m_GpuFrameTimestampIdx = m_GpuProfiler->BeginTimestamp();
 	}
 
@@ -68,7 +68,7 @@ namespace vast::gfx
 		m_GpuProfiler->EndTimestamp(m_GpuFrameTimestampIdx);
 		m_GpuProfiler->CollectTimestamps();
 
-		GraphicsBackend::EndFrame();
+		gfx::EndFrame();
 
 		m_bHasFrameBegun = false;
 	}
@@ -92,7 +92,7 @@ namespace vast::gfx
 		VAST_ASSERT(h.IsValid());
 
 		m_bHasRenderPassBegun = true;
-		GraphicsBackend::BeginRenderPass(h, targets);
+		gfx::BeginRenderPass(h, targets);
 	}
 
 	void GraphicsContext::BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)
@@ -103,7 +103,7 @@ namespace vast::gfx
 		VAST_ASSERT(h.IsValid());
 
 		m_bHasRenderPassBegun = true;
-		GraphicsBackend::BeginRenderPassToBackBuffer(h, loadOp, storeOp);
+		gfx::BeginRenderPassToBackBuffer(h, loadOp, storeOp);
 	}
 
 	void GraphicsContext::EndRenderPass()
@@ -112,7 +112,7 @@ namespace vast::gfx
 		VAST_ASSERTF(m_bHasRenderPassBegun, "No render pass is currently running.");
 
 		m_bHasRenderPassBegun = false;
-		GraphicsBackend::EndRenderPass();
+		gfx::EndRenderPass();
 
 		VAST_PROFILE_TRACE_END("Render Pass");
 	}
@@ -128,21 +128,21 @@ namespace vast::gfx
 		VAST_ASSERTF(!m_bHasRenderPassBegun, "Cannot bind another pipeline in the middle of a render pass.");
 		VAST_ASSERT(h.IsValid());
 
-		GraphicsBackend::BindPipelineForCompute(h);
+		gfx::BindPipelineForCompute(h);
 	}
 
 	void GraphicsContext::WaitForIdle()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		GraphicsBackend::WaitForIdle();
+		gfx::WaitForIdle();
 	}
 
 	void GraphicsContext::FlushGPU()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		GraphicsBackend::WaitForIdle();
+		gfx::WaitForIdle();
 		m_ResourceManager->ProcessShaderReloads();
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
@@ -174,7 +174,7 @@ namespace vast::gfx
 
 	ShaderResourceProxy GraphicsContext::LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName)
 	{
-		return GraphicsBackend::LookupShaderResource(h, shaderResourceName);
+		return gfx::LookupShaderResource(h, shaderResourceName);
 	}
 
 	//
@@ -182,18 +182,18 @@ namespace vast::gfx
 	void GraphicsContext::AddBarrier(BufferHandle h, ResourceState newState)
 	{
 		VAST_ASSERT(h.IsValid());
-		GraphicsBackend::AddBarrier(h, newState);
+		gfx::AddBarrier(h, newState);
 	}
 
 	void GraphicsContext::AddBarrier(TextureHandle h, ResourceState newState)
 	{
 		VAST_ASSERT(h.IsValid());
-		GraphicsBackend::AddBarrier(h, newState);
+		gfx::AddBarrier(h, newState);
 	}
 
 	void GraphicsContext::FlushBarriers()
 	{
-		GraphicsBackend::FlushBarriers();
+		gfx::FlushBarriers();
 	}
 
 	//
@@ -201,76 +201,76 @@ namespace vast::gfx
 	void GraphicsContext::BindVertexBuffer(BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
 	{
 		VAST_ASSERT(h.IsValid());
-		GraphicsBackend::BindVertexBuffer(h, offset, stride);
+		gfx::BindVertexBuffer(h, offset, stride);
 	}
 
 	void GraphicsContext::BindIndexBuffer(BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
 	{
 		VAST_ASSERT(h.IsValid());
-		GraphicsBackend::BindIndexBuffer(h, offset, format);
+		gfx::BindIndexBuffer(h, offset, format);
 	}
 
 	void GraphicsContext::BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset /* = 0 */)
 	{
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
-		GraphicsBackend::BindConstantBuffer(proxy, h, offset);
+		gfx::BindConstantBuffer(proxy, h, offset);
 	}
 
 	void GraphicsContext::SetPushConstants(const void* data, const uint32 size)
 	{
 		VAST_ASSERT(data && size);
-		GraphicsBackend::SetPushConstants(data, size);
+		gfx::SetPushConstants(data, size);
 	}
 
 	void GraphicsContext::BindSRV(ShaderResourceProxy proxy, BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
 		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		GraphicsBackend::BindSRV(h);
+		gfx::BindSRV(h);
 	}
 
 	void GraphicsContext::BindSRV(ShaderResourceProxy proxy, TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
 		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		GraphicsBackend::BindSRV(h);
+		gfx::BindSRV(h);
 	}
 
 	void GraphicsContext::BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel /* = 0 */)
 	{
 		VAST_ASSERT(h.IsValid() && proxy.IsValid());
 		(void)proxy; // TODO: This is currently not being used as an index, only to check that the name exists in the shader.
-		GraphicsBackend::BindUAV(h, mipLevel);
+		gfx::BindUAV(h, mipLevel);
 	}
 
 	uint32 GraphicsContext::GetBindlessSRV(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GraphicsBackend::GetBindlessSRV(h);
+		return gfx::GetBindlessSRV(h);
 	}
 
 	uint32 GraphicsContext::GetBindlessSRV(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GraphicsBackend::GetBindlessSRV(h);
+		return gfx::GetBindlessSRV(h);
 	}
 
 	uint32 GraphicsContext::GetBindlessUAV(TextureHandle h, uint32 mipLevel /* = 0 */)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GraphicsBackend::GetBindlessUAV(h, mipLevel);
+		return gfx::GetBindlessUAV(h, mipLevel);
 	}
 
 	//
 
 	void GraphicsContext::SetScissorRect(int4 rect)
 	{
-		GraphicsBackend::SetScissorRect(rect);
+		gfx::SetScissorRect(rect);
 	}
 
 	void GraphicsContext::SetBlendFactor(float4 blend)
 	{
-		GraphicsBackend::SetBlendFactor(blend);
+		gfx::SetBlendFactor(blend);
 	}
 
 	//
@@ -287,29 +287,29 @@ namespace vast::gfx
 
 	void GraphicsContext::DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation /* = 0 */, uint32 instStartLocation /* = 0 */)
 	{
-		GraphicsBackend::DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
+		gfx::DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
 	}
 
 	void GraphicsContext::DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
 	{
-		GraphicsBackend::DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
+		gfx::DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
 	}
 
 	void GraphicsContext::DrawFullscreenTriangle()
 	{
-		GraphicsBackend::DrawFullscreenTriangle();
+		gfx::DrawFullscreenTriangle();
 	}
 
 	void GraphicsContext::Dispatch(uint3 threadGroupCount)
 	{
-		GraphicsBackend::Dispatch(threadGroupCount);
+		gfx::Dispatch(threadGroupCount);
 	}
 
 	//
 
 	uint2 GraphicsContext::GetBackBufferSize() const
 	{
-		return GraphicsBackend::GetBackBufferSize();
+		return gfx::GetBackBufferSize();
 	}
 
 	float GraphicsContext::GetBackBufferAspectRatio() const
@@ -320,7 +320,7 @@ namespace vast::gfx
 
 	TexFormat GraphicsContext::GetBackBufferFormat() const
 	{
-		return GraphicsBackend::GetBackBufferFormat();
+		return gfx::GetBackBufferFormat();
 	}
 
 	//

@@ -4,7 +4,7 @@
 
 struct IDXGISwapChain4;
 
-namespace vast::gfx
+namespace vast
 {
 	constexpr uint32 NUM_BACK_BUFFERS = 3;
 

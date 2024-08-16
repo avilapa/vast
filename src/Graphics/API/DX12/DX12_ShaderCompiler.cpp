@@ -4,7 +4,7 @@
 #include "dx12/DirectXShaderCompiler/inc/dxcapi.h"
 #include "dx12/DirectXAgilitySDK/include/d3d12shader.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	DX12ShaderCompiler::DX12ShaderCompiler()

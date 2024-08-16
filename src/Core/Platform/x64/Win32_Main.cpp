@@ -49,7 +49,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 
 		if (!app->Init()
 			|| !VAST_VERIFYF(app->m_Window, "App must initialize 'm_Window' via vast::Window::Create().")
-			|| !VAST_VERIFYF(app->m_GraphicsContext, "App must initialize 'm_GraphicsContext' via vast::gfx::GraphicsContext::Create()."))
+			|| !VAST_VERIFYF(app->m_GraphicsContext, "App must initialize 'm_GraphicsContext' via vast::GraphicsContext::Create()."))
 		{
 			app->Stop();
 			VAST_LOGGING_ONLY(Log::Stop());
@@ -83,7 +83,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 			{
 				VAST_PROFILE_TRACE_SCOPE("Update");
 				VAST_PROFILE_CPU_SCOPE("Update");
-				app->GetWindow().Update();
+				app->m_Window->Update();
 				app->Update(0.0f);
 			}
 			{
@@ -91,7 +91,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 				VAST_PROFILE_CPU_SCOPE("Draw");
 				app->Draw();
 			}
-			VAST_PROFILING_ONLY(Profiler::EndFrame(app->GetGraphicsContext()));
+			VAST_PROFILING_ONLY(Profiler::EndFrame(*app->m_GraphicsContext));
 			// TODO: We should periodically call Trace::Flush().
 		}
 

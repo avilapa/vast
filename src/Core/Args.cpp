@@ -35,7 +35,7 @@ namespace vast
 			return false;
 		}
 
-		VAST_LOG_INFO("[args] Parsing arguments file '{}':");
+		VAST_LOG_INFO("[args] Parsing arguments file:");
 
 		std::string line;
 		while (std::getline(file, line))

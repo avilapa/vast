@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Graphics/API/DX12/DX12_Descriptors.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	DX12DescriptorHeap::DX12DescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, uint32 maxDescriptors, bool bIsShaderVisible)

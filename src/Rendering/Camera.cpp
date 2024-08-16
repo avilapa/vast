@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Rendering/Camera.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	float4x4 Camera::ComputeViewMatrix(const float3& position, const float3& target, const float3& up)

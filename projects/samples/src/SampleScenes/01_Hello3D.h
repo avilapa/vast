@@ -4,7 +4,7 @@
 #include "Rendering/Camera.h"
 #include "Rendering/Shapes.h"
 
-using namespace vast::gfx;
+using namespace vast;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Hello 3D
@@ -63,8 +63,8 @@ public:
 
 		// Create cube PSO with depth testing enabled.
 		m_CubePso = ctx.CreatePipeline(PipelineDesc{
-			.vs = AllocVertexShaderDesc("01_Cube.hlsl", GetSamplesShaderSourcePath()),
-			.ps = AllocPixelShaderDesc("01_Cube.hlsl", GetSamplesShaderSourcePath()),
+			.vs = AllocVertexShaderDesc("01_Cube.hlsl", m_SamplesShaderSourcePath.c_str()),
+			.ps = AllocPixelShaderDesc("01_Cube.hlsl", m_SamplesShaderSourcePath.c_str()),
 			.renderPassLayout = 
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },

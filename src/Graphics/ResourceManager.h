@@ -2,7 +2,7 @@
 
 #include "Graphics/Resources.h"
 
-namespace vast::gfx
+namespace vast
 {
 	struct TempAllocator
 	{

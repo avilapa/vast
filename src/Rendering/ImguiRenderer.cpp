@@ -10,10 +10,10 @@
 #include "imgui/backends/imgui_impl_win32.h"
 #endif
 
-namespace vast::gfx
+namespace vast
 {
 
-	ImguiRenderer::ImguiRenderer(gfx::GraphicsContext& ctx_, HWND windowHandle /*= ::GetActiveWindow()*/)
+	ImguiRenderer::ImguiRenderer(GraphicsContext& ctx_, HWND windowHandle /*= ::GetActiveWindow()*/)
 		: ctx(ctx_)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;

@@ -3,7 +3,7 @@
 #include "ISample.h"
 #include "Rendering/Imgui.h"
 
-using namespace vast::gfx;
+using namespace vast;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Hello Triangle 
@@ -44,8 +44,8 @@ public:
 		// Create triangle pipeline state object and prepare it to render to the back buffer.
 		PipelineDesc trianglePipelineDesc =
 		{
-			.vs = AllocVertexShaderDesc("00_Triangle.hlsl", GetSamplesShaderSourcePath()),
-			.ps = AllocPixelShaderDesc("00_Triangle.hlsl", GetSamplesShaderSourcePath()),
+			.vs = AllocVertexShaderDesc("00_Triangle.hlsl", m_SamplesShaderSourcePath.c_str()),
+			.ps = AllocPixelShaderDesc("00_Triangle.hlsl", m_SamplesShaderSourcePath.c_str()),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() }, },
 		};

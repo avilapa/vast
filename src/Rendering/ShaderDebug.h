@@ -4,7 +4,7 @@
 
 struct ShaderDebug_PerFrame;
 
-namespace vast::gfx
+namespace vast
 {
 
 	class ShaderDebug

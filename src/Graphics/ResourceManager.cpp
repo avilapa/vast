@@ -9,7 +9,7 @@
 
 static const wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 
-namespace vast::gfx
+namespace vast
 {
 
 	ResourceManager::ResourceManager()
@@ -46,7 +46,7 @@ namespace vast::gfx
 
 	ResourceManager::~ResourceManager()
 	{
-		GraphicsBackend::WaitForIdle();
+		gfx::WaitForIdle();
 
 		// Destroy frame allocators
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
@@ -71,11 +71,11 @@ namespace vast::gfx
 		if (!m_PipelinesMarkedForShaderReload.empty())
 		{
 			// Pipelines are not double buffered, so we need a hard wait to reload shaders in place.
-			GraphicsBackend::WaitForIdle();
+			gfx::WaitForIdle();
 			ProcessShaderReloads();
 		}
 
-		uint32 frameId = GraphicsBackend::GetFrameId();
+		uint32 frameId = gfx::GetFrameId();
 
 		// TODO: Figure out where the profiling for destructions should go (cpu/gpu?)
 		ProcessDestructions(frameId);
@@ -89,10 +89,10 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		BufferHandle h = m_BufferHandles->AllocHandle();
-		GraphicsBackend::CreateBuffer(h, desc);
+		gfx::CreateBuffer(h, desc);
 		if (initialData != nullptr)
 		{
-			GraphicsBackend::UpdateBuffer(h, initialData, dataSize);
+			gfx::UpdateBuffer(h, initialData, dataSize);
 		}
 		return h;
 	}
@@ -102,10 +102,10 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		TextureHandle h = m_TextureHandles->AllocHandle();
-		GraphicsBackend::CreateTexture(h, desc);
+		gfx::CreateTexture(h, desc);
 		if (initialData != nullptr)
 		{
-			GraphicsBackend::UpdateTexture(h, initialData);
+			gfx::UpdateTexture(h, initialData);
 		}
 		return h;
 	}
@@ -115,7 +115,7 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		PipelineHandle h = m_PipelineHandles->AllocHandle();
-		GraphicsBackend::CreatePipeline(h, desc);
+		gfx::CreatePipeline(h, desc);
 		return h;
 	}
 
@@ -124,7 +124,7 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		PipelineHandle h = m_PipelineHandles->AllocHandle();
-		GraphicsBackend::CreatePipeline(h, csDesc);
+		gfx::CreatePipeline(h, csDesc);
 		return h;
 	}
 
@@ -236,25 +236,25 @@ namespace vast::gfx
 		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(h.IsValid());
 
-		GraphicsBackend::UpdateBuffer(h, data, size);
+		gfx::UpdateBuffer(h, data, size);
 	}
 
 	void ResourceManager::DestroyBuffer(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_BuffersMarkedForDestruction[GraphicsBackend::GetFrameId()].push_back(h);
+		m_BuffersMarkedForDestruction[gfx::GetFrameId()].push_back(h);
 	}
 
 	void ResourceManager::DestroyTexture(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_TexturesMarkedForDestruction[GraphicsBackend::GetFrameId()].push_back(h);
+		m_TexturesMarkedForDestruction[gfx::GetFrameId()].push_back(h);
 	}
 
 	void ResourceManager::DestroyPipeline(PipelineHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		m_PipelinesMarkedForDestruction[GraphicsBackend::GetFrameId()].push_back(h);
+		m_PipelinesMarkedForDestruction[gfx::GetFrameId()].push_back(h);
 	}
 
 	void ResourceManager::ProcessDestructions(uint32 frameId)
@@ -264,7 +264,7 @@ namespace vast::gfx
 		for (auto& h : m_BuffersMarkedForDestruction[frameId])
 		{
 			VAST_ASSERT(h.IsValid());
-			GraphicsBackend::DestroyBuffer(h);
+			gfx::DestroyBuffer(h);
 			m_BufferHandles->FreeHandle(h);
 		}
 		m_BuffersMarkedForDestruction[frameId].clear();
@@ -272,7 +272,7 @@ namespace vast::gfx
 		for (auto& h : m_TexturesMarkedForDestruction[frameId])
 		{
 			VAST_ASSERT(h.IsValid());
-			GraphicsBackend::DestroyTexture(h);
+			gfx::DestroyTexture(h);
 			m_TextureHandles->FreeHandle(h);
 		}
 		m_TexturesMarkedForDestruction[frameId].clear();
@@ -280,7 +280,7 @@ namespace vast::gfx
 		for (auto& h : m_PipelinesMarkedForDestruction[frameId])
 		{
 			VAST_ASSERT(h.IsValid());
-			GraphicsBackend::DestroyPipeline(h);
+			gfx::DestroyPipeline(h);
 			m_PipelineHandles->FreeHandle(h);
 		}
 		m_PipelinesMarkedForDestruction[frameId].clear();
@@ -299,7 +299,7 @@ namespace vast::gfx
 		for (auto& h : m_PipelinesMarkedForShaderReload)
 		{
 			VAST_ASSERT(h.IsValid());
-			GraphicsBackend::ReloadShaders(h);
+			gfx::ReloadShaders(h);
 		}
 		m_PipelinesMarkedForShaderReload.clear();
 	}
@@ -307,44 +307,44 @@ namespace vast::gfx
 	bool ResourceManager::GetIsReady(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GraphicsBackend::GetIsReady(h);
+		return gfx::GetIsReady(h);
 	}
 
 	bool ResourceManager::GetIsReady(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GraphicsBackend::GetIsReady(h);
+		return gfx::GetIsReady(h);
 	}
 
 	const uint8* ResourceManager::GetBufferData(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GraphicsBackend::GetBufferData(h);
+		return gfx::GetBufferData(h);
 	}
 
 	void ResourceManager::SetDebugName(BufferHandle h, const std::string& name)
 	{
 		VAST_ASSERT(h.IsValid());
-		GraphicsBackend::SetDebugName(h, name);
+		gfx::SetDebugName(h, name);
 	}
 
 	void ResourceManager::SetDebugName(TextureHandle h, const std::string& name)
 	{
 		VAST_ASSERT(h.IsValid());
-		GraphicsBackend::SetDebugName(h, name);
+		gfx::SetDebugName(h, name);
 	}
 
 	TexFormat ResourceManager::GetTextureFormat(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
-		return GraphicsBackend::GetTextureFormat(h);
+		return gfx::GetTextureFormat(h);
 	}
 
 	//
 
 	BufferView ResourceManager::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
 	{
-		auto& frameAllocator = m_TempFrameAllocators[GraphicsBackend::GetFrameId()];
+		auto& frameAllocator = m_TempFrameAllocators[gfx::GetFrameId()];
 		VAST_ASSERT(frameAllocator.buffer.IsValid() && frameAllocator.bufferSize);
 
 		uint32 allocStart = frameAllocator.Alloc(size, alignment);

@@ -2,7 +2,7 @@
 
 #include "vast.h"
 
-namespace vast::gfx
+namespace vast
 {
 	class ImguiRenderer;
 }
@@ -19,7 +19,7 @@ public:
 
 	void DrawSamplesEditorUI();
 
-	Ptr<gfx::ImguiRenderer> m_ImguiRenderer;
+	Ptr<ImguiRenderer> m_ImguiRenderer;
 	Ptr<class ISample> m_CurrentSample;
 	uint32 m_CurrentSampleIdx;
 	bool m_SampleInitialized;

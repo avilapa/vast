@@ -132,7 +132,7 @@ namespace vast
 	static PlotHistory s_CpuPlot;
 
 	// GPU Profiles
-	static Array<ProfileBlock, (gfx::NUM_TIMESTAMP_QUERIES / 2)> s_GpuProfiles;
+	static Array<ProfileBlock, (NUM_TIMESTAMP_QUERIES / 2)> s_GpuProfiles;
 	static uint32 s_GpuProfileCount = 0;
 	static StatHistory s_GpuStats;
 	static PlotHistory s_GpuPlot;
@@ -159,7 +159,7 @@ namespace vast
 		s_tFrameStart = s_Timer.GetElapsedMicroseconds<int64>();
 	}
 
-	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
+	void Profiler::EndFrame(GraphicsContext& ctx)
 	{
 		s_Timer.Update();
 
@@ -236,7 +236,7 @@ namespace vast
 			p.state = ProfileBlock::State::IDLE;
 		}
 
-		gfx::GPUProfiler& gpuProfiler = ctx.GetGPUProfiler();
+		GPUProfiler& gpuProfiler = ctx.GetGPUProfiler();
 		for (uint32 i = 0; i < s_GpuProfileCount; ++i)
 		{
 			ProfileBlock& p = s_GpuProfiles[i];
@@ -317,7 +317,7 @@ namespace vast
 		p.state = ProfileBlock::State::ACTIVE;
 	}
 
-	void Profiler::PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler)
+	void Profiler::PushProfilingMarkerGPU(const char* name, GPUProfiler& gpuProfiler)
 	{
 		ProfileBlock& p = FindOrAddProfile(s_GpuProfiles, s_GpuProfileCount, name);
 		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
@@ -347,7 +347,7 @@ namespace vast
 		}
 	}
 
-	void Profiler::PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler)
+	void Profiler::PopProfilingMarkerGPU(GPUProfiler& gpuProfiler)
 	{
 		if (ProfileBlock* p = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount))
 		{

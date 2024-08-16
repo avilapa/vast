@@ -5,7 +5,7 @@
 #include "Graphics/Resources.h"
 #include "Graphics/ShaderResourceProxy.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	struct GraphicsParams

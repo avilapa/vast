@@ -6,7 +6,7 @@
 #include "Rendering/Skybox.h"
 #include "Rendering/Imgui.h"
 
-using namespace vast::gfx;
+using namespace vast;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Textures
@@ -91,8 +91,8 @@ public:
 
 		PipelineDesc pipelineDesc =
 		{
-			.vs = AllocVertexShaderDesc("03_TexturedMesh.hlsl", GetSamplesShaderSourcePath()),
-			.ps = AllocPixelShaderDesc("03_TexturedMesh.hlsl", GetSamplesShaderSourcePath()),
+			.vs = AllocVertexShaderDesc("03_TexturedMesh.hlsl", m_SamplesShaderSourcePath.c_str()),
+			.ps = AllocPixelShaderDesc("03_TexturedMesh.hlsl", m_SamplesShaderSourcePath.c_str()),
 			.renderPassLayout =
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT)  },

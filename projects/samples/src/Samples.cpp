@@ -36,13 +36,13 @@ bool SamplesApp::Init()
 
 	m_Window = Window::Create();
 
-	gfx::GraphicsParams params;
+	GraphicsParams params;
 	params.swapChainSize = GetWindow().GetSize();
-	params.swapChainFormat = gfx::TexFormat::RGBA8_UNORM;
-	params.backBufferFormat = gfx::TexFormat::RGBA8_UNORM;
+	params.swapChainFormat = TexFormat::RGBA8_UNORM;
+	params.backBufferFormat = TexFormat::RGBA8_UNORM;
 	m_GraphicsContext = MakePtr<GraphicsContext>(params);
 
-	m_ImguiRenderer = MakePtr<gfx::ImguiRenderer>(*m_GraphicsContext);
+	m_ImguiRenderer = MakePtr<ImguiRenderer>(*m_GraphicsContext);
 
 	return true;
 }
@@ -59,7 +59,7 @@ void SamplesApp::Update(float dt)
 {
 	if (!m_SampleInitialized)
 	{
-		gfx::GraphicsContext& ctx = GetGraphicsContext();
+		GraphicsContext& ctx = GetGraphicsContext();
 
 		if (m_CurrentSample)
 		{
@@ -67,7 +67,7 @@ void SamplesApp::Update(float dt)
 			// Note: Flushing the GPU is not strictly necessary, but it ensures all resources used in the
 			// current scene are destroyed before loading a new scene.
 			m_GraphicsContext->FlushGPU();
-			profile::FlushProfiles();
+			Profiler::FlushProfiles();
 		}
 
 		VAST_LOG_WARNING("[Samples] Loading sample scene '{}'", s_SampleSceneNames[m_CurrentSampleIdx]);
@@ -95,7 +95,7 @@ void SamplesApp::Draw()
 	m_ImguiRenderer->BeginCommandRecording();
 	m_CurrentSample->OnGUI();
 	DrawSamplesEditorUI();
-	vast::profile::ui::OnGUI();
+	vast::Profiler::ui::OnGUI();
 	m_ImguiRenderer->EndCommandRecording();
 
 	m_CurrentSample->BeginFrame();
@@ -143,9 +143,9 @@ void SamplesApp::DrawSamplesEditorUI()
 			ImGui::EndMenu();
 		}
 
-		ImGui::SameLine(ImGui::GetWindowSize().x - profile::ui::GetTextMinimalLength() - ImGui::GetStyle().ItemSpacing.x);
+		ImGui::SameLine(ImGui::GetWindowSize().x - Profiler::ui::GetTextMinimalLength() - ImGui::GetStyle().ItemSpacing.x);
 		ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (ImGui::GetTextLineHeightWithSpacing() - ImGui::GetTextLineHeight()) / 2);
-		profile::ui::DrawTextMinimal();
+		Profiler::ui::DrawTextMinimal();
 
 		ImGui::EndMainMenuBar();
 	}

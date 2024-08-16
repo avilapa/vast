@@ -4,7 +4,7 @@
 
 #include <unordered_map>
 
-namespace vast::gfx
+namespace vast
 {
 
 	static const uint32 kInvalidShaderResourceProxy = UINT32_MAX;

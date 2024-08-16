@@ -22,24 +22,21 @@
 
 namespace vast
 {
-	namespace gfx
-	{
-		class GraphicsContext;
-		class GPUProfiler;
-	}
+	class GraphicsContext;
+	class GPUProfiler;
 
 	namespace Profiler
 	{
 		void BeginFrame();
-		void EndFrame(gfx::GraphicsContext& ctx);
+		void EndFrame(GraphicsContext& ctx);
 
 		// Resets all CPU and GPU profiles and recorded history.
 		void FlushProfiles();
 
 		void PushProfilingMarkerCPU(const char* name);
-		void PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler);
+		void PushProfilingMarkerGPU(const char* name, GPUProfiler& gpuProfiler);
 		void PopProfilingMarkerCPU();
-		void PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler);
+		void PopProfilingMarkerGPU(GPUProfiler& gpuProfiler);
 
 		struct ScopedCPUProf
 		{
@@ -49,11 +46,11 @@ namespace vast
 
 		struct ScopedGPUProf
 		{
-			ScopedGPUProf(const char* name, gfx::GPUProfiler& gpuProfiler) : m_GpuProfiler(gpuProfiler) { PushProfilingMarkerGPU(name, m_GpuProfiler); }
+			ScopedGPUProf(const char* name, GPUProfiler& gpuProfiler) : m_GpuProfiler(gpuProfiler) { PushProfilingMarkerGPU(name, m_GpuProfiler); }
 			~ScopedGPUProf() { PopProfilingMarkerGPU(m_GpuProfiler); }
 
 		private:
-			gfx::GPUProfiler& m_GpuProfiler;
+			GPUProfiler& m_GpuProfiler;
 		};
 
 		namespace ui

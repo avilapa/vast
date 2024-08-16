@@ -7,7 +7,7 @@ using namespace vast;
 class ISample
 {
 public:
-	ISample(gfx::GraphicsContext& ctx_) : ctx(ctx_) {}
+	ISample(GraphicsContext& ctx_) : ctx(ctx_) {}
 	virtual ~ISample() {}
 
 	virtual void BeginFrame() 
@@ -26,12 +26,9 @@ public:
 	virtual void OnWindowResizeEvent(const WindowResizeEvent&) {}
 	virtual void OnReloadShadersEvent() {}
 
-	// Returns the project's shader source path relative to the working directory.
-	static const char* GetSamplesShaderSourcePath()
-	{
-		return "../../projects/samples/src/Shaders/";
-	}
-
 protected:
-	gfx::GraphicsContext& ctx;
+	GraphicsContext& ctx;
+
+	// Project's shader source path relative to the working directory.
+	const std::string& m_SamplesShaderSourcePath = "../../projects/samples/src/Shaders/";
 };

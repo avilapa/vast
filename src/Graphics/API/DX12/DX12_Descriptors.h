@@ -4,7 +4,7 @@
 
 #include <mutex>
 
-namespace vast::gfx
+namespace vast
 {
 
 	class DX12DescriptorHeap

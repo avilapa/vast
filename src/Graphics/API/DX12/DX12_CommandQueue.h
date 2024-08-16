@@ -2,7 +2,7 @@
 
 #include "Graphics/API/DX12/DX12_Common.h"
 
-namespace vast::gfx
+namespace vast
 {
 	class DX12CommandQueue
 	{

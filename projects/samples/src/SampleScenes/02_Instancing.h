@@ -5,7 +5,7 @@
 #include "Rendering/Shapes.h"
 #include "Rendering/Imgui.h"
 
-using namespace vast::gfx;
+using namespace vast;
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Instancing
@@ -96,8 +96,8 @@ public:
 		// Create both standard and reverse-z PSOs with different Depth Stencil States.
 		PipelineDesc psoDesc =
 		{
-			.vs = AllocVertexShaderDesc("02_InstancedCube.hlsl", GetSamplesShaderSourcePath()),
-			.ps = AllocPixelShaderDesc("02_InstancedCube.hlsl", GetSamplesShaderSourcePath()),
+			.vs = AllocVertexShaderDesc("02_InstancedCube.hlsl", m_SamplesShaderSourcePath.c_str()),
+			.ps = AllocPixelShaderDesc("02_InstancedCube.hlsl", m_SamplesShaderSourcePath.c_str()),
 			.renderPassLayout =
 			{
 				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },

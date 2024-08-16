@@ -2,14 +2,14 @@
 
 #include "Graphics/GraphicsContext.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	class ImguiRenderer
 	{
 	public:
 		// TODO: HWND is platform specific!
-		ImguiRenderer(gfx::GraphicsContext& ctx, HWND windowHandle = ::GetActiveWindow());
+		ImguiRenderer(GraphicsContext& ctx, HWND windowHandle = ::GetActiveWindow());
 		~ImguiRenderer();
 
 		void BeginCommandRecording();
@@ -17,10 +17,10 @@ namespace vast::gfx
 		void Render();
 
 	private:
-		gfx::GraphicsContext& ctx;
-		gfx::PipelineHandle m_Pipeline;
-		gfx::ShaderResourceProxy m_CbvProxy;
-		gfx::TextureHandle m_FontTex;
+		GraphicsContext& ctx;
+		PipelineHandle m_Pipeline;
+		ShaderResourceProxy m_CbvProxy;
+		TextureHandle m_FontTex;
 	};
 
 }

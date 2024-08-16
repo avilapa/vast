@@ -22,7 +22,7 @@
 // TODO: We could allow pools to resize after their initial capacity is exhausted.
 // TODO: We currently don't handle overflow of generation counters.
 
-namespace vast::gfx
+namespace vast
 {
 
 	template<typename T>

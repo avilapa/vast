@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Graphics/API/DX12/DX12_CommandQueue.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	DX12CommandQueue::DX12CommandQueue(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE commandType /*= D3D12_COMMAND_LIST_TYPE_DIRECT*/)

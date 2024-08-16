@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Graphics/ShaderResourceProxy.h"
 
-namespace vast::gfx
+namespace vast
 {
 
 	ShaderResourceProxy ShaderResourceProxyTable::LookupShaderResource(const std::string& shaderResourceName)
