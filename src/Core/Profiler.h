@@ -3,13 +3,13 @@
 #include "Core/Defines.h"
 
 #if VAST_ENABLE_PROFILING
-#define VAST_PROFILE_CPU_SCOPE(n)		::vast::profile::ScopedCPUProf XCAT(_profCpuVar, __LINE__)(n)
-#define VAST_PROFILE_CPU_BEGIN(n)		::vast::profile::PushProfilingMarkerCPU(n)
-#define VAST_PROFILE_CPU_END()			::vast::profile::PopProfilingMarkerCPU()
+#define VAST_PROFILE_CPU_SCOPE(n)		::vast::Profiler::ScopedCPUProf XCAT(_profCpuVar, __LINE__)(n)
+#define VAST_PROFILE_CPU_BEGIN(n)		::vast::Profiler::PushProfilingMarkerCPU(n)
+#define VAST_PROFILE_CPU_END()			::vast::Profiler::PopProfilingMarkerCPU()
 
-#define VAST_PROFILE_GPU_SCOPE(n, ctx)	::vast::profile::ScopedGPUProf XCAT(_profGpuVar, __LINE__)(n, ctx.GetGPUProfiler())
-#define VAST_PROFILE_GPU_BEGIN(n, ctx)	::vast::profile::PushProfilingMarkerGPU(n, ctx.GetGPUProfiler())
-#define VAST_PROFILE_GPU_END()			::vast::profile::PopProfilingMarkerGPU(ctx.GetGPUProfiler())
+#define VAST_PROFILE_GPU_SCOPE(n, ctx)	::vast::Profiler::ScopedGPUProf XCAT(_profGpuVar, __LINE__)(n, ctx.GetGPUProfiler())
+#define VAST_PROFILE_GPU_BEGIN(n, ctx)	::vast::Profiler::PushProfilingMarkerGPU(n, ctx.GetGPUProfiler())
+#define VAST_PROFILE_GPU_END()			::vast::Profiler::PopProfilingMarkerGPU(ctx.GetGPUProfiler())
 #else
 #define VAST_PROFILE_CPU_SCOPE(n)	
 #define VAST_PROFILE_CPU_BEGIN(n)	
@@ -28,7 +28,7 @@ namespace vast
 		class GPUProfiler;
 	}
 
-	namespace profile
+	namespace Profiler
 	{
 		void BeginFrame();
 		void EndFrame(gfx::GraphicsContext& ctx);

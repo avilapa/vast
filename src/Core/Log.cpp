@@ -9,13 +9,13 @@ namespace vast
 {
 	static Ref<spdlog::logger> s_Logger;
 
-	Ref<spdlog::logger>& log::GetLogger()
+	Ref<spdlog::logger>& Log::GetLogger()
 	{
 		VAST_ASSERTF(s_Logger, "Logger not yet initialized!");
 		return s_Logger;
 	}
 
-	void log::Init()
+	void Log::Init()
 	{
 		// Create debug output sink
 		Ref<spdlog::sinks::sink> stdoutSink = MakeRef<spdlog::sinks::stdout_color_sink_mt>();
@@ -34,12 +34,12 @@ namespace vast
 		VAST_LOG_TRACE("[log] Logging level set to'{}'", spdlog::level::to_string_view(logLevel));
 	}
 
-	void log::Stop()
+	void Log::Stop()
 	{
 		spdlog::shutdown();
 	}
 
-	void log::CreateFileSink(const std::string& filePath)
+	void Log::CreateFileSink(const std::string& filePath)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 

@@ -10,11 +10,6 @@
 
 using namespace vast;
 
-static void ToggleProfilerGUI()
-{
-	profile::ui::g_bShowProfiler = !profile::ui::g_bShowProfiler;
-}
-
 vast::Arg g_ProjectDir("ProjectDir");
 vast::Arg g_OutputDir("OutputDir");
 
@@ -23,7 +18,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 	VAST_ASSERT(app);
 
 	// Initialize debug output logging first.
-	VAST_LOGGING_ONLY(log::Init());
+	VAST_LOGGING_ONLY(Log::Init());
 
 	if (argc > 1)
 	{
@@ -31,7 +26,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 		std::string argsFileName = argv[1];
 		if (!Arg::Init(argsFileName))
 		{
-			VAST_LOGGING_ONLY(log::Stop());
+			VAST_LOGGING_ONLY(Log::Stop());
 			return EXIT_FAILURE;
 		}
 	}
@@ -43,22 +38,22 @@ int Win32_Main(int argc, char** argv, IApp* app)
 	std::string outputDir = "";
 	g_OutputDir.Get(outputDir);
 	// Initialize tracing as soon as possible so we can track systems init timings.
-	VAST_TRACING_ONLY(trace::Init(outputDir + "trace.json"));
+	VAST_TRACING_ONLY(Trace::Init(outputDir + "trace.json"));
 
 	// - Init ------------------------------------------------------------------------------------- //
 	{
 		VAST_PROFILE_TRACE_SCOPE("Main Init");
 
 		// Start logging to file.
-		VAST_LOGGING_ONLY(log::CreateFileSink(outputDir + "vast.log"));
+		VAST_LOGGING_ONLY(Log::CreateFileSink(outputDir + "vast.log"));
 
 		if (!app->Init()
 			|| !VAST_VERIFYF(app->m_Window, "App must initialize 'm_Window' via vast::Window::Create().")
 			|| !VAST_VERIFYF(app->m_GraphicsContext, "App must initialize 'm_GraphicsContext' via vast::gfx::GraphicsContext::Create()."))
 		{
 			app->Stop();
-			VAST_LOGGING_ONLY(log::Stop());
-			VAST_TRACING_ONLY(trace::Stop());
+			VAST_LOGGING_ONLY(Log::Stop());
+			VAST_TRACING_ONLY(Trace::Stop());
 
 			return EXIT_FAILURE;
 		}
@@ -77,14 +72,14 @@ int Win32_Main(int argc, char** argv, IApp* app)
 #if VAST_ENABLE_PROFILING
 		auto ToggleProfilerCb = [](const IEvent&)
 		{
-			profile::ui::g_bShowProfiler = !profile::ui::g_bShowProfiler;
+			Profiler::ui::g_bShowProfiler = !Profiler::ui::g_bShowProfiler;
 		};
 		VAST_SUBSCRIBE_TO_EVENT("main", DebugActionEvent, ToggleProfilerCb);
 #endif
 
 		while (!app->m_bQuit)
 		{
-			VAST_PROFILING_ONLY(profile::BeginFrame());
+			VAST_PROFILING_ONLY(Profiler::BeginFrame());
 			{
 				VAST_PROFILE_TRACE_SCOPE("Update");
 				VAST_PROFILE_CPU_SCOPE("Update");
@@ -96,8 +91,8 @@ int Win32_Main(int argc, char** argv, IApp* app)
 				VAST_PROFILE_CPU_SCOPE("Draw");
 				app->Draw();
 			}
-			VAST_PROFILING_ONLY(profile::EndFrame(app->GetGraphicsContext()));
-			// TODO: We should periodically call trace::Flush().
+			VAST_PROFILING_ONLY(Profiler::EndFrame(app->GetGraphicsContext()));
+			// TODO: We should periodically call Trace::Flush().
 		}
 
 		VAST_UNSUBSCRIBE_FROM_EVENT("main", WindowCloseEvent);
@@ -112,8 +107,8 @@ int Win32_Main(int argc, char** argv, IApp* app)
 		VAST_ASSERTF(!app->m_GraphicsContext, "Forgot to delete 'm_GraphicsContext'!");
 	}
 
-	VAST_TRACING_ONLY(trace::Stop());
-	VAST_LOGGING_ONLY(log::Stop());
+	VAST_TRACING_ONLY(Trace::Stop());
+	VAST_LOGGING_ONLY(Log::Stop());
 
 	return EXIT_SUCCESS;
 }

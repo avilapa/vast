@@ -149,17 +149,17 @@ namespace vast
 
 	static bool s_bProfilesNeedFlush = false;
 
-	bool profile::ui::g_bShowProfiler = false;
+	bool Profiler::ui::g_bShowProfiler = false;
 
 	//
 
-	void profile::BeginFrame()
+	void Profiler::BeginFrame()
 	{
 		s_Timer.Update();
 		s_tFrameStart = s_Timer.GetElapsedMicroseconds<int64>();
 	}
 
-	void profile::EndFrame(gfx::GraphicsContext& ctx)
+	void Profiler::EndFrame(gfx::GraphicsContext& ctx)
 	{
 		s_Timer.Update();
 
@@ -167,12 +167,12 @@ namespace vast
 		{
 			double durationMs = double(s_Timer.GetElapsedMicroseconds<int64>() - s_tFrameStart) / 1000.0;
 			s_FrameStats.RecordTimeLast(durationMs);
-			if (profile::ui::g_bShowProfiler) s_FramePlot.RecordTimeLast(static_cast<float>(durationMs));
+			if (Profiler::ui::g_bShowProfiler) s_FramePlot.RecordTimeLast(static_cast<float>(durationMs));
 		}
 		{
 			double durationMs = ctx.GetLastFrameDuration() * 1000.0;
 			s_GpuStats.RecordTimeLast(durationMs);
-			if (profile::ui::g_bShowProfiler) s_GpuPlot.RecordTimeLast(static_cast<float>(durationMs));
+			if (Profiler::ui::g_bShowProfiler) s_GpuPlot.RecordTimeLast(static_cast<float>(durationMs));
 		}
 
 		float tTimeNowSeconds = s_Timer.GetElapsedSeconds<float>();
@@ -187,7 +187,7 @@ namespace vast
 			s_GpuStats.UpdateAverages();
 		}
 		// Check if we should reset min/max value on plots this frame.
-		if (profile::ui::g_bShowProfiler && (tTimeNowSeconds - s_tLastPlotsMaxReset) >= s_PlotMaxResetFrequencySeconds)
+		if (Profiler::ui::g_bShowProfiler && (tTimeNowSeconds - s_tLastPlotsMaxReset) >= s_PlotMaxResetFrequencySeconds)
 		{
 			s_tLastPlotsMaxReset = tTimeNowSeconds;
 
@@ -300,7 +300,7 @@ namespace vast
 		return currDepth;
 	}
 
-	void profile::PushProfilingMarkerCPU(const char* name)
+	void Profiler::PushProfilingMarkerCPU(const char* name)
 	{
 		ProfileBlock& p = FindOrAddProfile(s_CpuProfiles, s_CpuProfileCount, name);
 		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
@@ -317,7 +317,7 @@ namespace vast
 		p.state = ProfileBlock::State::ACTIVE;
 	}
 
-	void profile::PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler)
+	void Profiler::PushProfilingMarkerGPU(const char* name, gfx::GPUProfiler& gpuProfiler)
 	{
 		ProfileBlock& p = FindOrAddProfile(s_GpuProfiles, s_GpuProfileCount, name);
 		VAST_ASSERTF(p.state == ProfileBlock::State::IDLE, "A profile named '{}' already exists or has already been pushed this frame.", name);
@@ -333,7 +333,7 @@ namespace vast
 		p.state = ProfileBlock::State::ACTIVE;
 	}
 
-	void profile::PopProfilingMarkerCPU()
+	void Profiler::PopProfilingMarkerCPU()
 	{
 		if (ProfileBlock* p = FindLastActiveEntry(s_CpuProfiles, s_CpuProfileCount))
 		{
@@ -347,7 +347,7 @@ namespace vast
 		}
 	}
 
-	void profile::PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler)
+	void Profiler::PopProfilingMarkerGPU(gfx::GPUProfiler& gpuProfiler)
 	{
 		if (ProfileBlock* p = FindLastActiveEntry(s_GpuProfiles, s_GpuProfileCount))
 		{
@@ -360,7 +360,7 @@ namespace vast
 		}
 	}
 
-	void profile::FlushProfiles()
+	void Profiler::FlushProfiles()
 	{
 		s_bProfilesNeedFlush = true;
 	}
@@ -508,7 +508,7 @@ namespace vast
 		ImGui::PlotLines("", plot.history.data(), static_cast<int>(plot.kHistorySize), 0, overlay, std::min(plot.tMin, std::max(float(avg) - 1.5f, 0.0f)), std::max(plot.tMax, float(avg) + 1.5f), ImVec2(availableWidth, 80.0f));
 	}
 
-	void profile::ui::OnGUI()
+	void Profiler::ui::OnGUI()
 	{
 		if (!g_bShowProfiler)
 			return;
@@ -581,12 +581,12 @@ namespace vast
 		ImGui::End();
 	}
 
-	void profile::ui::DrawTextMinimal()
+	void Profiler::ui::DrawTextMinimal()
 	{
 		ImGui::Text("Frame: %.3f ms (GPU: %.3f ms)", s_FrameStats.tAvg, s_GpuStats.tAvg);
 	}
 	
-	float profile::ui::GetTextMinimalLength()
+	float Profiler::ui::GetTextMinimalLength()
 	{
 		return ImGui::CalcTextSize("Frame: 0.000f ms (GPU: 0.000f ms)").x;
 	}

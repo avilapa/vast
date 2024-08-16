@@ -4,10 +4,10 @@
 #include "Core/Types.h"
 
 #if VAST_ENABLE_TRACING
-#define VAST_PROFILE_TRACE_FUNCTION	::vast::trace::ScopedTrace XCAT(_traceVar, __LINE__)(__FUNCTION__)
-#define VAST_PROFILE_TRACE_SCOPE(n)	::vast::trace::ScopedTrace XCAT(_traceVar, __LINE__)(n)
-#define VAST_PROFILE_TRACE_BEGIN(n)	::vast::trace::BeginTrace(n)
-#define VAST_PROFILE_TRACE_END(n)	::vast::trace::EndTrace(n)
+#define VAST_PROFILE_TRACE_FUNCTION	::vast::Trace::ScopedTrace XCAT(_traceVar, __LINE__)(__FUNCTION__)
+#define VAST_PROFILE_TRACE_SCOPE(n)	::vast::Trace::ScopedTrace XCAT(_traceVar, __LINE__)(n)
+#define VAST_PROFILE_TRACE_BEGIN(n)	::vast::Trace::BeginTrace(n)
+#define VAST_PROFILE_TRACE_END(n)	::vast::Trace::EndTrace(n)
 #else
 #define VAST_PROFILE_TRACE_FUNCTION
 #define VAST_PROFILE_TRACE_SCOPE(n)
@@ -17,7 +17,7 @@
 
 namespace vast
 {
-	namespace trace
+	namespace Trace
 	{
 		void Init(const std::string& fileName);
 		void Stop();

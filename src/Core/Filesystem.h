@@ -6,12 +6,11 @@
 namespace vast
 {
 
-	class Filesystem
+	namespace Filesystem
 	{
-	public:
-		static std::string GetWorkingDirectory();
-		static std::string GetCurrentFilename();
+		std::string GetWorkingDirectory();
+		std::string GetCurrentFilename();
 
-		static bool FileExists(const std::string& filePath);
-	};
+		bool FileExists(const std::string& filePath);
+	}
 }

@@ -5,7 +5,7 @@
 
 namespace vast
 {
-	namespace trace
+	namespace Trace
 	{
 		void Init(const std::string& fileName)
 		{
