@@ -13,12 +13,6 @@
 
 namespace vast
 {
-	constexpr uint32 NUM_RTV_STAGING_DESCRIPTORS = 256;
-	constexpr uint32 NUM_DSV_STAGING_DESCRIPTORS = 32;
-	constexpr uint32 NUM_SRV_STAGING_DESCRIPTORS = 4096;
-	constexpr uint32 NUM_RESERVED_SRV_DESCRIPTORS = 8192;
-	constexpr uint32 NUM_SRV_RENDER_PASS_USER_DESCRIPTORS = 65536;
-
 	constexpr D3D_FEATURE_LEVEL GetMinFeatureLevel()
 	{
 		return D3D_FEATURE_LEVEL_11_0;
@@ -57,9 +51,9 @@ namespace vast
 		, m_ShaderManager(nullptr)
 		, m_RTVStagingDescriptorHeap(nullptr)
 		, m_DSVStagingDescriptorHeap(nullptr)
-		, m_SRVStagingDescriptorHeap(nullptr)
-		, m_FreeReservedDescriptorIndices({ 0 })
-		, m_SRVRenderPassDescriptorHeaps({ nullptr })
+		, m_CBVSRVUAVStagingDescriptorHeap(nullptr)
+		, m_DescriptorIndexFreeList()
+		, m_CBVSRVUAVRenderPassDescriptorHeaps({ nullptr })
 		, m_SamplerRenderPassDescriptorHeap(nullptr)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
@@ -129,18 +123,11 @@ namespace vast
 		VAST_LOG_TRACE("[gfx] [dx12] Creating descriptor heaps.");
 		m_RTVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, NUM_RTV_STAGING_DESCRIPTORS);
 		m_DSVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, NUM_DSV_STAGING_DESCRIPTORS);
-		m_SRVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, NUM_SRV_STAGING_DESCRIPTORS);
-
-		m_FreeReservedDescriptorIndices.resize(NUM_RESERVED_SRV_DESCRIPTORS);
-		for (uint32 i = 0; i < m_FreeReservedDescriptorIndices.size(); ++i)
-		{
-			m_FreeReservedDescriptorIndices[i] = i;
-		}
+		m_CBVSRVUAVStagingDescriptorHeap = MakePtr<DX12StagingDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, NUM_SRV_STAGING_DESCRIPTORS);
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			m_SRVRenderPassDescriptorHeaps[i] = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
-				NUM_RESERVED_SRV_DESCRIPTORS, NUM_SRV_RENDER_PASS_USER_DESCRIPTORS);
+			m_CBVSRVUAVRenderPassDescriptorHeaps[i] = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, NUM_RESERVED_DESCRIPTOR_INDICES, NUM_RENDER_PASS_USER_DESCRIPTORS);
 		}
 
 		m_SamplerRenderPassDescriptorHeap = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 0, IDX(SamplerState::COUNT));
@@ -223,11 +210,11 @@ namespace vast
 
 		m_RTVStagingDescriptorHeap = nullptr;
 		m_DSVStagingDescriptorHeap = nullptr;
-		m_SRVStagingDescriptorHeap = nullptr;
+		m_CBVSRVUAVStagingDescriptorHeap = nullptr;
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			m_SRVRenderPassDescriptorHeaps[i] = nullptr;
+			m_CBVSRVUAVRenderPassDescriptorHeaps[i] = nullptr;
 		}
 		m_SamplerRenderPassDescriptorHeap = nullptr;
 
@@ -367,7 +354,7 @@ namespace vast
 			cbvDesc.BufferLocation = outBuf.gpuAddress;
 			cbvDesc.SizeInBytes = static_cast<uint32>(rscDesc.Width);
 
-			outBuf.cbv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			outBuf.cbv = m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateConstantBufferView(&cbvDesc, outBuf.cbv.cpuHandle);
 		}
 
@@ -384,11 +371,10 @@ namespace vast
 			srvDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			srvDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
 
-			outBuf.srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			outBuf.srv = m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateShaderResourceView(outBuf.resource, &srvDesc, outBuf.srv.cpuHandle);
 
-			outBuf.srv.bindlessIdx = m_FreeReservedDescriptorIndices.back();
-			m_FreeReservedDescriptorIndices.pop_back();
+			outBuf.srv.bindlessIdx = m_DescriptorIndexFreeList.AllocIndex();
 
 			// TODO: For dynamic bindless vertex/index buffers we need to be able to update the SRVs accordingly
 			CopyDescriptorToReservedTable(outBuf.srv, outBuf.srv.bindlessIdx);
@@ -405,7 +391,7 @@ namespace vast
 			uavDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
 			uavDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
-			outBuf.uav = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			outBuf.uav = m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateUnorderedAccessView(outBuf.resource, nullptr, &uavDesc, outBuf.uav.cpuHandle);
 		}
 
@@ -514,7 +500,7 @@ namespace vast
 
 		if (hasSRV)
 		{
-			outTex.srv = m_SRVStagingDescriptorHeap->GetNewDescriptor();
+			outTex.srv = m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor();
 
 			if (hasDSV)
 			{
@@ -548,8 +534,7 @@ namespace vast
 				}
 			}
 
-			outTex.srv.bindlessIdx = m_FreeReservedDescriptorIndices.back();
-			m_FreeReservedDescriptorIndices.pop_back();
+			outTex.srv.bindlessIdx = m_DescriptorIndexFreeList.AllocIndex();
 
 			CopyDescriptorToReservedTable(outTex.srv, outTex.srv.bindlessIdx);
 		}
@@ -594,21 +579,19 @@ namespace vast
 						uavDesc.Texture2D.MipSlice = i;
 					}
 
-					outTex.uav.push_back(m_SRVStagingDescriptorHeap->GetNewDescriptor());
+					outTex.uav.push_back(m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor());
 					m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, &uavDesc, outTex.uav[i].cpuHandle);
 
-					outTex.uav[i].bindlessIdx = m_FreeReservedDescriptorIndices.back();
-					m_FreeReservedDescriptorIndices.pop_back();
+					outTex.uav[i].bindlessIdx = m_DescriptorIndexFreeList.AllocIndex();
 					CopyDescriptorToReservedTable(outTex.uav[i], outTex.uav[i].bindlessIdx);
 				}
 			}
 			else
 			{
-				outTex.uav.push_back(m_SRVStagingDescriptorHeap->GetNewDescriptor());
+				outTex.uav.push_back(m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor());
 				m_Device->CreateUnorderedAccessView(outTex.resource, nullptr, nullptr, outTex.uav[0].cpuHandle);
 
-				outTex.uav[0].bindlessIdx = m_FreeReservedDescriptorIndices.back();
-				m_FreeReservedDescriptorIndices.pop_back();
+				outTex.uav[0].bindlessIdx = m_DescriptorIndexFreeList.AllocIndex();
 				CopyDescriptorToReservedTable(outTex.uav[0], outTex.uav[0].bindlessIdx);
 			}
 		}
@@ -836,18 +819,18 @@ namespace vast
 
 		if (buf.cbv.IsValid())
 		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf.cbv);
+			m_CBVSRVUAVStagingDescriptorHeap->FreeDescriptor(buf.cbv);
 		}
 
 		if (buf.srv.IsValid())
 		{
-			m_FreeReservedDescriptorIndices.push_back(buf.srv.bindlessIdx);
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf.srv);
+			m_DescriptorIndexFreeList.FreeIndex(buf.srv.bindlessIdx);
+			m_CBVSRVUAVStagingDescriptorHeap->FreeDescriptor(buf.srv);
 		}
 
 		if (buf.uav.IsValid())
 		{
-			m_SRVStagingDescriptorHeap->FreeDescriptor(buf.uav);
+			m_CBVSRVUAVStagingDescriptorHeap->FreeDescriptor(buf.uav);
 		}
 
 		if (buf.data != nullptr)
@@ -875,16 +858,16 @@ namespace vast
 
 		if (tex.srv.IsValid())
 		{
-			m_FreeReservedDescriptorIndices.push_back(tex.srv.bindlessIdx);
-			m_SRVStagingDescriptorHeap->FreeDescriptor(tex.srv);
+			m_DescriptorIndexFreeList.FreeIndex(tex.srv.bindlessIdx);
+			m_CBVSRVUAVStagingDescriptorHeap->FreeDescriptor(tex.srv);
 		}
 
 		for (auto& i : tex.uav)
 		{
 			if (i.IsValid())
 			{
-				m_FreeReservedDescriptorIndices.push_back(i.bindlessIdx);
-				m_SRVStagingDescriptorHeap->FreeDescriptor(i);
+				m_DescriptorIndexFreeList.FreeIndex(i.bindlessIdx);
+				m_CBVSRVUAVStagingDescriptorHeap->FreeDescriptor(i);
 			}
 		}
 
@@ -920,7 +903,7 @@ namespace vast
 
 	DX12RenderPassDescriptorHeap& DX12Device::GetSRVDescriptorHeap(uint32 frameId) const
 	{
-		return *m_SRVRenderPassDescriptorHeaps[frameId];
+		return *m_CBVSRVUAVRenderPassDescriptorHeaps[frameId];
 	}
 
 	DX12RenderPassDescriptorHeap& DX12Device::GetSamplerDescriptorHeap() const
@@ -952,7 +935,7 @@ namespace vast
 	{
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			DX12Descriptor dstDesc = m_SRVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
+			DX12Descriptor dstDesc = m_CBVSRVUAVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
 			CopyDescriptorsSimple(1, dstDesc.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
 	}

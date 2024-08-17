@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Core/Defines.h"
+#include "Core/Assert.h"
+
 #include <stdint.h>
 #include <memory>
 #include <array>
@@ -68,7 +71,7 @@ namespace vast
 	using float3x3 = hlslpp::float3x3;
 	using float4x4 = hlslpp::float4x4;
 
-	// - STL types -------------------------------------------------------------------------------- //
+	// - Memory -------------------------------------------------------------------------------- //
 
 	// Note: This is about giving nicer to read names to types we may want to replace in the future
 	// with our own wrapper.
@@ -89,13 +92,55 @@ namespace vast
 		return std::make_unique<T>(std::forward<Args>(args)...);
 	}
 
+	// - Data Structures ----------------------------------------------------------------------- //
+
 	template<class T, std::size_t N>
 	using Array = std::array<T, N>;
 
 	template<class T, class Allocator = std::allocator<T>>
 	using Vector = std::vector<T, Allocator>;
 
-	// - Enum class flags ------------------------------------------------------------------------- //
+	template<uint32 N>
+	class FreeList
+	{
+		Array<uint32, N> m_IndexPool;
+		uint32 m_UsedSlots;
+
+	public:
+		FreeList() : m_IndexPool({ 0 }), m_UsedSlots(0)
+		{
+			for (uint32 i = 0; i < N; ++i)
+			{
+				m_IndexPool[i] = i;
+			}
+		}
+
+		// Get next available unique index
+		uint32 AllocIndex()
+		{
+			VAST_ASSERT(m_UsedSlots < N);
+			return m_IndexPool[m_UsedSlots++];
+		}
+
+		// Return index to the queue for re-use.
+		void FreeIndex(uint32 idx)
+		{
+			VAST_ASSERT(m_UsedSlots > 0);
+#ifdef VAST_DEBUG
+			// Check against double free
+			for (uint32 i = m_UsedSlots; i < N; ++i)
+			{
+				VAST_ASSERT(m_IndexPool[i] != idx);
+			}
+#endif
+			m_IndexPool[--m_UsedSlots] = idx;
+		}
+
+		uint32 GetUsedSlots() { return m_UsedSlots; }
+		uint32 GetSize() { return N; }
+	};
+
+	// - Enum class flags ---------------------------------------------------------------------- //
 
 #define ENUM_CLASS_ALLOW_FLAGS(t)											\
 	inline constexpr t operator&(t x, t y)									\
@@ -110,7 +155,7 @@ namespace vast
 		return static_cast<t>(static_cast<ut>(x) | static_cast<ut>(y));		\
 	}
 
-	// -------------------------------------------------------------------------------------------- //
+	// ----------------------------------------------------------------------------------------- //
 
 	// TODO: Moving these here until the need for a better place arises.
 	inline constexpr uint32 AlignU32(uint32 valueToAlign, uint32 alignment)

@@ -55,10 +55,10 @@ namespace vast
 
 		Ptr<DX12StagingDescriptorHeap> m_RTVStagingDescriptorHeap;
 		Ptr<DX12StagingDescriptorHeap> m_DSVStagingDescriptorHeap;
-		Ptr<DX12StagingDescriptorHeap> m_SRVStagingDescriptorHeap; // Serves CBV, SRV and UAV
+		Ptr<DX12StagingDescriptorHeap> m_CBVSRVUAVStagingDescriptorHeap;
 
-		Vector<uint32> m_FreeReservedDescriptorIndices;
-		Array<Ptr<DX12RenderPassDescriptorHeap>, NUM_FRAMES_IN_FLIGHT> m_SRVRenderPassDescriptorHeaps;
+		FreeList<NUM_RESERVED_DESCRIPTOR_INDICES> m_DescriptorIndexFreeList;
+		Array<Ptr<DX12RenderPassDescriptorHeap>, NUM_FRAMES_IN_FLIGHT> m_CBVSRVUAVRenderPassDescriptorHeaps;
 		Ptr<DX12RenderPassDescriptorHeap> m_SamplerRenderPassDescriptorHeap;
 	};
 }

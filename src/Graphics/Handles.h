@@ -50,27 +50,17 @@ namespace vast
 	class HandlePool
 	{
 		static const uint32 kInvalidHandleIdx = UINT32_MAX;
-		uint32 m_UsedSlots;
-		Array<uint32, SIZE> m_FreeQueue;
+		FreeList<SIZE> m_FreeQueue;
 		Array<uint32, SIZE> m_GenerationCounters;
 
 	public:
-		HandlePool() : m_UsedSlots(0), m_GenerationCounters() 
-		{
-			// Set up free queue with increasing indices.
-			for (uint32 i = 0; i < SIZE; ++i)
-			{
-				m_FreeQueue[i] = i;
-			}
-		}
-
 		Handle<H> AllocHandle()
 		{
 			// Get next free handle index
 			uint32 handleIdx = kInvalidHandleIdx;
-			if (m_UsedSlots < SIZE)
+			if (m_FreeQueue.GetUsedSlots() < SIZE)
 			{
-				handleIdx = m_FreeQueue[m_UsedSlots++];
+				handleIdx = m_FreeQueue.AllocIndex();
 				VAST_ASSERT(handleIdx >= 0 && handleIdx < SIZE && handleIdx != kInvalidHandleIdx);
 
 				// Increase generation counter every time a slot gets (re-)used.
@@ -84,16 +74,7 @@ namespace vast
 		void FreeHandle(Handle<H> h)
 		{
 			VAST_ASSERTF(h.IsValid(), "Cannot free invalid handle.");
-#ifdef VAST_DEBUG
-			// Check against double free
-			for (uint32 i = m_UsedSlots; i < SIZE; ++i)
-			{
-				VAST_ASSERT(m_FreeQueue[i] != h.GetIndex());
-			}
-#endif
-			VAST_ASSERT(m_UsedSlots > 0);
-			// Return slot to the queue for re-use.
-			m_FreeQueue[--m_UsedSlots] = h.GetIndex();
+			m_FreeQueue.FreeIndex(h.GetIndex());
 		}
 	};
 

@@ -20,6 +20,12 @@ namespace vast
 	static_assert(CONSTANT_BUFFER_ALIGNMENT == D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 	static_assert(MAX_RENDERTARGETS == D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT);
 
+	constexpr uint32 NUM_RTV_STAGING_DESCRIPTORS = 256;
+	constexpr uint32 NUM_DSV_STAGING_DESCRIPTORS = 32;
+	constexpr uint32 NUM_SRV_STAGING_DESCRIPTORS = 4096;
+	constexpr uint32 NUM_RESERVED_DESCRIPTOR_INDICES = 8192;
+	constexpr uint32 NUM_RENDER_PASS_USER_DESCRIPTORS = 65536;
+
 	// - Resources -------------------------------------------------------------------------------- //
 
 	static const uint32 kInvalidHeapIdx = UINT32_MAX;
