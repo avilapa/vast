@@ -4,7 +4,7 @@
 
 namespace vast::gfx
 {
-	// - Graphics Backend ---------------------------------------------------------------------- //
+	// - Graphics Context ---------------------------------------------------------------------- //
 
 	void Init(const GraphicsParams& params);
 	void Shutdown();
@@ -20,6 +20,33 @@ namespace vast::gfx
 	void BindPipelineForCompute(PipelineHandle h);
 
 	void WaitForIdle();
+
+	void AddBarrier(BufferHandle h, ResourceState newState);
+	void AddBarrier(TextureHandle h, ResourceState newState);
+	void FlushBarriers();
+
+	void BindVertexBuffer(BufferHandle h, uint32 offset = 0, uint32 stride = 0);
+	void BindIndexBuffer(BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT);
+	void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0);
+
+	void SetPushConstants(const void* data, const uint32 size);
+
+	void BindSRV(BufferHandle h);
+	void BindSRV(TextureHandle h);
+	void BindUAV(TextureHandle h, uint32 mipLevel);
+
+	void SetScissorRect(int4 rect);
+	void SetBlendFactor(float4 blend);
+
+	void DrawInstanced(uint32 vtxCountPerInst, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0);
+	void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation);
+	void DrawFullscreenTriangle();
+
+	void Dispatch(uint3 threadGroupCount);
+
+	void ResizeSwapChainAndBackBuffers(uint2 newSize);
+	uint2 GetBackBufferSize();
+	TexFormat GetBackBufferFormat();
 
 	// - GPU Resources ------------------------------------------------------------------------- //
 
@@ -48,46 +75,9 @@ namespace vast::gfx
 
 	TexFormat GetTextureFormat(TextureHandle h);
 
-	// Resource Transitions
-	void AddBarrier(BufferHandle h, ResourceState newState);
-	void AddBarrier(TextureHandle h, ResourceState newState);
-	void FlushBarriers();
-
-	// Resource View Binding
-	void BindVertexBuffer(BufferHandle h, uint32 offset = 0, uint32 stride = 0);
-	void BindIndexBuffer(BufferHandle h, uint32 offset = 0, IndexBufFormat format = IndexBufFormat::R16_UINT);
-	void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset = 0);
-
-	void SetPushConstants(const void* data, const uint32 size);
-
-	void BindSRV(BufferHandle h);
-	void BindSRV(TextureHandle h);
-	void BindUAV(TextureHandle h, uint32 mipLevel);
-
-	// Query Bindless View Indices
 	uint32 GetBindlessSRV(BufferHandle h);
 	uint32 GetBindlessSRV(TextureHandle h);
 	uint32 GetBindlessUAV(TextureHandle h, uint32 mipLevel = 0);
-
-	// - Pipeline State ------------------------------------------------------------------------ //
-
-	void SetScissorRect(int4 rect);
-	void SetBlendFactor(float4 blend);
-
-	// - Draw/Dispatch Calls ------------------------------------------------------------------- //
-
-	void DrawInstanced(uint32 vtxCountPerInst, uint32 instCount, uint32 vtxStartLocation = 0, uint32 instStartLocation = 0);
-	void DrawIndexedInstanced(uint32 idxCountPerInstance, uint32 instanceCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation);
-	void DrawFullscreenTriangle();
-
-	void Dispatch(uint3 threadGroupCount);
-
-	// - Swap Chain/Back Buffers --------------------------------------------------------------- //
-
-	void ResizeSwapChainAndBackBuffers(uint2 newSize);
-
-	uint2 GetBackBufferSize();
-	TexFormat GetBackBufferFormat();
 
 	// - Timestamps ---------------------------------------------------------------------------- //
 

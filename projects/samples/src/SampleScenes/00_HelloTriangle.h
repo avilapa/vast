@@ -41,6 +41,8 @@ private:
 public:
 	HelloTriangle(GraphicsContext& ctx_) : ISample(ctx_)
 	{
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
 		// Create triangle pipeline state object and prepare it to render to the back buffer.
 		PipelineDesc trianglePipelineDesc =
 		{
@@ -49,7 +51,7 @@ public:
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() }, },
 		};
-		m_TrianglePso = ctx.CreatePipeline(trianglePipelineDesc);
+		m_TrianglePso = rm.CreatePipeline(trianglePipelineDesc);
 
 		// Create the triangle vertex buffer with an SRV to be able to access it bindlessly from the shader.
 		BufferDesc vtxBufDesc =
@@ -59,16 +61,18 @@ public:
 			.viewFlags = BufViewFlags::SRV,
 			.isRawAccess = true,
 		};
-		m_TriangleVtxBuf = ctx.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
+		m_TriangleVtxBuf = rm.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		// Query the bindless descriptor index for the vertex buffer.
-		m_TriangleVtxBufIdx = ctx.GetBindlessSRV(m_TriangleVtxBuf);
+		m_TriangleVtxBufIdx = rm.GetBindlessSRV(m_TriangleVtxBuf);
 	}
 
 	~HelloTriangle()
 	{
 		// Clean up GPU resources created for this sample.
-		ctx.DestroyPipeline(m_TrianglePso);
-		ctx.DestroyBuffer(m_TriangleVtxBuf);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.DestroyPipeline(m_TrianglePso);
+		rm.DestroyBuffer(m_TriangleVtxBuf);
 	}
 
 	void Render() override
@@ -77,7 +81,7 @@ public:
 		if (m_bUpdateTriangle)
 		{
 			m_bUpdateTriangle = false;
-			ctx.UpdateBuffer(m_TriangleVtxBuf, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
+			ctx.GetGPUResourceManager().UpdateBuffer(m_TriangleVtxBuf, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		}
 
 		// Transition necessary resource barriers to begin a render pass onto the back buffer and 

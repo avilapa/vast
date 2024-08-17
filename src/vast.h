@@ -9,4 +9,4 @@
 
 #include "Graphics/GraphicsTypes.h"
 #include "Graphics/GraphicsContext.h"
-#include "Graphics/ResourceManager.h"
+#include "Graphics/GPUResourceManager.h"

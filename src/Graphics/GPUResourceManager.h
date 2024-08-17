@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Resources.h"
+#include "Graphics/ShaderResourceProxy.h"
 
 namespace vast
 {
@@ -14,14 +15,12 @@ namespace vast
 		void Reset();
 	};
 
-	class ResourceManager
+	class GPUResourceManager
 	{
 		friend class GraphicsContext;
 	public:
-		ResourceManager();
-		~ResourceManager();
-
-		void BeginFrame();
+		GPUResourceManager();
+		~GPUResourceManager();
 
 		BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr, const size_t dataSize = 0);
 		TextureHandle CreateTexture(const TextureDesc& desc, const void* initialData = nullptr);
@@ -33,6 +32,8 @@ namespace vast
 		void DestroyPipeline(PipelineHandle h);
 
 		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
+
+		ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName);
 
 		void ReloadShaders(PipelineHandle h);
 
@@ -54,7 +55,13 @@ namespace vast
 
 		TexFormat GetTextureFormat(TextureHandle h);
 
+		// Query Bindless View Indices
+		uint32 GetBindlessSRV(BufferHandle h);
+		uint32 GetBindlessSRV(TextureHandle h);
+		uint32 GetBindlessUAV(TextureHandle h, uint32 mipLevel = 0);
+
 	private:
+		void BeginFrame();
 		void ProcessDestructions(uint32 frameId);
 		void ProcessShaderReloads();
 
@@ -63,6 +70,8 @@ namespace vast
 		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
 		Ptr<HandlePool<Pipeline, NUM_PIPELINES>> m_PipelineHandles;
 
+		// TODO: Could combine into a single queue with lambda callbacks to each handle type "FreeHandle" if
+		// ResourceHandler/HandlePool were unified
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;

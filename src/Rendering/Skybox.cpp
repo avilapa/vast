@@ -2,6 +2,9 @@
 #include "Rendering/Skybox.h"
 #include "Rendering/Shapes.h"
 
+#include "Graphics/GraphicsContext.h"
+#include "Graphics/GPUResourceManager.h"
+
 namespace vast
 {
 
@@ -15,7 +18,9 @@ namespace vast
 			dsState.depthFunc = GetFixedCompareFunc(CompareFunc::LESS_EQUAL, m_bUsingReverseZ);
 		}
 
-		m_PSO = ctx.CreatePipeline(PipelineDesc{
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		m_PSO = rm.CreatePipeline(PipelineDesc{
 			.vs = AllocVertexShaderDesc("Skybox.hlsl"),
 			.ps = AllocPixelShaderDesc("Skybox.hlsl"),
 			.depthStencilState = dsState,
@@ -24,18 +29,20 @@ namespace vast
 		});
 
 		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_VerticesIndexed_Pos), sizeof(Cube::s_VerticesIndexed_Pos[0]));
-		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
+		m_CubeVtxBuf = rm.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
 
 		uint32 numIndices = static_cast<uint32>(Cube::s_Indices.size());
 		auto idxBufDesc = AllocIndexBufferDesc(numIndices);
-		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
+		m_CubeIdxBuf = rm.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
 	}
 
 	Skybox::~Skybox()
 	{
-		ctx.DestroyPipeline(m_PSO);
-		ctx.DestroyBuffer(m_CubeVtxBuf);
-		ctx.DestroyBuffer(m_CubeIdxBuf);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.DestroyPipeline(m_PSO);
+		rm.DestroyBuffer(m_CubeVtxBuf);
+		rm.DestroyBuffer(m_CubeIdxBuf);
 	}
 
 	void Skybox::Render(TextureHandle environmentMap, const RenderTargetDesc& rt, const RenderTargetDesc& ds, const PerspectiveCamera& camera)
@@ -46,7 +53,9 @@ namespace vast
 
 	void Skybox::Render(TextureHandle environmentMap, const RenderTargetDesc& rt, const RenderTargetDesc& ds, const float4x4& viewMatrix, const float4x4& projMatrix)
 	{
-		if (!ctx.GetIsReady(m_CubeVtxBuf) || !ctx.GetIsReady(m_CubeIdxBuf) || !ctx.GetIsReady(environmentMap))
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		if (!rm.GetIsReady(m_CubeVtxBuf) || !rm.GetIsReady(m_CubeIdxBuf) || !rm.GetIsReady(environmentMap))
 			return;
 
 		// TODO: If the user calls this function directly we don't currently check for ReverseZ settings.
@@ -58,7 +67,7 @@ namespace vast
 				float4x4 proj;
 				uint32 texIdx;
 				uint32 bUseReverseZ;
-			} pc{viewMatrix, projMatrix, ctx.GetBindlessSRV(environmentMap), m_bUsingReverseZ };
+			} pc{viewMatrix, projMatrix, rm.GetBindlessSRV(environmentMap), m_bUsingReverseZ };
 
 			ctx.SetPushConstants(&pc, sizeof(SkyboxCB));
 

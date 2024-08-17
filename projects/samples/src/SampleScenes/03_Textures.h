@@ -60,8 +60,10 @@ private:
 public:
 	Textures(GraphicsContext& ctx_) : ISample(ctx_)
 	{	
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
 		// Create full-screen pass PSO
-		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
+		m_FullscreenPso = rm.CreatePipeline(PipelineDesc{
 			.vs = AllocVertexShaderDesc("Fullscreen.hlsl"),
 			.ps = AllocPixelShaderDesc("Fullscreen.hlsl"),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
@@ -71,23 +73,23 @@ public:
 		// Create full-screen color and depth intermediate buffers to render our meshes to.
 		uint2 backBufferSize = ctx.GetBackBufferSize();
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
-		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
-		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
+		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
+		m_DepthRT = rm.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
 
 		// Create perspective camera
 		float3 cameraPos = float3(0.0f, 1.0f, -5.0f);
 		m_Camera = MakePtr<PerspectiveCamera>(cameraPos, float3(0, 0, 0), float3(0, 1, 0), ctx.GetBackBufferAspectRatio(), DEG_TO_RAD(45.0f));
 
 		// Create skybox object
-		m_Skybox = MakePtr<Skybox>(ctx, ctx.GetTextureFormat(m_ColorRT), ctx.GetTextureFormat(m_DepthRT));
+		m_Skybox = MakePtr<Skybox>(ctx, rm.GetTextureFormat(m_ColorRT), rm.GetTextureFormat(m_DepthRT));
 
 		// Load a cube texture from file to be used in the skybox.
-		m_EnvironmentCubeTex = ctx.LoadTextureFromFile("yokohama2_cube1024.dds");
+		m_EnvironmentCubeTex = rm.LoadTextureFromFile("yokohama2_cube1024.dds");
 
 		m_FrameCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 		m_FrameCB.cameraPos = s_float3(cameraPos.x, cameraPos.y, cameraPos.z);
-		m_FrameCB.skyboxTexIdx = ctx.GetBindlessSRV(m_EnvironmentCubeTex);
-		m_FrameCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(FrameCB)), &m_FrameCB, sizeof(FrameCB));
+		m_FrameCB.skyboxTexIdx = rm.GetBindlessSRV(m_EnvironmentCubeTex);
+		m_FrameCbvBuf = rm.CreateBuffer(AllocCbvBufferDesc(sizeof(FrameCB)), &m_FrameCB, sizeof(FrameCB));
 
 		PipelineDesc pipelineDesc =
 		{
@@ -95,32 +97,32 @@ public:
 			.ps = AllocPixelShaderDesc("03_TexturedMesh.hlsl", m_SamplesShaderSourcePath.c_str()),
 			.renderPassLayout =
 			{
-				.rtFormats = { ctx.GetTextureFormat(m_ColorRT)  },
-				.dsFormat = { ctx.GetTextureFormat(m_DepthRT) },
+				.rtFormats = { rm.GetTextureFormat(m_ColorRT)  },
+				.dsFormat = { rm.GetTextureFormat(m_DepthRT) },
 			},
 		};
-		m_TexturedMeshPso = ctx.CreatePipeline(pipelineDesc);
+		m_TexturedMeshPso = rm.CreatePipeline(pipelineDesc);
 
-		m_TexturedMeshCbvProxy = ctx.LookupShaderResource(m_TexturedMeshPso, "ObjectConstantBuffer");
-		m_FrameCbvProxy = ctx.LookupShaderResource(m_TexturedMeshPso, "FrameConstantBuffer");
+		m_TexturedMeshCbvProxy = rm.LookupShaderResource(m_TexturedMeshPso, "ObjectConstantBuffer");
+		m_FrameCbvProxy = rm.LookupShaderResource(m_TexturedMeshPso, "FrameConstantBuffer");
 
 		{
 			// Create the cube vertex buffer with bindless access.
 			auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_Vertices_PosNormalUv), sizeof(Cube::s_Vertices_PosNormalUv[0]));
 			auto cbvBufDesc = AllocCbvBufferDesc(sizeof(Drawable::CB));
 
-			m_TexturedDrawables[0].vtxBuf = ctx.CreateBuffer(vtxBufDesc, &Cube::s_Vertices_PosNormalUv, sizeof(Cube::s_Vertices_PosNormalUv));
+			m_TexturedDrawables[0].vtxBuf = rm.CreateBuffer(vtxBufDesc, &Cube::s_Vertices_PosNormalUv, sizeof(Cube::s_Vertices_PosNormalUv));
 			// Note: This time, we render the cube without an index buffer.
 			m_TexturedDrawables[0].numIndices = static_cast<uint32>(Cube::s_Vertices_PosNormalUv.size());
 
-			m_TexturedDrawables[0].colorTex = ctx.LoadTextureFromFile("image.tga");
+			m_TexturedDrawables[0].colorTex = rm.LoadTextureFromFile("image.tga");
 
 			m_TexturedDrawables[0].cb.modelMatrix = float4x4::translation(1.5f, 0.0f, 0.0f);
-			m_TexturedDrawables[0].cb.vtxBufIdx = ctx.GetBindlessSRV(m_TexturedDrawables[0].vtxBuf);
-			m_TexturedDrawables[0].cb.colorTexIdx = ctx.GetBindlessSRV(m_TexturedDrawables[0].colorTex);
+			m_TexturedDrawables[0].cb.vtxBufIdx = rm.GetBindlessSRV(m_TexturedDrawables[0].vtxBuf);
+			m_TexturedDrawables[0].cb.colorTexIdx = rm.GetBindlessSRV(m_TexturedDrawables[0].colorTex);
 			m_TexturedDrawables[0].cb.colorSamplerIdx = IDX(SamplerState::POINT_CLAMP);
 
-			m_TexturedDrawables[0].cbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[0].cb, sizeof(Drawable::CB));
+			m_TexturedDrawables[0].cbvBuf = rm.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[0].cb, sizeof(Drawable::CB));
 		}
 
 		{
@@ -135,18 +137,18 @@ public:
 			auto idxBufDesc = AllocIndexBufferDesc(numIndices);
 			auto cbvBufDesc = AllocCbvBufferDesc(sizeof(Drawable::CB));
 
-			m_TexturedDrawables[1].vtxBuf = ctx.CreateBuffer(vtxBufDesc, sphereVertexData.data(), sphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
-			m_TexturedDrawables[1].idxBuf = ctx.CreateBuffer(idxBufDesc, sphereIndexData.data(), sphereIndexData.size() * sizeof(uint16));
+			m_TexturedDrawables[1].vtxBuf = rm.CreateBuffer(vtxBufDesc, sphereVertexData.data(), sphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
+			m_TexturedDrawables[1].idxBuf = rm.CreateBuffer(idxBufDesc, sphereIndexData.data(), sphereIndexData.size() * sizeof(uint16));
 			m_TexturedDrawables[1].numIndices = numIndices;
 
-			m_TexturedDrawables[1].colorTex = ctx.LoadTextureFromFile("2k_earth_daymap.jpg");
+			m_TexturedDrawables[1].colorTex = rm.LoadTextureFromFile("2k_earth_daymap.jpg");
 
 			m_TexturedDrawables[1].cb.modelMatrix = float4x4::translation(-1.5f, 0.0f, 0.0f);
-			m_TexturedDrawables[1].cb.vtxBufIdx = ctx.GetBindlessSRV(m_TexturedDrawables[1].vtxBuf);
-			m_TexturedDrawables[1].cb.colorTexIdx = ctx.GetBindlessSRV(m_TexturedDrawables[1].colorTex);
+			m_TexturedDrawables[1].cb.vtxBufIdx = rm.GetBindlessSRV(m_TexturedDrawables[1].vtxBuf);
+			m_TexturedDrawables[1].cb.colorTexIdx = rm.GetBindlessSRV(m_TexturedDrawables[1].colorTex);
 			m_TexturedDrawables[1].cb.colorSamplerIdx = IDX(SamplerState::LINEAR_CLAMP);
 
-			m_TexturedDrawables[1].cbvBuf = ctx.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[1].cb, sizeof(Drawable::CB));
+			m_TexturedDrawables[1].cbvBuf = rm.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[1].cb, sizeof(Drawable::CB));
 		}
 
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
@@ -157,20 +159,22 @@ public:
 	~Textures()
 	{
 		// Clean up GPU resources created for this sample.
-		ctx.DestroyPipeline(m_FullscreenPso);
-		ctx.DestroyTexture(m_ColorRT);
-		ctx.DestroyTexture(m_DepthRT);
-		ctx.DestroyTexture(m_EnvironmentCubeTex);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
-		ctx.DestroyBuffer(m_FrameCbvBuf);
-		ctx.DestroyPipeline(m_TexturedMeshPso);
+		rm.DestroyPipeline(m_FullscreenPso);
+		rm.DestroyTexture(m_ColorRT);
+		rm.DestroyTexture(m_DepthRT);
+		rm.DestroyTexture(m_EnvironmentCubeTex);
+
+		rm.DestroyBuffer(m_FrameCbvBuf);
+		rm.DestroyPipeline(m_TexturedMeshPso);
 
 		for (auto& i : m_TexturedDrawables)
 		{
-			ctx.DestroyBuffer(i.vtxBuf);
-			if (i.idxBuf.IsValid()) ctx.DestroyBuffer(i.idxBuf);
-			ctx.DestroyBuffer(i.cbvBuf);
-			ctx.DestroyTexture(i.colorTex);
+			rm.DestroyBuffer(i.vtxBuf);
+			if (i.idxBuf.IsValid()) rm.DestroyBuffer(i.idxBuf);
+			rm.DestroyBuffer(i.cbvBuf);
+			rm.DestroyTexture(i.colorTex);
 		}
 
 		m_Skybox = nullptr;
@@ -187,9 +191,11 @@ public:
 
 	void Render() override
 	{
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
 		for (auto& i : m_TexturedDrawables)
 		{
-			ctx.UpdateBuffer(i.cbvBuf, &i.cb, sizeof(Drawable::CB));
+			rm.UpdateBuffer(i.cbvBuf, &i.cb, sizeof(Drawable::CB));
 		}
 
 		// Transition and clear our intermediate color and depth targets and set the pipeline state
@@ -203,11 +209,11 @@ public:
 
 			for (auto& i : m_TexturedDrawables)
 			{
-				if (ctx.GetIsReady(i.vtxBuf) && ctx.GetIsReady(i.colorTex))
+				if (rm.GetIsReady(i.vtxBuf) && rm.GetIsReady(i.colorTex))
 				{
 					if (i.idxBuf.IsValid())
 					{
-						if (!ctx.GetIsReady(i.idxBuf))
+						if (!rm.GetIsReady(i.idxBuf))
 							continue;
 
 						ctx.BindConstantBuffer(m_TexturedMeshCbvProxy, i.cbvBuf);
@@ -231,7 +237,7 @@ public:
 		// Render our color target to the back buffer and gamma correct it.
 		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
 		{
-			uint32 srvIndex = ctx.GetBindlessSRV(m_ColorRT);
+			uint32 srvIndex = rm.GetBindlessSRV(m_ColorRT);
 			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 			ctx.DrawFullscreenTriangle();
 		}
@@ -242,17 +248,22 @@ public:
 	{
 		// If the window is resized we need to update the size of the render targets, as well as our camera aspect ratio.
 		ctx.FlushGPU();
-		ctx.DestroyTexture(m_ColorRT);
-		ctx.DestroyTexture(m_DepthRT);
+
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.DestroyTexture(m_ColorRT);
+		rm.DestroyTexture(m_DepthRT);
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
-		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
-		m_DepthRT = ctx.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
+		m_DepthRT = rm.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
 	}
 
 	void OnReloadShadersEvent() override
 	{
-		ctx.ReloadShaders(m_FullscreenPso);
-		ctx.ReloadShaders(m_TexturedMeshPso);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.ReloadShaders(m_FullscreenPso);
+		rm.ReloadShaders(m_TexturedMeshPso);
 	}
 
 };

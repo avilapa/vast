@@ -137,7 +137,7 @@ void SamplesApp::DrawSamplesEditorUI()
 			
 			if (ImGui::MenuItem("Reload Shaders"))
 			{
-				ReloadShadersEvent e(GetGraphicsContext());
+				ReloadShadersEvent e(GetGraphicsContext().GetGPUResourceManager());
 				VAST_FIRE_EVENT(ReloadShadersEvent, e);
 			}
 			ImGui::EndMenu();

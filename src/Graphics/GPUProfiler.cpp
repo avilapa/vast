@@ -1,12 +1,12 @@
 #include "vastpch.h"
 #include "Graphics/GPUProfiler.h"
 #include "Graphics/GraphicsBackend.h"
-#include "Graphics/ResourceManager.h"
+#include "Graphics/GPUResourceManager.h"
 
 namespace vast
 {
 
-	GPUProfiler::GPUProfiler(ResourceManager& resourceManager)
+	GPUProfiler::GPUProfiler(GPUResourceManager& resourceManager)
 		: m_ResourceManager(resourceManager)
 		, m_TimestampCount(0)
 		, m_TimestampFrequency(0.0)

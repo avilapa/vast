@@ -1,7 +1,7 @@
 #include "vastpch.h"
 #include "Graphics/GraphicsContext.h"
 #include "Graphics/GraphicsBackend.h"
-#include "Graphics/ResourceManager.h"
+#include "Graphics/GPUResourceManager.h"
 #include "Graphics/GPUProfiler.h"
 
 #include "Core/EventTypes.h"
@@ -21,7 +21,7 @@ namespace vast
 	}
 
 	GraphicsContext::GraphicsContext(const GraphicsParams& params /* = GraphicsParams() */)
-		: m_ResourceManager(nullptr)
+		: m_GPUResourceManager(nullptr)
 		, m_GpuProfiler(nullptr)
 		, m_bHasFrameBegun(false)
 		, m_bHasRenderPassBegun(false)
@@ -32,8 +32,8 @@ namespace vast
 
 		gfx::Init(params);
 
-		m_ResourceManager = MakePtr<ResourceManager>();
-		m_GpuProfiler = MakePtr<GPUProfiler>(*m_ResourceManager);
+		m_GPUResourceManager = MakePtr<GPUResourceManager>();
+		m_GpuProfiler = MakePtr<GPUProfiler>(*m_GPUResourceManager);
 
 		VAST_SUBSCRIBE_TO_EVENT("gfxctx", WindowResizeEvent, VAST_EVENT_HANDLER_CB(OnWindowResizeEvent, WindowResizeEvent));
 	}
@@ -43,7 +43,7 @@ namespace vast
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		m_GpuProfiler = nullptr;
-		m_ResourceManager = nullptr;
+		m_GPUResourceManager = nullptr;
 
 		gfx::Shutdown();
 	}
@@ -55,7 +55,7 @@ namespace vast
 
 		m_bHasFrameBegun = true;
 
-		m_ResourceManager->BeginFrame();
+		m_GPUResourceManager->BeginFrame();
 		gfx::BeginFrame();
 		m_GpuFrameTimestampIdx = m_GpuProfiler->BeginTimestamp();
 	}
@@ -143,38 +143,11 @@ namespace vast
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		gfx::WaitForIdle();
-		m_ResourceManager->ProcessShaderReloads();
+		m_GPUResourceManager->ProcessShaderReloads();
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
 		{
-			m_ResourceManager->ProcessDestructions(i);
+			m_GPUResourceManager->ProcessDestructions(i);
 		}
-	}
-
-	//
-
-	// TODO: This is ugly!
-	BufferHandle GraphicsContext::CreateBuffer(const BufferDesc& desc, const void* initialData, const size_t dataSize) { return m_ResourceManager->CreateBuffer(desc, initialData, dataSize); }
-	TextureHandle GraphicsContext::CreateTexture(const TextureDesc& desc, const void* initialData) { return m_ResourceManager->CreateTexture(desc, initialData); }
-	PipelineHandle GraphicsContext::CreatePipeline(const PipelineDesc& desc) { return m_ResourceManager->CreatePipeline(desc); }
-	PipelineHandle GraphicsContext::CreatePipeline(const ShaderDesc& csDesc) { return m_ResourceManager->CreatePipeline(csDesc); }
-	void GraphicsContext::DestroyBuffer(BufferHandle h) { m_ResourceManager->DestroyBuffer(h); }
-	void GraphicsContext::DestroyTexture(TextureHandle h) { m_ResourceManager->DestroyTexture(h); }
-	void GraphicsContext::DestroyPipeline(PipelineHandle h) { m_ResourceManager->DestroyPipeline(h); }
-	void GraphicsContext::UpdateBuffer(BufferHandle h, void* data, const size_t size) { m_ResourceManager->UpdateBuffer(h, data, size); }
-	void GraphicsContext::ReloadShaders(PipelineHandle h) { m_ResourceManager->ReloadShaders(h); }
-	TextureHandle GraphicsContext::LoadTextureFromFile(const std::string& filePath, bool sRGB) { return m_ResourceManager->LoadTextureFromFile(filePath, sRGB); }
-	void GraphicsContext::SetDebugName(BufferHandle h, const std::string& name) { m_ResourceManager->SetDebugName(h, name); }
-	void GraphicsContext::SetDebugName(TextureHandle h, const std::string& name) { m_ResourceManager->SetDebugName(h, name); }
-	const uint8* GraphicsContext::GetBufferData(BufferHandle h) { return m_ResourceManager->GetBufferData(h); }
-	bool GraphicsContext::GetIsReady(BufferHandle h) { return m_ResourceManager->GetIsReady(h); }
-	bool GraphicsContext::GetIsReady(TextureHandle h) { return m_ResourceManager->GetIsReady(h); }
-	TexFormat GraphicsContext::GetTextureFormat(TextureHandle h) { return m_ResourceManager->GetTextureFormat(h); }
-
-	//
-
-	ShaderResourceProxy GraphicsContext::LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName)
-	{
-		return gfx::LookupShaderResource(h, shaderResourceName);
 	}
 
 	//
@@ -243,24 +216,6 @@ namespace vast
 		gfx::BindUAV(h, mipLevel);
 	}
 
-	uint32 GraphicsContext::GetBindlessSRV(BufferHandle h)
-	{
-		VAST_ASSERT(h.IsValid());
-		return gfx::GetBindlessSRV(h);
-	}
-
-	uint32 GraphicsContext::GetBindlessSRV(TextureHandle h)
-	{
-		VAST_ASSERT(h.IsValid());
-		return gfx::GetBindlessSRV(h);
-	}
-
-	uint32 GraphicsContext::GetBindlessUAV(TextureHandle h, uint32 mipLevel /* = 0 */)
-	{
-		VAST_ASSERT(h.IsValid());
-		return gfx::GetBindlessUAV(h, mipLevel);
-	}
-
 	//
 
 	void GraphicsContext::SetScissorRect(int4 rect)
@@ -325,10 +280,10 @@ namespace vast
 
 	//
 
-	ResourceManager& GraphicsContext::GetResourceManager()
+	GPUResourceManager& GraphicsContext::GetGPUResourceManager()
 	{
-		VAST_ASSERT(m_ResourceManager);
-		return *m_ResourceManager;
+		VAST_ASSERT(m_GPUResourceManager);
+		return *m_GPUResourceManager;
 	}
 	
 	GPUProfiler& GraphicsContext::GetGPUProfiler()

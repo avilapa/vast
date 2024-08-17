@@ -1,10 +1,12 @@
 #pragma once
 
-#include "Graphics/GraphicsContext.h"
+#include "Graphics/Resources.h"
 #include "Rendering/Camera.h"
 
 namespace vast
 {
+
+	class GraphicsContext;
 	
 	class Skybox
 	{

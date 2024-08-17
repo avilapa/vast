@@ -74,7 +74,9 @@ public:
 		m_Camera = MakePtr<PerspectiveCamera>(cameraPos, lookAt, float3(0, 1, 0), 
 			ctx.GetBackBufferAspectRatio(), DEG_TO_RAD(45.0f), 0.001f, 10000.0f, m_bDepthUseReverseZ);
 
-		m_FullscreenPso = ctx.CreatePipeline(PipelineDesc{
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		m_FullscreenPso = rm.CreatePipeline(PipelineDesc{
 			.vs = AllocVertexShaderDesc("Fullscreen.hlsl"),
 			.ps = AllocPixelShaderDesc("Fullscreen.hlsl"),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
@@ -83,15 +85,15 @@ public:
 
 		uint2 backBufferSize = ctx.GetBackBufferSize();
 		float4 clearColor = float4(0.02f, 0.02f, 0.02f, 1.0f);
-		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
+		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
 
 		// Create both standard and reverse-z depth buffers, the only difference being the inverted
 		// depth clear value.
 		auto dsDesc = AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize);
 		dsDesc.clear.ds.depth = CLEAR_DEPTH_VALUE_STANDARD;
-		m_DepthRT[DepthBufferMode::STANDARD] = ctx.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::STANDARD] = rm.CreateTexture(dsDesc);
 		dsDesc.clear.ds.depth = CLEAR_DEPTH_VALUE_REVERSE_Z;
-		m_DepthRT[DepthBufferMode::REVERSE_Z] = ctx.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::REVERSE_Z] = rm.CreateTexture(dsDesc);
 
 		// Create both standard and reverse-z PSOs with different Depth Stencil States.
 		PipelineDesc psoDesc =
@@ -100,31 +102,31 @@ public:
 			.ps = AllocPixelShaderDesc("02_InstancedCube.hlsl", m_SamplesShaderSourcePath.c_str()),
 			.renderPassLayout =
 			{
-				.rtFormats = { ctx.GetTextureFormat(m_ColorRT) },
-				.dsFormat = { ctx.GetTextureFormat(m_DepthRT[0]) },
+				.rtFormats = { rm.GetTextureFormat(m_ColorRT) },
+				.dsFormat = { rm.GetTextureFormat(m_DepthRT[0]) },
 			},
 		};
 		psoDesc.depthStencilState.depthFunc = CompareFunc::LESS_EQUAL;
-		m_CubeInstPso[DepthBufferMode::STANDARD] = ctx.CreatePipeline(psoDesc);
+		m_CubeInstPso[DepthBufferMode::STANDARD] = rm.CreatePipeline(psoDesc);
 		psoDesc.depthStencilState.depthFunc = CompareFunc::GREATER_EQUAL;
-		m_CubeInstPso[DepthBufferMode::REVERSE_Z] = ctx.CreatePipeline(psoDesc);
+		m_CubeInstPso[DepthBufferMode::REVERSE_Z] = rm.CreatePipeline(psoDesc);
 
 		// Locate the instance buffer and constant buffer slots in the shader.
-		m_InstBufProxy = ctx.LookupShaderResource(m_CubeInstPso[0], "InstanceBuffer");
-		m_CbvBufProxy = ctx.LookupShaderResource(m_CubeInstPso[0], "ObjectConstantBuffer");
+		m_InstBufProxy = rm.LookupShaderResource(m_CubeInstPso[0], "InstanceBuffer");
+		m_CbvBufProxy = rm.LookupShaderResource(m_CubeInstPso[0], "ObjectConstantBuffer");
 
 		// Create the cube vertex buffer with bindless access.
 		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_VerticesIndexed_Pos), sizeof(Cube::s_VerticesIndexed_Pos[0]));
-		m_CubeVtxBuf = ctx.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
+		m_CubeVtxBuf = rm.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
 
 		// Create index buffer.
 		uint32 numIndices = static_cast<uint32>(Cube::s_Indices.size());
 		auto idxBufDesc = AllocIndexBufferDesc(numIndices);
-		m_CubeIdxBuf = ctx.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
+		m_CubeIdxBuf = rm.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
 
 		// Create a structured buffer to hold our instance data and initialize it.
 		auto instBufDesc = AllocStructuredBufferDesc(sizeof(InstanceData) * s_NumInstances, sizeof(InstanceData), ResourceUsage::UPLOAD);
-		m_CubeInstBuf = ctx.CreateBuffer(instBufDesc);
+		m_CubeInstBuf = rm.CreateBuffer(instBufDesc);
 
 		for (auto& i : m_InstanceData)
 		{
@@ -133,8 +135,8 @@ public:
 		}
 
 		m_CubeCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
-		m_CubeCB.vtxBufIdx = ctx.GetBindlessSRV(m_CubeVtxBuf);
-		m_CubeCbvBuf = ctx.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
+		m_CubeCB.vtxBufIdx = rm.GetBindlessSRV(m_CubeVtxBuf);
+		m_CubeCbvBuf = rm.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
 
 		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
 		VAST_SUBSCRIBE_TO_EVENT("Instancing", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Instancing::OnWindowResizeEvent, WindowResizeEvent));
@@ -143,16 +145,18 @@ public:
 
 	~Instancing()
 	{
-		ctx.DestroyTexture(m_ColorRT);
-		ctx.DestroyTexture(m_DepthRT[DepthBufferMode::STANDARD]);
-		ctx.DestroyTexture(m_DepthRT[DepthBufferMode::REVERSE_Z]);
-		ctx.DestroyPipeline(m_FullscreenPso);
-		ctx.DestroyPipeline(m_CubeInstPso[DepthBufferMode::STANDARD]);
-		ctx.DestroyPipeline(m_CubeInstPso[DepthBufferMode::REVERSE_Z]);
-		ctx.DestroyBuffer(m_CubeInstBuf);
-		ctx.DestroyBuffer(m_CubeCbvBuf);
-		ctx.DestroyBuffer(m_CubeVtxBuf);
-		ctx.DestroyBuffer(m_CubeIdxBuf);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.DestroyTexture(m_ColorRT);
+		rm.DestroyTexture(m_DepthRT[DepthBufferMode::STANDARD]);
+		rm.DestroyTexture(m_DepthRT[DepthBufferMode::REVERSE_Z]);
+		rm.DestroyPipeline(m_FullscreenPso);
+		rm.DestroyPipeline(m_CubeInstPso[DepthBufferMode::STANDARD]);
+		rm.DestroyPipeline(m_CubeInstPso[DepthBufferMode::REVERSE_Z]);
+		rm.DestroyBuffer(m_CubeInstBuf);
+		rm.DestroyBuffer(m_CubeCbvBuf);
+		rm.DestroyBuffer(m_CubeVtxBuf);
+		rm.DestroyBuffer(m_CubeIdxBuf);
 
 		VAST_UNSUBSCRIBE_FROM_EVENT("Instancing", WindowResizeEvent);
 		VAST_UNSUBSCRIBE_FROM_EVENT("Instancing", ReloadShadersEvent);
@@ -180,15 +184,18 @@ public:
 	void Render() override
 	{
 		VAST_PROFILE_GPU_BEGIN("Update Buffers", ctx);
+
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
 		if (m_bViewChanged)
 		{
 			m_CubeCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
-			ctx.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(CubeCB));
+			rm.UpdateBuffer(m_CubeCbvBuf, &m_CubeCB, sizeof(CubeCB));
 			m_bViewChanged = false;
 		}
 
 		// Upload the instance buffer with the model matrices to render this frame.
-		ctx.UpdateBuffer(m_CubeInstBuf, &m_InstanceData, sizeof(InstanceData) * s_NumInstances);
+		rm.UpdateBuffer(m_CubeInstBuf, &m_InstanceData, sizeof(InstanceData) * s_NumInstances);
 		VAST_PROFILE_GPU_END();
 		VAST_PROFILE_GPU_BEGIN("Main Render Pass", ctx);
 
@@ -205,7 +212,7 @@ public:
 		const RenderTargetDesc depthTargetDesc = {.h = depthRt, .loadOp = LoadOp::CLEAR, .storeOp = StoreOp::DISCARD };
 		ctx.BeginRenderPass(pso, RenderPassTargets{.rt = { colorTargetDesc }, .ds = depthTargetDesc });
 		{
-			if (ctx.GetIsReady(m_CubeVtxBuf) && ctx.GetIsReady(m_CubeIdxBuf) /*&& ctx.GetIsReady(m_CubeInstBuf)*/)
+			if (rm.GetIsReady(m_CubeVtxBuf) && rm.GetIsReady(m_CubeIdxBuf) /*&& ctx.GetIsReady(m_CubeInstBuf)*/)
 			{
 				// Bind our instance buffer and CBV.
 				ctx.BindConstantBuffer(m_CbvBufProxy, m_CubeCbvBuf);
@@ -222,7 +229,7 @@ public:
 
 		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
 		{
-			uint32 srvIndex = ctx.GetBindlessSRV(m_ColorRT);
+			uint32 srvIndex = rm.GetBindlessSRV(m_ColorRT);
 			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 			ctx.DrawFullscreenTriangle();
 		}
@@ -234,18 +241,21 @@ public:
 	void OnWindowResizeEvent(const WindowResizeEvent& event) override
 	{
 		ctx.FlushGPU();
-		ctx.DestroyTexture(m_ColorRT);
-		ctx.DestroyTexture(m_DepthRT[DepthBufferMode::STANDARD]);
-		ctx.DestroyTexture(m_DepthRT[DepthBufferMode::REVERSE_Z]);
+
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.DestroyTexture(m_ColorRT);
+		rm.DestroyTexture(m_DepthRT[DepthBufferMode::STANDARD]);
+		rm.DestroyTexture(m_DepthRT[DepthBufferMode::REVERSE_Z]);
 
 		float4 clearColor = float4(0.02f, 0.02f, 0.02f, 1.0f);
-		m_ColorRT = ctx.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
+		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
 
 		auto dsDesc = AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize);
 		dsDesc.clear.ds.depth = 1.0f;
-		m_DepthRT[DepthBufferMode::STANDARD] = ctx.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::STANDARD] = rm.CreateTexture(dsDesc);
 		dsDesc.clear.ds.depth = 0.0f;
-		m_DepthRT[DepthBufferMode::REVERSE_Z] = ctx.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::REVERSE_Z] = rm.CreateTexture(dsDesc);
 
 		m_Camera->SetAspectRatio(ctx.GetBackBufferAspectRatio());
 		m_bViewChanged = true;
@@ -253,9 +263,11 @@ public:
 
 	void OnReloadShadersEvent() override
 	{
-		ctx.ReloadShaders(m_FullscreenPso);
-		ctx.ReloadShaders(m_CubeInstPso[DepthBufferMode::STANDARD]);
-		ctx.ReloadShaders(m_CubeInstPso[DepthBufferMode::REVERSE_Z]);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.ReloadShaders(m_FullscreenPso);
+		rm.ReloadShaders(m_CubeInstPso[DepthBufferMode::STANDARD]);
+		rm.ReloadShaders(m_CubeInstPso[DepthBufferMode::REVERSE_Z]);
 	}
 
 	void OnGUI() override

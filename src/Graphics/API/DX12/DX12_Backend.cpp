@@ -17,7 +17,7 @@ extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\
 
 namespace vast::gfx
 {
-	static enum class QueueType
+	enum class QueueType
 	{
 		GRAPHICS = 0,
 		// TODO: Async Compute
@@ -295,6 +295,137 @@ namespace vast::gfx
 
 	//
 
+	void AddBarrier(BufferHandle h, ResourceState newState)
+	{
+		s_GraphicsCommandList->AddBarrier(s_Buffers->LookupResource(h), TranslateToDX12(newState));
+	}
+
+	void AddBarrier(TextureHandle h, ResourceState newState)
+	{
+		s_GraphicsCommandList->AddBarrier(s_Textures->LookupResource(h), TranslateToDX12(newState));
+	}
+	
+	void FlushBarriers()
+	{
+		s_GraphicsCommandList->FlushBarriers();
+	}
+
+	//
+
+	void BindVertexBuffer(BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
+	{
+		s_GraphicsCommandList->SetVertexBuffer(s_Buffers->LookupResource(h), offset, stride);
+	}
+
+	void BindIndexBuffer(BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
+	{
+		s_GraphicsCommandList->SetIndexBuffer(s_Buffers->LookupResource(h), offset, TranslateToDX12(format));
+	}
+
+	void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset /* = 0 */)
+	{
+		s_GraphicsCommandList->SetConstantBuffer(s_Buffers->LookupResource(h), offset, proxy.idx);
+	}
+
+	void SetPushConstants(const void* data, const uint32 size)
+	{
+		s_GraphicsCommandList->SetPushConstants(data, size);
+	}
+
+	void CopyToDescriptorTable(const DX12Descriptor& srcDesc)
+	{
+		VAST_ASSERT(srcDesc.IsValid());
+		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
+		DX12Descriptor blockStart = s_Device->GetSRVDescriptorHeap(s_FrameId).GetUserDescriptorBlockStart(1);
+		s_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		s_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
+	}
+
+	void BindSRV(BufferHandle h)
+	{
+		CopyToDescriptorTable(s_Buffers->LookupResource(h).srv);
+	}
+
+	void BindSRV(TextureHandle h)
+	{
+		CopyToDescriptorTable(s_Textures->LookupResource(h).srv);
+	}
+	
+	void BindUAV(TextureHandle h, uint32 mipLevel)
+	{
+		DX12Texture& tex = s_Textures->LookupResource(h);
+		VAST_ASSERT(tex.uav.size() > mipLevel);
+		CopyToDescriptorTable(tex.uav[mipLevel]);
+	}
+
+	//
+
+	void SetScissorRect(int4 rect)
+	{
+		const D3D12_RECT r = { (LONG)rect.x, (LONG)rect.y, (LONG)rect.z, (LONG)rect.w };
+		s_GraphicsCommandList->SetScissorRect(r);
+	}
+
+	void SetBlendFactor(float4 blend)
+	{
+		s_GraphicsCommandList->GetCommandList()->OMSetBlendFactor((float*)&blend);;
+	}
+	
+	//
+
+	void DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation/* = 0 */, uint32 instStartLocation /* = 0 */)
+	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
+		s_GraphicsCommandList->GetCommandList()->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
+	}
+
+	void DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
+	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
+		s_GraphicsCommandList->GetCommandList()->DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
+	}
+
+	// TODO: Expose topology and index buffer and we can get rid of this.
+	void DrawFullscreenTriangle()
+	{
+		s_GraphicsCommandList->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		s_GraphicsCommandList->GetCommandList()->IASetIndexBuffer(nullptr);
+		DrawInstanced(3, 1);
+	}
+
+	void Dispatch(uint3 threadGroupCount)
+	{
+		s_GraphicsCommandList->Dispatch(threadGroupCount);
+	}
+
+	//
+
+	void ResizeSwapChainAndBackBuffers(uint2 newSize)
+	{
+		VAST_ASSERT(m_SwapChain);
+		// Note: Resize() here returns the BackBuffer index after resize, which is 0. We used
+		// to assign this to m_FrameId as if resetting the count for these to be in sync, but
+		// this appears to cause issues (would need to reset some buffered members), and also
+		// it doesn't even make sense since they will lose sync after the first loop.
+		m_SwapChain->Resize(newSize);
+	}
+
+	uint2 GetBackBufferSize()
+	{
+		VAST_ASSERT(m_SwapChain);
+		return m_SwapChain->GetSize();
+	}
+
+	TexFormat GetBackBufferFormat()
+	{
+		VAST_ASSERT(m_SwapChain);
+		return m_SwapChain->GetBackBufferFormat();
+	}
+
+	//
+
 	void CreateBuffer(BufferHandle h, const BufferDesc& desc)
 	{
 		DX12Buffer& buf = s_Buffers->AcquireResource(h);
@@ -480,71 +611,6 @@ namespace vast::gfx
 		return TranslateFromDX12(s_Textures->LookupResource(h).clearValue.Format);
 	}
 
-	//
-
-	void AddBarrier(BufferHandle h, ResourceState newState)
-	{
-		s_GraphicsCommandList->AddBarrier(s_Buffers->LookupResource(h), TranslateToDX12(newState));
-	}
-
-	void AddBarrier(TextureHandle h, ResourceState newState)
-	{
-		s_GraphicsCommandList->AddBarrier(s_Textures->LookupResource(h), TranslateToDX12(newState));
-	}
-	
-	void FlushBarriers()
-	{
-		s_GraphicsCommandList->FlushBarriers();
-	}
-
-	//
-
-	void BindVertexBuffer(BufferHandle h, uint32 offset /* = 0 */, uint32 stride /* = 0 */)
-	{
-		s_GraphicsCommandList->SetVertexBuffer(s_Buffers->LookupResource(h), offset, stride);
-	}
-
-	void BindIndexBuffer(BufferHandle h, uint32 offset /* = 0 */, IndexBufFormat format /* = IndexBufFormat::R16_UINT */)
-	{
-		s_GraphicsCommandList->SetIndexBuffer(s_Buffers->LookupResource(h), offset, TranslateToDX12(format));
-	}
-
-	void BindConstantBuffer(ShaderResourceProxy proxy, BufferHandle h, uint32 offset /* = 0 */)
-	{
-		s_GraphicsCommandList->SetConstantBuffer(s_Buffers->LookupResource(h), offset, proxy.idx);
-	}
-
-	void SetPushConstants(const void* data, const uint32 size)
-	{
-		s_GraphicsCommandList->SetPushConstants(data, size);
-	}
-
-	void CopyToDescriptorTable(const DX12Descriptor& srcDesc)
-	{
-		VAST_ASSERT(srcDesc.IsValid());
-		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
-		DX12Descriptor blockStart = s_Device->GetSRVDescriptorHeap(s_FrameId).GetUserDescriptorBlockStart(1);
-		s_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		s_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
-	}
-
-	void BindSRV(BufferHandle h)
-	{
-		CopyToDescriptorTable(s_Buffers->LookupResource(h).srv);
-	}
-
-	void BindSRV(TextureHandle h)
-	{
-		CopyToDescriptorTable(s_Textures->LookupResource(h).srv);
-	}
-	
-	void BindUAV(TextureHandle h, uint32 mipLevel)
-	{
-		DX12Texture& tex = s_Textures->LookupResource(h);
-		VAST_ASSERT(tex.uav.size() > mipLevel);
-		CopyToDescriptorTable(tex.uav[mipLevel]);
-	}
-
 	uint32 GetBindlessIndex(DX12Descriptor& d)
 	{
 		VAST_ASSERT(d.IsValid() && d.bindlessIdx != kInvalidHeapIdx);
@@ -566,72 +632,6 @@ namespace vast::gfx
 		DX12Texture& tex = s_Textures->LookupResource(h);
 		VAST_ASSERT(tex.uav.size() > mipLevel);
 		return GetBindlessIndex(tex.uav[mipLevel]);
-	}
-
-	//
-
-	void SetScissorRect(int4 rect)
-	{
-		const D3D12_RECT r = { (LONG)rect.x, (LONG)rect.y, (LONG)rect.z, (LONG)rect.w };
-		s_GraphicsCommandList->SetScissorRect(r);
-	}
-
-	void SetBlendFactor(float4 blend)
-	{
-		s_GraphicsCommandList->GetCommandList()->OMSetBlendFactor((float*)&blend);;
-	}
-	
-	//
-
-	void DrawInstanced(uint32 vtxCountPerInstance, uint32 instCount, uint32 vtxStartLocation/* = 0 */, uint32 instStartLocation /* = 0 */)
-	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
-		s_GraphicsCommandList->GetCommandList()->DrawInstanced(vtxCountPerInstance, instCount, vtxStartLocation, instStartLocation);
-	}
-
-	void DrawIndexedInstanced(uint32 idxCountPerInst, uint32 instCount, uint32 startIdxLocation, uint32 baseVtxLocation, uint32 startInstLocation)
-	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
-		s_GraphicsCommandList->GetCommandList()->DrawIndexedInstanced(idxCountPerInst, instCount, startIdxLocation, baseVtxLocation, startInstLocation);
-	}
-
-	// TODO: Expose topology and index buffer and we can get rid of this.
-	void DrawFullscreenTriangle()
-	{
-		s_GraphicsCommandList->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		s_GraphicsCommandList->GetCommandList()->IASetIndexBuffer(nullptr);
-		DrawInstanced(3, 1);
-	}
-
-	void Dispatch(uint3 threadGroupCount)
-	{
-		s_GraphicsCommandList->Dispatch(threadGroupCount);
-	}
-
-	//
-
-	void ResizeSwapChainAndBackBuffers(uint2 newSize)
-	{
-		VAST_ASSERT(m_SwapChain);
-		// Note: Resize() here returns the BackBuffer index after resize, which is 0. We used
-		// to assign this to m_FrameId as if resetting the count for these to be in sync, but
-		// this appears to cause issues (would need to reset some buffered members), and also
-		// it doesn't even make sense since they will lose sync after the first loop.
-		m_SwapChain->Resize(newSize);
-	}
-
-	uint2 GetBackBufferSize()
-	{
-		VAST_ASSERT(m_SwapChain);
-		return m_SwapChain->GetSize();
-	}
-
-	TexFormat GetBackBufferFormat()
-	{
-		VAST_ASSERT(m_SwapChain);
-		return m_SwapChain->GetBackBufferFormat();
 	}
 
 	//

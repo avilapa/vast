@@ -1,9 +1,12 @@
 #pragma once
 
-#include "Graphics/GraphicsContext.h"
+#include "Graphics/Resources.h"
+#include "Graphics/ShaderResourceProxy.h"
 
 namespace vast
 {
+
+	class GraphicsContext;
 
 	class ImguiRenderer
 	{

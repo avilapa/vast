@@ -5,13 +5,13 @@
 
 namespace vast
 {
-	class ResourceManager;
+	class GPUResourceManager;
 
 	class GPUProfiler
 	{
 		friend class GraphicsContext;
 	public:
-		GPUProfiler(ResourceManager& resourceManager);
+		GPUProfiler(GPUResourceManager& resourceManager);
 		~GPUProfiler();
 		
 		uint32 BeginTimestamp();
@@ -24,7 +24,7 @@ namespace vast
 		void CollectTimestamps();
 
 	private:
-		ResourceManager& m_ResourceManager;
+		GPUResourceManager& m_ResourceManager;
 
 		uint32 m_TimestampCount;
 		double m_TimestampFrequency;

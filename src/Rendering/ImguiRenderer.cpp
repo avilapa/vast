@@ -2,7 +2,8 @@
 #include "Rendering/ImguiRenderer.h"
 #include "Rendering/Imgui.h"
 
-#include "Graphics/ResourceManager.h"
+#include "Graphics/GraphicsContext.h"
+#include "Graphics/GPUResourceManager.h"
 
 #define USE_IMGUI_STOCK_IMPL_WIN32	1
 
@@ -29,6 +30,8 @@ namespace vast
 		BlendState bs = BlendState::Preset::kAdditive;
 		bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
 
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
 		PipelineDesc pipelineDesc =
 		{
 			.vs = {.type = ShaderType::VERTEX, .shaderName = "Imgui.hlsl", .entryPoint = "VS_Imgui"},
@@ -37,8 +40,8 @@ namespace vast
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
 		};
-		m_Pipeline = ctx.CreatePipeline(pipelineDesc);
-		m_CbvProxy = ctx.LookupShaderResource(m_Pipeline, "ImguiCB");
+		m_Pipeline = rm.CreatePipeline(pipelineDesc);
+		m_CbvProxy = rm.LookupShaderResource(m_Pipeline, "ImguiCB");
 
 		ImGuiIO& io = ImGui::GetIO();
 		unsigned char* texData;
@@ -52,7 +55,7 @@ namespace vast
 			.height = static_cast<uint32>(texHeight),
 			.viewFlags = TexViewFlags::SRV,
 		};
-		m_FontTex = ctx.CreateTexture(texDesc, texData);
+		m_FontTex = rm.CreateTexture(texDesc, texData);
 
 		io.Fonts->SetTexID(&m_FontTex);
 	}
@@ -61,8 +64,10 @@ namespace vast
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		ctx.DestroyTexture(m_FontTex);
-		ctx.DestroyPipeline(m_Pipeline);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.DestroyTexture(m_FontTex);
+		rm.DestroyPipeline(m_Pipeline);
 
 #if USE_IMGUI_STOCK_IMPL_WIN32
 		ImGui_ImplWin32_Shutdown();
@@ -120,9 +125,9 @@ namespace vast
 		const uint32 vtxSize = sizeof(ImDrawVert) * drawData->TotalVtxCount;
 		const uint32 idxSize = sizeof(ImDrawIdx) * drawData->TotalIdxCount;
 
-		auto& resourceManager = ctx.GetResourceManager();
-		BufferView vtxView = resourceManager.AllocTempBufferView(vtxSize, 4); // TODO: Do we need 4 alignment?
-		BufferView idxView = resourceManager.AllocTempBufferView(idxSize, 4);
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+		BufferView vtxView = rm.AllocTempBufferView(vtxSize, 4); // TODO: Do we need 4 alignment?
+		BufferView idxView = rm.AllocTempBufferView(idxSize, 4);
 
 		// Copy vertex and index buffer data to a single buffer
 		ImDrawVert* vtxCpuMem = reinterpret_cast<ImDrawVert*>(vtxView.data);
@@ -144,7 +149,7 @@ namespace vast
 
 			// Bind temporary CBV
 			const float4x4 mvp = ComputeProjectionMatrix(drawData);
-			BufferView cbv = resourceManager.AllocTempBufferView(sizeof(float4x4), CONSTANT_BUFFER_ALIGNMENT);
+			BufferView cbv = rm.AllocTempBufferView(sizeof(float4x4), CONSTANT_BUFFER_ALIGNMENT);
 			memcpy(cbv.data, &mvp, sizeof(float4x4));
 			ctx.BindConstantBuffer(m_CbvProxy, cbv.buffer, cbv.offset);
 
@@ -175,13 +180,13 @@ namespace vast
 						TextureHandle h = *drawCmd->GetTexID();
 						VAST_ASSERT(h.IsValid());
 
-						if (!ctx.GetIsReady(h))
+						if (!rm.GetIsReady(h))
 							continue;
 
 						// TODO: Do we need explicit transitions here? If so we could bundle them in one go.
 						// TODO: Support choosing texture filtering.
 						// TODO: Support cubemap images.
-						uint32 srvIndex = ctx.GetBindlessSRV(h);
+						uint32 srvIndex = rm.GetBindlessSRV(h);
 						ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 						ctx.SetScissorRect(int4(clipMin.x, clipMin.y, clipMax.x, clipMax.y));
 						ctx.DrawIndexedInstanced(drawCmd->ElemCount, 1, drawCmd->IdxOffset + idxOffset, drawCmd->VtxOffset + vtxOffset, 0);

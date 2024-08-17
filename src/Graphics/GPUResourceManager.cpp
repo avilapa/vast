@@ -1,5 +1,5 @@
 #include "vastpch.h"
-#include "Graphics/ResourceManager.h"
+#include "Graphics/GPUResourceManager.h"
 #include "Graphics/GraphicsBackend.h"
 
 // TODO: Hide DX12 specific headers (LoadTextureFromFile)
@@ -12,7 +12,7 @@ static const wchar_t* ASSETS_TEXTURES_PATH = L"../../assets/textures/";
 namespace vast
 {
 
-	ResourceManager::ResourceManager()
+	GPUResourceManager::GPUResourceManager()
 		: m_BufferHandles(nullptr)
 		, m_TextureHandles(nullptr)
 		, m_PipelineHandles(nullptr)
@@ -44,7 +44,7 @@ namespace vast
 		}
 	}
 
-	ResourceManager::~ResourceManager()
+	GPUResourceManager::~GPUResourceManager()
 	{
 		gfx::WaitForIdle();
 
@@ -64,7 +64,7 @@ namespace vast
 		m_PipelineHandles = nullptr;
 	}
 
-	void ResourceManager::BeginFrame()
+	void GPUResourceManager::BeginFrame()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -84,7 +84,7 @@ namespace vast
 		m_TempFrameAllocators[frameId].Reset();
 	}
 
-	BufferHandle ResourceManager::CreateBuffer(const BufferDesc& desc, const void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
+	BufferHandle GPUResourceManager::CreateBuffer(const BufferDesc& desc, const void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -97,7 +97,7 @@ namespace vast
 		return h;
 	}
 
-	TextureHandle ResourceManager::CreateTexture(const TextureDesc& desc, const void* initialData /*= nullptr*/)
+	TextureHandle GPUResourceManager::CreateTexture(const TextureDesc& desc, const void* initialData /*= nullptr*/)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -110,7 +110,7 @@ namespace vast
 		return h;
 	}
 
-	PipelineHandle ResourceManager::CreatePipeline(const PipelineDesc& desc)
+	PipelineHandle GPUResourceManager::CreatePipeline(const PipelineDesc& desc)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -119,7 +119,7 @@ namespace vast
 		return h;
 	}
 
-	PipelineHandle ResourceManager::CreatePipeline(const ShaderDesc& csDesc)
+	PipelineHandle GPUResourceManager::CreatePipeline(const ShaderDesc& csDesc)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -128,6 +128,7 @@ namespace vast
 		return h;
 	}
 
+	// TODO: Move these to Filesystem
 	static bool FileExists(const std::wstring& filePath)
 	{
 		if (filePath.c_str() == NULL)
@@ -161,7 +162,7 @@ namespace vast
 	}
 
 	// TODO: This should be completely external to the Graphics Context
-	TextureHandle ResourceManager::LoadTextureFromFile(const std::string& filePath, bool sRGB /* = true */)
+	TextureHandle GPUResourceManager::LoadTextureFromFile(const std::string& filePath, bool sRGB /* = true */)
 	{
 		bool bFlipImage = false;
 
@@ -231,7 +232,7 @@ namespace vast
 		return CreateTexture(texDesc, std::move(image.GetPixels()));
 	}
 
-	void ResourceManager::UpdateBuffer(BufferHandle h, void* data, const size_t size)
+	void GPUResourceManager::UpdateBuffer(BufferHandle h, void* data, const size_t size)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERT(h.IsValid());
@@ -239,25 +240,25 @@ namespace vast
 		gfx::UpdateBuffer(h, data, size);
 	}
 
-	void ResourceManager::DestroyBuffer(BufferHandle h)
+	void GPUResourceManager::DestroyBuffer(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_BuffersMarkedForDestruction[gfx::GetFrameId()].push_back(h);
 	}
 
-	void ResourceManager::DestroyTexture(TextureHandle h)
+	void GPUResourceManager::DestroyTexture(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_TexturesMarkedForDestruction[gfx::GetFrameId()].push_back(h);
 	}
 
-	void ResourceManager::DestroyPipeline(PipelineHandle h)
+	void GPUResourceManager::DestroyPipeline(PipelineHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_PipelinesMarkedForDestruction[gfx::GetFrameId()].push_back(h);
 	}
 
-	void ResourceManager::ProcessDestructions(uint32 frameId)
+	void GPUResourceManager::ProcessDestructions(uint32 frameId)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -286,13 +287,18 @@ namespace vast
 		m_PipelinesMarkedForDestruction[frameId].clear();
 	}
 
-	void ResourceManager::ReloadShaders(PipelineHandle h)
+	ShaderResourceProxy GPUResourceManager::LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName)
+	{
+		return gfx::LookupShaderResource(h, shaderResourceName);
+	}
+
+	void GPUResourceManager::ReloadShaders(PipelineHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		m_PipelinesMarkedForShaderReload.push_back(h);
 	}
 
-	void ResourceManager::ProcessShaderReloads()
+	void GPUResourceManager::ProcessShaderReloads()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -304,45 +310,63 @@ namespace vast
 		m_PipelinesMarkedForShaderReload.clear();
 	}
 
-	bool ResourceManager::GetIsReady(BufferHandle h)
+	bool GPUResourceManager::GetIsReady(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return gfx::GetIsReady(h);
 	}
 
-	bool ResourceManager::GetIsReady(TextureHandle h)
+	bool GPUResourceManager::GetIsReady(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return gfx::GetIsReady(h);
 	}
 
-	const uint8* ResourceManager::GetBufferData(BufferHandle h)
+	const uint8* GPUResourceManager::GetBufferData(BufferHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return gfx::GetBufferData(h);
 	}
 
-	void ResourceManager::SetDebugName(BufferHandle h, const std::string& name)
+	void GPUResourceManager::SetDebugName(BufferHandle h, const std::string& name)
 	{
 		VAST_ASSERT(h.IsValid());
 		gfx::SetDebugName(h, name);
 	}
 
-	void ResourceManager::SetDebugName(TextureHandle h, const std::string& name)
+	void GPUResourceManager::SetDebugName(TextureHandle h, const std::string& name)
 	{
 		VAST_ASSERT(h.IsValid());
 		gfx::SetDebugName(h, name);
 	}
 
-	TexFormat ResourceManager::GetTextureFormat(TextureHandle h)
+	TexFormat GPUResourceManager::GetTextureFormat(TextureHandle h)
 	{
 		VAST_ASSERT(h.IsValid());
 		return gfx::GetTextureFormat(h);
 	}
 
+	uint32 GPUResourceManager::GetBindlessSRV(BufferHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return gfx::GetBindlessSRV(h);
+	}
+
+	uint32 GPUResourceManager::GetBindlessSRV(TextureHandle h)
+	{
+		VAST_ASSERT(h.IsValid());
+		return gfx::GetBindlessSRV(h);
+	}
+
+	uint32 GPUResourceManager::GetBindlessUAV(TextureHandle h, uint32 mipLevel /* = 0 */)
+	{
+		VAST_ASSERT(h.IsValid());
+		return gfx::GetBindlessUAV(h, mipLevel);
+	}
+
 	//
 
-	BufferView ResourceManager::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
+	BufferView GPUResourceManager::AllocTempBufferView(uint32 size, uint32 alignment /* = 0 */)
 	{
 		auto& frameAllocator = m_TempFrameAllocators[gfx::GetFrameId()];
 		VAST_ASSERT(frameAllocator.buffer.IsValid() && frameAllocator.bufferSize);

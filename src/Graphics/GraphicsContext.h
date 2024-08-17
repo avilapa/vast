@@ -21,7 +21,7 @@ namespace vast
 		TexFormat backBufferFormat;
 	};
 
-	class ResourceManager;
+	class GPUResourceManager;
 	class GPUProfiler;
 	
 	class GraphicsContext
@@ -53,36 +53,7 @@ namespace vast
 		// shader reloads.
 		void FlushGPU();
 
-		// - GPU Resources --------------------------------------------------------------------- //
-
-		BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr, const size_t dataSize = 0);
-		TextureHandle CreateTexture(const TextureDesc& desc, const void* initialData = nullptr);
-		PipelineHandle CreatePipeline(const PipelineDesc& desc);
-		PipelineHandle CreatePipeline(const ShaderDesc& csDesc);
-
-		void DestroyBuffer(BufferHandle h);
-		void DestroyTexture(TextureHandle h);
-		void DestroyPipeline(PipelineHandle h);
-
-		void UpdateBuffer(BufferHandle h, void* data, const size_t size);
-
-		void ReloadShaders(PipelineHandle h);
-
-		ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName);
-
-		// TODO: This should be separate from the Context (ContentLoader?)
-		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
-
-		void SetDebugName(BufferHandle h, const std::string& name);
-		void SetDebugName(TextureHandle h, const std::string& name);
-
-		const uint8* GetBufferData(BufferHandle h);
-
-		// TODO: Review ready check for resources.
-		bool GetIsReady(BufferHandle h);
-		bool GetIsReady(TextureHandle h);
-
-		TexFormat GetTextureFormat(TextureHandle h);
+		// - Resource Bindings ----------------------------------------------------------------- //
 
 		// Resource Transitions
 		void AddBarrier(BufferHandle h, ResourceState newState);
@@ -102,11 +73,6 @@ namespace vast
 		void BindSRV(ShaderResourceProxy proxy, BufferHandle h);
 		void BindSRV(ShaderResourceProxy proxy, TextureHandle h);
 		void BindUAV(ShaderResourceProxy proxy, TextureHandle h, uint32 mipLevel = 0);
-
-		// Query Bindless View Indices
-		uint32 GetBindlessSRV(BufferHandle h);
-		uint32 GetBindlessSRV(TextureHandle h);
-		uint32 GetBindlessUAV(TextureHandle h, uint32 mipLevel = 0);
 
 		// - Pipeline State -------------------------------------------------------------------- //
 
@@ -131,11 +97,11 @@ namespace vast
 
 		// - Submodules ------------------------------------------------------------------------ //
 
-		ResourceManager& GetResourceManager();
+		GPUResourceManager& GetGPUResourceManager();
 		GPUProfiler& GetGPUProfiler();
 
 	private:
-		Ptr<ResourceManager> m_ResourceManager;
+		Ptr<GPUResourceManager> m_GPUResourceManager;
 		Ptr<GPUProfiler> m_GpuProfiler;
 
 		bool m_bHasFrameBegun = false;
