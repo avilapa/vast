@@ -6,31 +6,35 @@
 // ==================================== EVENT SYSTEM USAGE ========================================
 //
 // This is a blocking event system. New event types can be added to EventTypes.h. Event callbacks
-// are bound by subscribing to an event type using VAST_SUBSCRIBE_TO_EVENT and passing a subscriber
-// id string, the event class type and a callback (passed using VAST_EVENT_CALLBACK) as parameters:
+// are bound by subscribing to an event type using Event::Subscribe<T> and passing a unique
+// subscriber identifier and an EventHandler&& object. The system provides helper macros for 
+// constructing handlers with the right signature in different ways (via member functions, static
+// functions, or with customized lambda capture functions, and also expressions). 
 //
-//		VAST_SUBSCRIBE_TO_EVENT("myclass", MyCoolEvent, VAST_EVENT_CALLBACK(MyClass::OnCoolEvent));
-//		VAST_SUBSCRIBE_TO_EVENT("myclass", MyCoolEvent, VAST_EVENT_CALLBACK(MyClass::OnCoolEvent, MyCoolEvent));
+//     void MyClass::OnCoolEvent();
+//     Event::Subscribe<MyCoolEvent>("MyClass", VAST_EVENT_HANDLER(MyClass::OnCoolEvent));
 //
-// The callback function must return void and be declared with either no parameters or only one 
-// parameter, that being a const reference to the event type the function is subscribed to:
+// The callback function must return void and it may be declared with either no parameters or only
+// one parameter, that being a const reference to the event type the function is subscribed to:
 //
-//		void MyClass::OnCoolEvent();
-//		void MyClass::OnCoolEvent(MyCoolEvent& event);
+//	   static void OnCoolEvent(const MyCoolEvent& event);
+//	   auto&& cb = VAST_EVENT_HANDLER_STATIC(OnCoolEvent, MyCoolEvent);
+//     Event::Subscribe<MyCoolEvent>("MyClass", cb);
 // 
-// When subscribing object is destroyed or event listener is no longer needed the subscriber needs
-// to be deregistered using VAST_UNSUBSCRIBE_FROM_EVENT, passing ass parameters the subscriber id
-// and the event type.
+// When the subscriber is destroyed or the event listener is no longer needed, it must unsubscribe 
+// from all event types like so:
 // 
-//		VAST_UNSUBSCRIBE_FROM_EVENT("myclass", MyCoolEvent);
+//	   Event::Unsubscribe<MyCoolEvent>("myclass");
 //
-// Any number of functions can be subscribed to an event. When the event is fired, all callbacks 
-// are executed. Events are fired using VAST_FIRE_EVENT, with an optional second parameter, that
-// being the event type, which contains the data necessary for the callback functions to resolve
-// the event:
+// You may only subscribe to an event type once with the same identifier. Any number of subscribes
+// can be listening for an event. When an event is fired, all callbacks are executed in the order
+// they were registered. Events are fired using Event::Fire<T>(), with an optional parameter that
+// contains any data the event callbacks may be expecting. Data must be included in the event type
+// class:
 //
-//		MyCoolEvent event; // Initialize event with data
-//		VAST_FIRE_EVENT(MyCoolEvent, event);
+//		MyCoolEvent event;
+//		event.bIsCool = true;
+//		Event::Fire<MyCoolEvent>(event);
 //
 // ================================================================================================
 
@@ -39,83 +43,66 @@
 namespace vast
 {
 
-#define __VAST_EVENT_HANDLER_CB_DATA(fn, eventType) [this](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
-#define __VAST_EVENT_HANDLER_CB(fn) [this](const IEvent&) { fn(); }
+#define VAST_EVENT_HANDLER_EXPR_CAPTURE(expr, ...)			[__VA_ARGS__](const IEvent&) { expr; }
+#define VAST_EVENT_HANDLER_EXPR_STATIC(expr)				VAST_EVENT_HANDLER_EXPR_CAPTURE(expr)
+#define VAST_EVENT_HANDLER_EXPR(expr)						VAST_EVENT_HANDLER_EXPR_CAPTURE(expr, this)
 
-#define __VAST_EVENT_HANDLER_CB_STATIC_DATA(fn, eventType) [](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
-#define __VAST_EVENT_HANDLER_CB_STATIC(fn) [](const IEvent&) { fn(); }
+#define VAST_EVENT_HANDLER_CAPTURE_DATA(fn, eventType, ...)	[__VA_ARGS__](const IEvent& data) { fn(static_cast<const eventType&>(data)); }
+#define VAST_EVENT_HANDLER_CAPTURE(fn, ...)					VAST_EVENT_HANDLER_EXPR_CAPTURE(fn(), __VA_ARGS__)
 
-#define VAST_EVENT_HANDLER_CB(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_HANDLER_CB_DATA, __VAST_EVENT_HANDLER_CB)(__VA_ARGS__))
-#define VAST_EVENT_HANDLER_CB_STATIC(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_HANDLER_CB_STATIC_DATA, __VAST_EVENT_HANDLER_CB_STATIC)(__VA_ARGS__))
-#define VAST_EVENT_HANDLER_EXP(expression) [this](const IEvent&) { expression; }
-#define VAST_EVENT_HANDLER_EXP_STATIC(expression) [](const IEvent&) { expression; }
+#define __VAST_EVENT_HANDLER_STATIC_DATA(fn, eventType)		VAST_EVENT_HANDLER_CAPTURE_DATA(fn, eventType)
+#define __VAST_EVENT_HANDLER_STATIC(fn)						VAST_EVENT_HANDLER_CAPTURE(fn)
+#define VAST_EVENT_HANDLER_STATIC(...)						EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_HANDLER_STATIC_DATA, __VAST_EVENT_HANDLER_STATIC)(__VA_ARGS__))
 
-#define VAST_SUBSCRIBE_TO_EVENT(subId, eventType, fn)	EventSystem::SubscribeToEvent<eventType>(subId, fn)
-#define VAST_UNSUBSCRIBE_FROM_EVENT(subId, eventType)	EventSystem::UnsubscribeFromEvent<eventType>(subId)
-
-#define __VAST_FIRE_EVENT_DATA(eventType, data)			EventSystem::FireEvent<eventType>(data)
-#define __VAST_FIRE_EVENT(eventType)					EventSystem::FireEvent<eventType>()
-
-#define VAST_FIRE_EVENT(...) EXP(SELECT_MACRO(__VA_ARGS__, __VAST_FIRE_EVENT_DATA, __VAST_FIRE_EVENT)(__VA_ARGS__))
+#define __VAST_EVENT_HANDLER_DATA(fn, eventType)			VAST_EVENT_HANDLER_CAPTURE_DATA(fn, eventType, this)
+#define __VAST_EVENT_HANDLER(fn)							VAST_EVENT_HANDLER_CAPTURE(fn, this)
+#define VAST_EVENT_HANDLER(...)								EXP(SELECT_MACRO(__VA_ARGS__, __VAST_EVENT_HANDLER_DATA, __VAST_EVENT_HANDLER)(__VA_ARGS__))
 
 	enum class EventType;
+	class IEvent;
 
-	class IEvent
-	{
-	public:
-		virtual ~IEvent() = default;
-	};
-
-#define EVENT_CLASS_DECL_STATIC_TYPE(type)							\
-	static const EventType GetType() { return EventType::type; }	\
-	static const char* GetName() { return STR(type##Event); }
-
-	class EventSystem
+	class Event
 	{
 	public:
 		using EventHandler = std::function<void(const IEvent&)>;
 		using SubscriberKey = std::pair<uint32, std::string>;
 
 		template<typename T>
-		static void SubscribeToEvent(std::string subscriberIdx, EventHandler&& func)
+		static void Subscribe(std::string subscriberIdx, EventHandler&& func)
 		{
 			const uint32 eventIdx = static_cast<uint32>(T::GetType());
-			const SubscriberKey key = std::make_pair(eventIdx, subscriberIdx);
-
-			SubscribeToEvent(key, std::move(func));
+			Subscribe(std::make_pair(eventIdx, subscriberIdx), std::move(func));
 			VAST_LOG_TRACE("[events] {} registered new '{}' subscriber (Count: {}).", T::GetName(), subscriberIdx, GetSubscriberCount(eventIdx));
 		}
 
 		template<typename T>
-		static void UnsubscribeFromEvent(std::string subscriberIdx)
+		static void Unsubscribe(std::string subscriberIdx)
 		{
 			const uint32 eventIdx = static_cast<uint32>(T::GetType());
-			const SubscriberKey key = std::make_pair(eventIdx, subscriberIdx);
-
-			UnsubscribeFromEevent(key);
+			Unsubscribe(std::make_pair(eventIdx, subscriberIdx));
 			VAST_LOG_TRACE("[events] {} deregistered '{}' subscriber (Count: {}).", T::GetName(), subscriberIdx, GetSubscriberCount(eventIdx));
 		}
 		
 		template<typename T>
-		static void FireEvent(IEvent& data)
+		static void Fire(IEvent& data)
 		{
 			const uint32 eventIdx = static_cast<uint32>(T::GetType());
 			VAST_LOG_TRACE("[events] {} fired. Executing {} subscriber callbacks...", T::GetName(), GetSubscriberCount(eventIdx));
-			FireEvent(eventIdx, data);
+			Fire(eventIdx, data);
 		}
 
 		template<typename T>
-		static void FireEvent()
+		static void Fire()
 		{
 			T data = T();
-			FireEvent<T>(data);
+			Fire<T>(data);
 		}
 
 		static uint32 GetSubscriberCount(uint32 eventIdx);
 
 	private:
-		static void SubscribeToEvent(SubscriberKey key, EventHandler&& func);
-		static void UnsubscribeFromEevent(SubscriberKey key);
-		static void FireEvent(uint32 eventIdx, IEvent& data);
+		static void Subscribe(SubscriberKey key, EventHandler&& func);
+		static void Unsubscribe(SubscriberKey key);
+		static void Fire(uint32 eventIdx, IEvent& data);
 	};
 }

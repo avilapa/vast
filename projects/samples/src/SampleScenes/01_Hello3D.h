@@ -91,10 +91,6 @@ public:
 		m_CubeCB.vtxBufIdx = rm.GetBindlessSRV(m_CubeVtxBuf);
 
 		m_CubeCbvBuf = rm.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
-		
-		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		VAST_SUBSCRIBE_TO_EVENT("Hello3D", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnWindowResizeEvent, WindowResizeEvent));
-		VAST_SUBSCRIBE_TO_EVENT("Hello3D", ReloadShadersEvent, VAST_EVENT_HANDLER_CB(Hello3D::OnReloadShadersEvent));
 	}
 
 	~Hello3D()
@@ -109,9 +105,6 @@ public:
 		rm.DestroyBuffer(m_CubeVtxBuf);
 		rm.DestroyBuffer(m_CubeIdxBuf);
 		rm.DestroyBuffer(m_CubeCbvBuf);
-
-		VAST_UNSUBSCRIBE_FROM_EVENT("Hello3D", WindowResizeEvent);
-		VAST_UNSUBSCRIBE_FROM_EVENT("Hello3D", ReloadShadersEvent);
 	}
 
 	void Update() override

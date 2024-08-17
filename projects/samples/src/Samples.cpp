@@ -1,5 +1,4 @@
 #include "Samples.h"
-
 #include "ISample.h"
 #include "SampleScenes/00_HelloTriangle.h"
 #include "SampleScenes/01_Hello3D.h"
@@ -63,6 +62,9 @@ void SamplesApp::Update(float dt)
 
 		if (m_CurrentSample)
 		{
+			Event::Unsubscribe<WindowResizeEvent>("Samples");
+			Event::Unsubscribe<ReloadShadersEvent>("Samples");
+
 			m_CurrentSample = nullptr;
 			// Note: Flushing the GPU is not strictly necessary, but it ensures all resources used in the
 			// current scene are destroyed before loading a new scene.
@@ -81,6 +83,9 @@ void SamplesApp::Update(float dt)
 		case IDX(SampleScenes::TEXTURES):		m_CurrentSample = MakePtr<Textures>(ctx); break;
 		default: return;
 		}
+
+		Event::Subscribe<WindowResizeEvent>("Samples", VAST_EVENT_HANDLER(m_CurrentSample->OnWindowResizeEvent, WindowResizeEvent));
+		Event::Subscribe<ReloadShadersEvent>("Samples", VAST_EVENT_HANDLER(m_CurrentSample->OnReloadShadersEvent));
 
 		m_SampleInitialized = true;
 	}
@@ -132,13 +137,13 @@ void SamplesApp::DrawSamplesEditorUI()
 		{
 			if (ImGui::MenuItem("Show Profiler"))
 			{
-				VAST_FIRE_EVENT(DebugActionEvent);
+				Event::Fire<DebugActionEvent>();
 			}
 			
 			if (ImGui::MenuItem("Reload Shaders"))
 			{
 				ReloadShadersEvent e(GetGraphicsContext().GetGPUResourceManager());
-				VAST_FIRE_EVENT(ReloadShadersEvent, e);
+				Event::Fire<ReloadShadersEvent>(e);
 			}
 			ImGui::EndMenu();
 		}

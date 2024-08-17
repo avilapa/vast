@@ -150,10 +150,6 @@ public:
 
 			m_TexturedDrawables[1].cbvBuf = rm.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[1].cb, sizeof(Drawable::CB));
 		}
-
-		// TODO: Ideally we'd subscribe the base class and that would invoke the derived class... likely not possible.
-		VAST_SUBSCRIBE_TO_EVENT("Textures", WindowResizeEvent, VAST_EVENT_HANDLER_CB(Textures::OnWindowResizeEvent, WindowResizeEvent));
-		VAST_SUBSCRIBE_TO_EVENT("Textures", ReloadShadersEvent, VAST_EVENT_HANDLER_CB(Textures::OnReloadShadersEvent));
 	}
 
 	~Textures()
@@ -178,9 +174,6 @@ public:
 		}
 
 		m_Skybox = nullptr;
-
-		VAST_UNSUBSCRIBE_FROM_EVENT("Textures", WindowResizeEvent);
-		VAST_UNSUBSCRIBE_FROM_EVENT("Textures", ReloadShadersEvent);
 	}
 
 	void Update() override

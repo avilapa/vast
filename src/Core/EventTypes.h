@@ -22,6 +22,16 @@ namespace vast
 		COUNT
 	};
 
+	class IEvent
+	{
+	public:
+		virtual ~IEvent() = default;
+	};
+
+#define EVENT_CLASS_DECL_STATIC_TYPE(type)							\
+	static const EventType GetType() { return EventType::type; }	\
+	static const char* GetName() { return STR(type##Event); }
+
 	class WindowCloseEvent final : public IEvent
 	{
 	public:
@@ -54,4 +64,5 @@ namespace vast
 		ReloadShadersEvent(GPUResourceManager& rm_) : rm(rm_) {}
 		GPUResourceManager& rm;
 	};
+
 }

@@ -37,7 +37,7 @@ namespace vast
 
 		void ReloadShaders(PipelineHandle h);
 
-		// TODO: This should be separate from the Context (ContentLoader?)
+		// TODO: This should be separate from the Resource Manager (ContentLoader?)
 		TextureHandle LoadTextureFromFile(const std::string& filePath, bool sRGB = true);
 
 		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of

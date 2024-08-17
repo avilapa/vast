@@ -1,5 +1,4 @@
 #include "vastpch.h"
-
 #include "Core/Core.h"
 #include "Core/App.h"
 #include "Core/EventTypes.h"
@@ -63,24 +62,16 @@ int Win32_Main(int argc, char** argv, IApp* app)
 	{
 		VAST_PROFILE_TRACE_SCOPE("Main Loop");
 
-		auto QuitAppCb = [&app](const IEvent&)
-		{
-			VAST_LOG_WARNING("Quitting application.");
-			app->m_bQuit = true;
-		};
-		VAST_SUBSCRIBE_TO_EVENT("main", WindowCloseEvent, QuitAppCb);
+		auto&& quitAppCb = VAST_EVENT_HANDLER_EXPR_CAPTURE(VAST_LOG_WARNING("Quitting application."); app->m_bQuit = true, &app);
+		Event::Subscribe<WindowCloseEvent>("main", quitAppCb);
 #if VAST_ENABLE_PROFILING
-		auto ToggleProfilerCb = [](const IEvent&)
-		{
-			Profiler::ui::g_bShowProfiler = !Profiler::ui::g_bShowProfiler;
-		};
-		VAST_SUBSCRIBE_TO_EVENT("main", DebugActionEvent, ToggleProfilerCb);
+		auto&& profCb = VAST_EVENT_HANDLER_EXPR_STATIC(Profiler::ui::g_bShowProfiler = !Profiler::ui::g_bShowProfiler);
+		Event::Subscribe<DebugActionEvent>("main", profCb);
 #endif
-
 		while (!app->m_bQuit)
 		{
 			VAST_PROFILING_ONLY(Profiler::BeginFrame());
-			{
+;			{
 				VAST_PROFILE_TRACE_SCOPE("Update");
 				VAST_PROFILE_CPU_SCOPE("Update");
 				app->m_Window->Update();
@@ -95,8 +86,8 @@ int Win32_Main(int argc, char** argv, IApp* app)
 			// TODO: We should periodically call Trace::Flush().
 		}
 
-		VAST_UNSUBSCRIBE_FROM_EVENT("main", WindowCloseEvent);
-		VAST_PROFILING_ONLY(VAST_UNSUBSCRIBE_FROM_EVENT("main", DebugActionEvent));
+		Event::Unsubscribe<WindowCloseEvent>("main");
+		VAST_PROFILING_ONLY(Event::Unsubscribe<DebugActionEvent>("main"));
 	}
 
 	// - Stop ------------------------------------------------------------------------------------- //

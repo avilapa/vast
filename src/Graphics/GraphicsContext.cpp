@@ -35,7 +35,7 @@ namespace vast
 		m_GPUResourceManager = MakePtr<GPUResourceManager>();
 		m_GpuProfiler = MakePtr<GPUProfiler>(*m_GPUResourceManager);
 
-		VAST_SUBSCRIBE_TO_EVENT("gfxctx", WindowResizeEvent, VAST_EVENT_HANDLER_CB(OnWindowResizeEvent, WindowResizeEvent));
+		Event::Subscribe<WindowResizeEvent>("GraphicsContext", VAST_EVENT_HANDLER(OnWindowResizeEvent, WindowResizeEvent));
 	}
 
 	GraphicsContext::~GraphicsContext()

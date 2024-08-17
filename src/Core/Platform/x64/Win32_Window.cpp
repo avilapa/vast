@@ -34,7 +34,7 @@ namespace vast
 			}
 			else if (wParam == VK_SPACE)
 			{
-				VAST_FIRE_EVENT(DebugActionEvent);
+				Event::Fire<DebugActionEvent>();
 			}
 			break;
 		case WM_ENTERSIZEMOVE:
@@ -107,7 +107,7 @@ namespace vast
 
 		if (msg.message == WM_QUIT)
 		{
-			VAST_FIRE_EVENT(WindowCloseEvent);
+			Event::Fire<WindowCloseEvent>();
 		}
 	}
 
@@ -203,7 +203,7 @@ namespace vast
 			VAST_LOG_WARNING("[window] [win32] Resizing window to {}x{} (was {}x{}).", newSize.x, newSize.y, m_WindowSize.x, m_WindowSize.y);
 			m_WindowSize = newSize;
 			WindowResizeEvent event(m_WindowSize);
-			VAST_FIRE_EVENT(WindowResizeEvent, event);
+			Event::Fire<WindowResizeEvent>(event);
 		}
 	}
 
