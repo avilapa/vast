@@ -9,8 +9,8 @@
 
 using namespace vast;
 
-vast::Arg g_ProjectDir("ProjectDir");
-vast::Arg g_OutputDir("OutputDir");
+vast::Arg g_ProjectDir("ProjectDir", "");
+vast::Arg g_OutputDir("OutputDir", "");
 
 int Win32_Main(int argc, char** argv, IApp* app)
 {
@@ -23,7 +23,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 	{
 		// Process input arguments, since most systems depend on it.
 		std::string argsFileName = argv[1];
-		if (!Arg::Init(argsFileName))
+		if (!Arg::ParseArgsFile(argsFileName))
 		{
 			VAST_LOGGING_ONLY(Log::Stop());
 			return EXIT_FAILURE;
@@ -34,7 +34,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 		VAST_LOG_WARNING("No response file found!");
 	}
 
-	std::string outputDir = "";
+	std::string outputDir;
 	g_OutputDir.Get(outputDir);
 	// Initialize tracing as soon as possible so we can track systems init timings.
 	VAST_TRACING_ONLY(Trace::Init(outputDir + "trace.json"));

@@ -8,8 +8,8 @@
 #include "imgui/backends/imgui_impl_win32.h" // TODO: USE_IMGUI_STOCK_IMPL_WIN32
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-vast::Arg g_WindowSize("WindowSize");
-vast::Arg g_WindowTitle("WindowTitle");
+vast::Arg g_WindowSize("WindowSize", vast::int2(1280, 720));
+vast::Arg g_WindowTitle("WindowTitle", "vast Engine");
 
 namespace vast
 {
@@ -61,21 +61,52 @@ namespace vast
 	}
 
 	WindowImpl_Win32::WindowImpl_Win32()
-		: m_WindowSize(1600, 900)
+		: m_Handle()
+		, m_WindowSize()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		// Process input arguments
-		g_WindowSize.Get(m_WindowSize);
-		std::string windowTitle = "vast Engine";
+		std::wstring windowTitle;
 		g_WindowTitle.Get(windowTitle);
+		g_WindowSize.Get(m_WindowSize);
 
 		HINSTANCE hInst = GetModuleHandle(nullptr);
+		const wchar_t* windowClassName = L"vastWindowClass";
+		{
+			VAST_PROFILE_TRACE_SCOPE("RegisterClass");
+			WNDCLASSEXW windowClass;
+			windowClass.cbSize = sizeof(WNDCLASSEX);
+			windowClass.style = CS_HREDRAW | CS_VREDRAW;
+			windowClass.lpfnWndProc = &WndProc;
+			windowClass.cbClsExtra = 0;
+			windowClass.cbWndExtra = 0;
+			windowClass.hInstance = hInst;
+			windowClass.hIcon = ::LoadIcon(hInst, NULL);
+			windowClass.hCursor = ::LoadCursor(NULL, IDC_ARROW);
+			windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+			windowClass.lpszMenuName = NULL;
+			windowClass.lpszClassName = L"vastWindowClass";
+			windowClass.hIconSm = ::LoadIcon(hInst, NULL);
 
-		const wchar_t* windowClassName = L"default";
-		Register(hInst, windowClassName);
-		Create(hInst, windowClassName, std::wstring(windowTitle.begin(), windowTitle.end()).c_str(), m_WindowSize);
+			static ATOM atom = ::RegisterClassExW(&windowClass);
+			VAST_ASSERT(atom > 0);
+		}
+		{
+			VAST_PROFILE_TRACE_SCOPE("CreateWindow");
+			uint2 windowSize = GetFullWindowSize(m_WindowSize);
+			uint2 screenSize = uint2(::GetSystemMetrics(SM_CXSCREEN), ::GetSystemMetrics(SM_CYSCREEN));
 
+			// Center the window within the screen. Clamp to 0, 0 for the top-left corner.
+			uint2 screenCenterPos = hlslpp::max(uint2(0), uint2((screenSize.x - windowSize.x) / 2, (screenSize.y - windowSize.y) / 2));
+
+			m_Handle = ::CreateWindowExW(NULL, windowClassName, windowTitle.c_str(), WS_OVERLAPPEDWINDOW,
+				screenCenterPos.x, screenCenterPos.y, windowSize.x, windowSize.y, NULL, NULL, hInst, nullptr);
+			VAST_ASSERTF(m_Handle, "Failed to create window.");
+
+			// Pass a pointer to the Window to the WndProc function. This can also be done via WM_CREATE.
+			SetWindowLongPtr(m_Handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+		}
 		{
 			VAST_PROFILE_TRACE_SCOPE("ShowWindow");
 			ShowWindow(m_Handle, SW_SHOW);
@@ -83,7 +114,7 @@ namespace vast
 		SetForegroundWindow(m_Handle);
 		SetFocus(m_Handle);
 		ShowCursor(true);
-		VAST_LOG_TRACE("[window] [win32] New window '{}' created successfully with resolution {}x{}.", windowTitle.c_str(), m_WindowSize.x, m_WindowSize.y);
+		VAST_LOG_TRACE(L"[window] [win32] New window '{}' created successfully with resolution {}x{}.", windowTitle.c_str(), m_WindowSize.x, m_WindowSize.y);
 	}
 
 	WindowImpl_Win32::~WindowImpl_Win32()
@@ -147,47 +178,6 @@ namespace vast
 		std::string name = std::string(GetWindowTextLength(m_Handle) + 1, '\0');
 		GetWindowText(m_Handle, name.data(), static_cast<int>(name.size()));
 		return name;
-	}
-
-	void WindowImpl_Win32::Register(HINSTANCE hInst, const wchar_t* windowClassName)
-	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
-		WNDCLASSEXW windowClass;
-		windowClass.cbSize = sizeof(WNDCLASSEX);
-		windowClass.style = CS_HREDRAW | CS_VREDRAW;
-		windowClass.lpfnWndProc = &WndProc;
-		windowClass.cbClsExtra = 0;
-		windowClass.cbWndExtra = 0;
-		windowClass.hInstance = hInst;
-		windowClass.hIcon = ::LoadIcon(hInst, NULL);
-		windowClass.hCursor = ::LoadCursor(NULL, IDC_ARROW);
-		windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-		windowClass.lpszMenuName = NULL;
-		windowClass.lpszClassName = windowClassName;
-		windowClass.hIconSm = ::LoadIcon(hInst, NULL);
-
-		static ATOM atom = ::RegisterClassExW(&windowClass);
-		VAST_ASSERT(atom > 0);
-	}
-
-	void WindowImpl_Win32::Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 clientSize)
-	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
-		uint2 windowSize = GetFullWindowSize(clientSize);
-		uint2 screenSize = uint2(::GetSystemMetrics(SM_CXSCREEN), ::GetSystemMetrics(SM_CYSCREEN));
-
-		// Center the window within the screen. Clamp to 0, 0 for the top-left corner.
-		uint2 screenCenterPos = hlslpp::max(uint2(0), uint2((screenSize.x - windowSize.x) / 2, (screenSize.y - windowSize.y) / 2));
-
-		m_Handle = ::CreateWindowExW(NULL, windowClassName, windowName, WS_OVERLAPPEDWINDOW, 
-			screenCenterPos.x, screenCenterPos.y, windowSize.x, windowSize.y, 
-			NULL, NULL, hInst, nullptr);
-		VAST_ASSERTF(m_Handle, "Failed to create window.");
-
-		// Pass a pointer to the Window to the WndProc function. This can also be done via WM_CREATE.
-		SetWindowLongPtr(m_Handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 	}
 
 	void WindowImpl_Win32::OnWindowResize()

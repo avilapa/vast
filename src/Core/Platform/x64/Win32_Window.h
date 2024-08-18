@@ -31,9 +31,6 @@ namespace vast
 
 		void OnWindowResize();
 
-		void Register(HINSTANCE hInst, const wchar_t* windowClassName);
-		void Create(HINSTANCE hInst, const wchar_t* windowClassName, const wchar_t* windowName, uint2 windowSize);
-
 		uint2 GetFullWindowSize(uint2 clientSize) const;
 
 		HWND m_Handle;

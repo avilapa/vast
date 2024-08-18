@@ -16,7 +16,7 @@ static const wchar_t* SHADER_OUTPUT_PATH = L"../bin/Release/Shaders/";
 // TODO: We could also identify push constants by giving a descriptive name to the buffer itself, in case in the future more than one binding point is needed.
 static constexpr int PUSH_CONSTANT_REGISTER_INDEX = 999;
 
-vast::Arg g_AdditionalShaderIncludeDirectories("AdditionalShaderIncludeDirectories");
+vast::Arg g_AdditionalShaderIncludeDirectories("AdditionalShaderIncludeDirectories", vast::VAST_SHADERS_SOURCE_PATH);
 
 namespace vast
 {
