@@ -14,9 +14,6 @@ namespace vast
 	constexpr uint32 NUM_PIPELINES = 64;
 	constexpr uint32 NUM_TIMESTAMP_QUERIES = 256;
 
-	constexpr bool ENABLE_VSYNC = true;
-	constexpr bool ALLOW_TEARING = false;
-
 	constexpr const char* VAST_SHADERS_SOURCE_PATH = "../../src/Shaders/";
 
 	// - Graphics Enums ------------------------------------------------------------------------ //

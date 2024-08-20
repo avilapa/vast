@@ -8,20 +8,29 @@
 #include <dxgidebug.h>
 #endif
 
+vast::Arg g_EnableVSync("EnableVSync", true);
+vast::Arg g_AllowTearing("AllowTearing", false);
+
 namespace vast
 {
 	static_assert(NUM_BACK_BUFFERS <= DXGI_MAX_SWAP_CHAIN_BUFFERS);
 
 	DX12SwapChain::DX12SwapChain(const uint2& size, const TexFormat& format, const TexFormat& backBufferFormat,
 		DX12Device& device, ID3D12CommandQueue& graphicsQueue, HWND windowHandle /*= ::GetActiveWindow()*/)
-		: m_SwapChain(nullptr)
+		: m_Device(device)
+		, m_SwapChain(nullptr)
 		, m_Size(size)
 		, m_Format(format)
 		, m_BackBufferFormat(backBufferFormat)
-		, m_Device(device)
+		, m_bEnableVSync()
+		, m_bAllowTearing()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_LOG_TRACE("[gfx] [dx12] Creating swapchain.");
+
+		// Process input arguments
+		g_EnableVSync.Get(m_bEnableVSync);
+		g_AllowTearing.Get(m_bAllowTearing);
 
 		VAST_ASSERTF(m_Size.x != 0 && m_Size.y != 0, "Failed to create swapchain. Invalid swapchain size.");
 
@@ -74,10 +83,10 @@ namespace vast
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		constexpr uint32 kSyncInterval = ENABLE_VSYNC ? 1 : 0;
-		constexpr uint32 kPresentFlags = (ALLOW_TEARING && !ENABLE_VSYNC) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		const uint32 syncInterval = m_bEnableVSync ? 1 : 0;
+		const uint32 presentFlags = (m_bAllowTearing && !m_bEnableVSync) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
-		m_SwapChain->Present(kSyncInterval, kPresentFlags);
+		m_SwapChain->Present(syncInterval, presentFlags);
 	}
 
 	uint32 DX12SwapChain::Resize(uint2 newSize)

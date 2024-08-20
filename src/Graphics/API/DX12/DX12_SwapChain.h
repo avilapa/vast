@@ -42,6 +42,9 @@ namespace vast
 		vast::uint2 m_Size;
 		TexFormat m_Format;
 		TexFormat m_BackBufferFormat;
+		
+		bool m_bEnableVSync;
+		bool m_bAllowTearing;
 	};
 
 }
