@@ -13,18 +13,15 @@ namespace vast
 {
 
 	GPUResourceManager::GPUResourceManager()
-		: m_BufferHandles(nullptr)
-		, m_TextureHandles(nullptr)
-		, m_PipelineHandles(nullptr)
+		: m_BufferHandles()
+		, m_TextureHandles()
+		, m_PipelineHandles()
 		, m_BuffersMarkedForDestruction({})
 		, m_TexturesMarkedForDestruction({})
 		, m_PipelinesMarkedForDestruction({})
 		, m_PipelinesMarkedForShaderReload({})
 		, m_TempFrameAllocators({})
 	{
-		m_BufferHandles = MakePtr<HandlePool<Buffer, NUM_BUFFERS>>();
-		m_TextureHandles = MakePtr<HandlePool<Texture, NUM_TEXTURES>>();
-		m_PipelineHandles = MakePtr<HandlePool<Pipeline, NUM_PIPELINES>>();
 
 		// Create frame allocators
 		BufferDesc tempFrameBufferDesc =
@@ -58,10 +55,6 @@ namespace vast
 		{
 			ProcessDestructions(i);
 		}
-
-		m_BufferHandles = nullptr;
-		m_TextureHandles = nullptr;
-		m_PipelineHandles = nullptr;
 	}
 
 	void GPUResourceManager::BeginFrame()
@@ -88,7 +81,7 @@ namespace vast
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		BufferHandle h = m_BufferHandles->AllocHandle();
+		BufferHandle h = m_BufferHandles.AllocHandle();
 		gfx::CreateBuffer(h, desc);
 		if (initialData != nullptr)
 		{
@@ -101,7 +94,7 @@ namespace vast
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		TextureHandle h = m_TextureHandles->AllocHandle();
+		TextureHandle h = m_TextureHandles.AllocHandle();
 		gfx::CreateTexture(h, desc);
 		if (initialData != nullptr)
 		{
@@ -114,7 +107,7 @@ namespace vast
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		PipelineHandle h = m_PipelineHandles->AllocHandle();
+		PipelineHandle h = m_PipelineHandles.AllocHandle();
 		gfx::CreatePipeline(h, desc);
 		return h;
 	}
@@ -123,7 +116,7 @@ namespace vast
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		PipelineHandle h = m_PipelineHandles->AllocHandle();
+		PipelineHandle h = m_PipelineHandles.AllocHandle();
 		gfx::CreatePipeline(h, csDesc);
 		return h;
 	}
@@ -266,7 +259,7 @@ namespace vast
 		{
 			VAST_ASSERT(h.IsValid());
 			gfx::DestroyBuffer(h);
-			m_BufferHandles->FreeHandle(h);
+			m_BufferHandles.FreeHandle(h);
 		}
 		m_BuffersMarkedForDestruction[frameId].clear();
 
@@ -274,7 +267,7 @@ namespace vast
 		{
 			VAST_ASSERT(h.IsValid());
 			gfx::DestroyTexture(h);
-			m_TextureHandles->FreeHandle(h);
+			m_TextureHandles.FreeHandle(h);
 		}
 		m_TexturesMarkedForDestruction[frameId].clear();
 
@@ -282,7 +275,7 @@ namespace vast
 		{
 			VAST_ASSERT(h.IsValid());
 			gfx::DestroyPipeline(h);
-			m_PipelineHandles->FreeHandle(h);
+			m_PipelineHandles.FreeHandle(h);
 		}
 		m_PipelinesMarkedForDestruction[frameId].clear();
 	}

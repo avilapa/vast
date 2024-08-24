@@ -84,27 +84,29 @@ namespace vast
 	public:
 		T& AcquireResource(Handle<H> h)
 		{
-			auto& r = AccessResource(h);
-			r.m_Handle = h;
+			T& r = AccessResource(h);
+			r.h = h;
 			return r;
 		}
 
+		// Get resource with matching id check
 		T& LookupResource(Handle<H> h)
 		{
-			auto& r = AccessResource(h);
-			// Note: If it crashes here it is likely to be a 'use after free' situation.
-			VAST_ASSERTF(h == r.m_Handle, "The handle provided doesn't match internal handle.");
+			T& r = AccessResource(h);
+			// Note: If it breaks here it is likely to be a 'use after free' situation.
+			VAST_VERIFYF(h == r.h, "The handle provided doesn't match internal handle.");
 			return r;
 		}
 
 		T& ReleaseResource(Handle<H> h)
 		{
-			auto& r = LookupResource(h);
-			r.m_Handle = Handle<H>();
+			T& r = LookupResource(h);
+			r.h = Handle<H>();
 			return r;
 		}
 
 	private:
+		// Get resource without matching id check
 		T& AccessResource(Handle<H> h)
 		{
 			VAST_ASSERT(h.IsValid());

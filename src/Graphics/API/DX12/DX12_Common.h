@@ -83,8 +83,10 @@ namespace vast
 		}
 	};
 
-	struct DX12Buffer : public Buffer, public DX12Resource
+	struct DX12Buffer : public DX12Resource
 	{
+		BufferHandle h;
+
 		uint8* data = nullptr;
 		uint32 stride = 0;
 		ResourceUsage usage = ResourceUsage::DEFAULT;
@@ -104,8 +106,10 @@ namespace vast
 		}
 	};
 
-	struct DX12Texture : public Texture, public DX12Resource
+	struct DX12Texture : public DX12Resource
 	{
+		TextureHandle h;
+
 		DX12Descriptor rtv = {};
 		DX12Descriptor dsv = {};
 		DX12Descriptor srv = {};
@@ -130,8 +134,10 @@ namespace vast
 		ID3D12ShaderReflection* reflection = nullptr;
 	};
 
-	struct DX12Pipeline : public Pipeline
+	struct DX12Pipeline
 	{
+		PipelineHandle h;
+
 		Ref<DX12Shader> vs = nullptr;
 		Ref<DX12Shader> ps = nullptr;
 		Ref<DX12Shader> cs = nullptr;

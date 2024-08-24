@@ -8,11 +8,11 @@
 #include <dxgidebug.h>
 #endif
 
-vast::Arg g_EnableVSync("EnableVSync", true);
-vast::Arg g_AllowTearing("AllowTearing", false);
-
 namespace vast
 {
+	Arg g_EnableVSync("EnableVSync", true);
+	Arg g_AllowTearing("AllowTearing", false);
+
 	static_assert(NUM_BACK_BUFFERS <= DXGI_MAX_SWAP_CHAIN_BUFFERS);
 
 	DX12SwapChain::DX12SwapChain(const uint2& size, const TexFormat& format, const TexFormat& backBufferFormat,

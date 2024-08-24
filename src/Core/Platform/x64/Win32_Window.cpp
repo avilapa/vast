@@ -8,11 +8,11 @@
 #include "imgui/backends/imgui_impl_win32.h" // TODO: USE_IMGUI_STOCK_IMPL_WIN32
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-vast::Arg g_WindowSize("WindowSize", vast::int2(1280, 720));
-vast::Arg g_WindowTitle("WindowTitle", "vast Engine");
-
 namespace vast
 {
+
+	Arg g_WindowSize("WindowSize", int2(1280, 720));
+	Arg g_WindowTitle("WindowTitle", "vast Engine");
 
 	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lparam)
 	{

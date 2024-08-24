@@ -66,9 +66,9 @@ namespace vast
 		void ProcessShaderReloads();
 
 	private:
-		Ptr<HandlePool<Buffer, NUM_BUFFERS>> m_BufferHandles;
-		Ptr<HandlePool<Texture, NUM_TEXTURES>> m_TextureHandles;
-		Ptr<HandlePool<Pipeline, NUM_PIPELINES>> m_PipelineHandles;
+		HandlePool<Buffer, NUM_BUFFERS> m_BufferHandles;
+		HandlePool<Texture, NUM_TEXTURES> m_TextureHandles;
+		HandlePool<Pipeline, NUM_PIPELINES> m_PipelineHandles;
 
 		// TODO: Could combine into a single queue with lambda callbacks to each handle type "FreeHandle" if
 		// ResourceHandler/HandlePool were unified
