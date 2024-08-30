@@ -186,6 +186,8 @@ public:
 	{
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
+		rm.UpdateBuffer(m_FrameCbvBuf, &m_FrameCB, sizeof(FrameCB));
+
 		for (auto& i : m_TexturedDrawables)
 		{
 			rm.UpdateBuffer(i.cbvBuf, &i.cb, sizeof(Drawable::CB));
@@ -249,6 +251,10 @@ public:
 		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
 		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
 		m_DepthRT = rm.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+
+		m_Camera->SetAspectRatio(ctx.GetBackBufferAspectRatio());
+		m_FrameCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
+
 	}
 
 	void OnReloadShadersEvent() override
