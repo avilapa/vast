@@ -17,9 +17,13 @@
 #ifdef VAST_DEBUG
 #define VAST_ENABLE_ASSERTS 1
 #define VAST_DEBUGBREAK() __debugbreak()
+
+#define VAST_DEBUG_ONLY(x) x
 #else
 #define VAST_ENABLE_ASSERTS 0
 #define VAST_DEBUGBREAK()
+
+#define VAST_DEBUG_ONLY(x)
 #endif
 
 // - Logging ----------------------------------------------------------------------------------- //
