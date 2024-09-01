@@ -1,8 +1,12 @@
 
+cbuffer PushConstants : register(PushConstantRegister)
+{
+    float4x4 ModelMatrix;
+};
+
 struct CubeCB
 {
     float4x4 viewProjMatrix;
-    float4x4 modelMatrix;
     uint vtxBufIdx;
 };
 ConstantBuffer<CubeCB> ObjectConstantBuffer : register(b0);
@@ -37,7 +41,7 @@ VertexOutput VS_Main(uint vtxId : SV_VERTEXID)
 {
     ByteAddressBuffer vtxBuf = ResourceDescriptorHeap[ObjectConstantBuffer.vtxBufIdx];
 	float3 pos = vtxBuf.Load<float3>(vtxId * sizeof(float3));
-    float3 worldPos = mul(ObjectConstantBuffer.modelMatrix, float4(pos, 1)).xyz;
+    float3 worldPos = mul(ModelMatrix, float4(pos, 1)).xyz;
 
     VertexOutput OUT;
     OUT.worldPos = mul(ObjectConstantBuffer.viewProjMatrix, float4(worldPos, 1));

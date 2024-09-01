@@ -10,19 +10,16 @@ using namespace vast;
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Instancing
  * ----------
- * This sample uses instancing to efficiently draw 50000 moving cubes to the screen. The cubes this
- * time are rendered using an index buffer, so the vertex buffer is much smaller. A CBV holds the
- * vertex buffer bindless index and the camera matrix, while a structured buffer holds per instance
- * data such as the model matrix and a random color for each cube. This scene showcases precision
- * problems typical of a standard depth buffer implementation, which are easily fixed by using a
- * reverse-z depth buffer. We implement both methods and a simple user interface allows us to allow
- * switching between the two methods to observe the differences.
+ * This sample uses instancing to efficiently draw 50000 moving cubes to the screen. A structured 
+ * buffer holds per instance data consisting of the model matrix and a random color for each cube. 
+ * This scene showcases precision problems at a distance typical of a standard depth buffer 
+ * implementation, which are fixed by using a reverse-z depth buffer. We implement both methods and
+ * a simple user interface to switch between the two methods to observe the differences.
  * 
- * All code for this sample is contained within this file plus the shader files 'instancing.hlsl'
- * and 'fullscreen.hlsl' containing code for rendering the cube and gamma correcting the color
- * result to the back buffer respectively.
+ * All code for this sample is contained within this file plus the shader files 'Fullscreen.hlsl'
+ * and '02_InstancedCube.hlsl'. 
  * 
- * Topics: instancing, structured buffer, index buffer, reverse-z depth buffer, camera object
+ * Topics: instancing, structured buffer, reverse-z depth buffer, camera object
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -69,6 +66,7 @@ private:
 public:
 	Instancing(GraphicsContext& ctx_) : ISample(ctx_)
 	{
+		// Create camera object
 		const float3 cameraPos = float3(0.0f, 30.0f, -20.0f);
 		const float3 lookAt = float3(0.0f, 0.0f, 100.0f);
 		m_Camera = MakePtr<PerspectiveCamera>(cameraPos, lookAt, float3(0, 1, 0), 
@@ -76,7 +74,8 @@ public:
 
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
-		m_FullscreenPso = rm.CreatePipeline(PipelineDesc{
+		m_FullscreenPso = rm.CreatePipeline(PipelineDesc
+		{
 			.vs = AllocVertexShaderDesc("Fullscreen.hlsl"),
 			.ps = AllocPixelShaderDesc("Fullscreen.hlsl"),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
@@ -85,15 +84,15 @@ public:
 
 		uint2 backBufferSize = ctx.GetBackBufferSize();
 		float4 clearColor = float4(0.02f, 0.02f, 0.02f, 1.0f);
-		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
+		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor), nullptr, "Color RT");
 
 		// Create both standard and reverse-z depth buffers, the only difference being the inverted
 		// depth clear value.
 		auto dsDesc = AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize);
 		dsDesc.clear.ds.depth = CLEAR_DEPTH_VALUE_STANDARD;
-		m_DepthRT[DepthBufferMode::STANDARD] = rm.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::STANDARD] = rm.CreateTexture(dsDesc, nullptr, "Depth RT (Standard)");
 		dsDesc.clear.ds.depth = CLEAR_DEPTH_VALUE_REVERSE_Z;
-		m_DepthRT[DepthBufferMode::REVERSE_Z] = rm.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::REVERSE_Z] = rm.CreateTexture(dsDesc, nullptr, "Depth RT (Reverse-Z)");
 
 		// Create both standard and reverse-z PSOs with different Depth Stencil States.
 		PipelineDesc psoDesc =
@@ -117,12 +116,12 @@ public:
 
 		// Create the cube vertex buffer with bindless access.
 		auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_VerticesIndexed_Pos), sizeof(Cube::s_VerticesIndexed_Pos[0]));
-		m_CubeVtxBuf = rm.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos));
+		m_CubeVtxBuf = rm.CreateBuffer(vtxBufDesc, &Cube::s_VerticesIndexed_Pos, sizeof(Cube::s_VerticesIndexed_Pos), "Cube Vertex Buffer");
 
 		// Create index buffer.
 		uint32 numIndices = static_cast<uint32>(Cube::s_Indices.size());
 		auto idxBufDesc = AllocIndexBufferDesc(numIndices);
-		m_CubeIdxBuf = rm.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16));
+		m_CubeIdxBuf = rm.CreateBuffer(idxBufDesc, &Cube::s_Indices, numIndices * sizeof(uint16), "Cube Index Buffer");
 
 		// Create a structured buffer to hold our instance data and initialize it.
 		auto instBufDesc = AllocStructuredBufferDesc(sizeof(InstanceData) * s_NumInstances, sizeof(InstanceData), ResourceUsage::UPLOAD);
@@ -134,6 +133,7 @@ public:
 			i.color = { rand() % 255 / 255.0f, rand() % 255 / 255.0f, rand() % 255 / 255.0f };
 		}
 
+		// Create a constant buffer
 		m_CubeCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 		m_CubeCB.vtxBufIdx = rm.GetBindlessSRV(m_CubeVtxBuf);
 		m_CubeCbvBuf = rm.CreateBuffer(AllocCbvBufferDesc(sizeof(CubeCB)), &m_CubeCB, sizeof(CubeCB));
@@ -155,11 +155,11 @@ public:
 		rm.DestroyBuffer(m_CubeIdxBuf);
 	}
 
-	void Update() override
+	void Update(float dt) override
 	{
 		// Update the transformation matrices for all cube instances.
 		static float v = 0.0f;
-		v += 0.01f;
+		v += 0.01f * dt;
 
 		const uint32 numCubesPerRow = 100;
 		const float spacingX = 2.5f;
@@ -203,9 +203,9 @@ public:
 
 		const RenderTargetDesc colorTargetDesc = {.h = m_ColorRT, .loadOp = LoadOp::CLEAR };
 		const RenderTargetDesc depthTargetDesc = {.h = depthRt, .loadOp = LoadOp::CLEAR, .storeOp = StoreOp::DISCARD };
-		ctx.BeginRenderPass(pso, RenderPassTargets{.rt = { colorTargetDesc }, .ds = depthTargetDesc });
+		ctx.BeginRenderPass(pso, RenderPassDesc{.rt = { colorTargetDesc }, .ds = depthTargetDesc });
 		{
-			if (rm.GetIsReady(m_CubeVtxBuf) && rm.GetIsReady(m_CubeIdxBuf) /*&& ctx.GetIsReady(m_CubeInstBuf)*/)
+			if (rm.GetIsReady(m_CubeVtxBuf) && rm.GetIsReady(m_CubeIdxBuf) && rm.GetIsReady(m_CubeInstBuf))
 			{
 				// Bind our instance buffer and CBV.
 				ctx.BindConstantBuffer(m_CbvBufProxy, m_CubeCbvBuf);
@@ -242,13 +242,13 @@ public:
 		rm.DestroyTexture(m_DepthRT[DepthBufferMode::REVERSE_Z]);
 
 		float4 clearColor = float4(0.02f, 0.02f, 0.02f, 1.0f);
-		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
+		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor), nullptr, "Color RT");
 
 		auto dsDesc = AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize);
 		dsDesc.clear.ds.depth = 1.0f;
-		m_DepthRT[DepthBufferMode::STANDARD] = rm.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::STANDARD] = rm.CreateTexture(dsDesc, nullptr, "Depth RT (Standard)");
 		dsDesc.clear.ds.depth = 0.0f;
-		m_DepthRT[DepthBufferMode::REVERSE_Z] = rm.CreateTexture(dsDesc);
+		m_DepthRT[DepthBufferMode::REVERSE_Z] = rm.CreateTexture(dsDesc, nullptr, "Depth RT (Reverse-Z)");
 
 		m_Camera->SetAspectRatio(ctx.GetBackBufferAspectRatio());
 		m_bViewChanged = true;

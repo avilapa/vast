@@ -36,7 +36,7 @@ namespace vast
 		bool IsInFrame() const;
 		double GetLastFrameDuration();
 
-		void BeginRenderPass(PipelineHandle h, const RenderPassTargets targets);
+		void BeginRenderPass(PipelineHandle h, const RenderPassDesc desc);
 		// Renders to the back buffer as the only target
 		void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE);
 		void EndRenderPass();

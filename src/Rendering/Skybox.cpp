@@ -59,7 +59,7 @@ namespace vast
 			return;
 
 		// TODO: If the user calls this function directly we don't currently check for ReverseZ settings.
-		ctx.BeginRenderPass(m_PSO, RenderPassTargets{ .rt = { rt }, .ds = ds });
+		ctx.BeginRenderPass(m_PSO, RenderPassDesc{ .rt = { rt }, .ds = ds });
 		{
 			struct SkyboxCB
 			{

@@ -176,10 +176,10 @@ public:
 		m_Skybox = nullptr;
 	}
 
-	void Update() override
+	void Update(float dt) override
 	{
-		m_TexturedDrawables[0].cb.modelMatrix = hlslpp::mul(float4x4::rotation_y(0.001f), m_TexturedDrawables[0].cb.modelMatrix);
-		m_TexturedDrawables[1].cb.modelMatrix = hlslpp::mul(float4x4::rotation_y(0.001f), m_TexturedDrawables[1].cb.modelMatrix);
+		m_TexturedDrawables[0].cb.modelMatrix = hlslpp::mul(float4x4::rotation_y(0.001f * dt), m_TexturedDrawables[0].cb.modelMatrix);
+		m_TexturedDrawables[1].cb.modelMatrix = hlslpp::mul(float4x4::rotation_y(0.001f * dt), m_TexturedDrawables[1].cb.modelMatrix);
 	}
 
 	void Render() override
@@ -198,7 +198,7 @@ public:
 		// TODO: NextUsage causes a crash when resizing the window multiple times.
 		RenderTargetDesc forwardRtDesc = { .h = m_ColorRT, .loadOp = LoadOp::CLEAR/*, .nextUsage = ResourceState::RENDER_TARGET*/ };
 		RenderTargetDesc forwardDsDesc = { .h = m_DepthRT, .loadOp = LoadOp::CLEAR/*, .nextUsage = ResourceState::DEPTH_WRITE */};
-		ctx.BeginRenderPass(m_TexturedMeshPso, RenderPassTargets{.rt = { forwardRtDesc }, .ds = forwardDsDesc });
+		ctx.BeginRenderPass(m_TexturedMeshPso, RenderPassDesc{.rt = { forwardRtDesc }, .ds = forwardDsDesc });
 		{
 			ctx.BindConstantBuffer(m_FrameCbvProxy, m_FrameCbvBuf);
 

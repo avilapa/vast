@@ -4,7 +4,7 @@
 namespace vast
 {
 
-	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, ResourceUsage usage /* = ResourceUsage::DEFAULT */, bool bBindless /* = true */)
+	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, bool bBindless /* = true */, ResourceUsage usage /* = ResourceUsage::DEFAULT */)
 	{
 		return BufferDesc
 		{
@@ -12,7 +12,7 @@ namespace vast
 			.stride = stride,
 			.viewFlags = bBindless ? BufViewFlags::SRV : BufViewFlags::NONE,
 			.usage = usage,
-			.isRawAccess = bBindless,
+			.bBindless = bBindless,
 		};
 	}
 
@@ -27,7 +27,7 @@ namespace vast
 			.stride = indexSize,
 			.viewFlags = BufViewFlags::NONE,
 			.usage = usage,
-			.isRawAccess = false,
+			.bBindless = false,
 		};
 	}
 
@@ -39,7 +39,7 @@ namespace vast
 			.stride = 0,
 			.viewFlags = BufViewFlags::CBV,
 			.usage = usage,
-			.isRawAccess = false,
+			.bBindless = false,
 		};
 	}
 	
@@ -51,7 +51,7 @@ namespace vast
 			.stride = stride,
 			.viewFlags = BufViewFlags::SRV,
 			.usage = usage,
-			.isRawAccess = false,
+			.bBindless = false,
 		};
 	}
 

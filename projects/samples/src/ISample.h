@@ -20,7 +20,7 @@ public:
 		ctx.EndFrame();
 	}
 
-	virtual void Update() {}
+	virtual void Update(float) {}
 	virtual void Render() {}
 	virtual void OnGUI() {}
 	virtual void OnWindowResizeEvent(const WindowResizeEvent&) {}

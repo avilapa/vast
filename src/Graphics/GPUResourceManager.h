@@ -22,10 +22,10 @@ namespace vast
 		GPUResourceManager();
 		~GPUResourceManager();
 
-		BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr, const size_t dataSize = 0);
-		TextureHandle CreateTexture(const TextureDesc& desc, const void* initialData = nullptr);
+		BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr, const size_t dataSize = 0, const std::string& name = "Unnamed Buffer");
+		TextureHandle CreateTexture(const TextureDesc& desc, const void* initialData = nullptr, const std::string name = "Unnamed Texture");
 		PipelineHandle CreatePipeline(const PipelineDesc& desc);
-		PipelineHandle CreatePipeline(const ShaderDesc& csDesc);
+		PipelineHandle CreatePipeline(const ShaderDesc& desc);
 
 		void DestroyBuffer(BufferHandle h);
 		void DestroyTexture(TextureHandle h);
@@ -43,9 +43,6 @@ namespace vast
 		// Returns a BufferView containing CPU-write/GPU-read memory that is alive for the duration of
 		// the frame and automatically invalidated after that.
 		BufferView AllocTempBufferView(uint32 size, uint32 alignment = 0);
-
-		void SetDebugName(BufferHandle h, const std::string& name);
-		void SetDebugName(TextureHandle h, const std::string& name);
 
 		const uint8* GetBufferData(BufferHandle h);
 
@@ -70,15 +67,12 @@ namespace vast
 		HandlePool<Texture, NUM_TEXTURES> m_TextureHandles;
 		HandlePool<Pipeline, NUM_PIPELINES> m_PipelineHandles;
 
-		// TODO: Could combine into a single queue with lambda callbacks to each handle type "FreeHandle" if
-		// ResourceHandler/HandlePool were unified
 		Array<Vector<BufferHandle>, NUM_FRAMES_IN_FLIGHT> m_BuffersMarkedForDestruction;
 		Array<Vector<TextureHandle>, NUM_FRAMES_IN_FLIGHT> m_TexturesMarkedForDestruction;
 		Array<Vector<PipelineHandle>, NUM_FRAMES_IN_FLIGHT> m_PipelinesMarkedForDestruction;
 
 		Vector<PipelineHandle> m_PipelinesMarkedForShaderReload;
 
-		// TODO: Could this be replaced by a single, big dynamic buffer?
 		Array<TempAllocator, NUM_FRAMES_IN_FLIGHT> m_TempFrameAllocators;
 	};
 

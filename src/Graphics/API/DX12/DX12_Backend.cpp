@@ -194,7 +194,7 @@ namespace vast::gfx
 		s_GraphicsCommandList->SetDefaultViewportAndScissor(m_SwapChain->GetSize());
 	}
 
-	void BeginRenderPass(PipelineHandle h, const RenderPassTargets targets)
+	void BeginRenderPass(PipelineHandle h, const RenderPassDesc desc)
 	{
 		VAST_ASSERT(s_Pipelines);
 		DX12Pipeline& pipeline = s_Pipelines->LookupResource(h);
@@ -202,10 +202,11 @@ namespace vast::gfx
 
 #ifdef VAST_DEBUG
 		// Validate user bindings against PSO.
+		// TODO: We should also validate that formats match.
 		uint32 rtCount = 0;
 		for (uint32 i = 0; i < MAX_RENDERTARGETS; ++i)
 		{
-			if (targets.rt[i].h.IsValid())
+			if (desc.rt[i].h.IsValid())
 				rtCount++;
 		}
 		VAST_ASSERT(rtCount == pipeline.desc.NumRenderTargets);
@@ -217,37 +218,37 @@ namespace vast::gfx
 		for (uint32 i = 0; i < rpd.rtCount; ++i)
 		{
 			VAST_ASSERT(pipeline.desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);
-			VAST_ASSERT(targets.rt[i].h.IsValid());
-			DX12Texture& rt = s_Textures->LookupResource(targets.rt[i].h);
+			VAST_ASSERT(desc.rt[i].h.IsValid());
+			DX12Texture& rt = s_Textures->LookupResource(desc.rt[i].h);
 
 			s_GraphicsCommandList->AddBarrier(rt, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			if (targets.rt[i].nextUsage != ResourceState::NONE)
+			if (desc.rt[i].nextUsage != ResourceState::NONE)
 			{
-				s_RenderPassEndBarriers.push_back(std::make_pair(&rt, TranslateToDX12(targets.rt[i].nextUsage)));
+				s_RenderPassEndBarriers.push_back(std::make_pair(&rt, TranslateToDX12(desc.rt[i].nextUsage)));
 			}
 
 			rpd.rtDesc[i].cpuDescriptor = rt.rtv.cpuHandle;
-			rpd.rtDesc[i].BeginningAccess.Type = TranslateToDX12(targets.rt[i].loadOp);
+			rpd.rtDesc[i].BeginningAccess.Type = TranslateToDX12(desc.rt[i].loadOp);
 			rpd.rtDesc[i].BeginningAccess.Clear.ClearValue = rt.clearValue;
-			rpd.rtDesc[i].EndingAccess.Type = TranslateToDX12(targets.rt[i].storeOp);
+			rpd.rtDesc[i].EndingAccess.Type = TranslateToDX12(desc.rt[i].storeOp);
 			// TODO: Multisample support (EndingAccess.Resolve)
 		}
 
-		VAST_ASSERT(targets.ds.h.IsValid() == (pipeline.desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
-		if (targets.ds.h.IsValid())
+		VAST_ASSERT(desc.ds.h.IsValid() == (pipeline.desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
+		if (desc.ds.h.IsValid())
 		{
-			auto ds = s_Textures->LookupResource(targets.ds.h);
+			auto ds = s_Textures->LookupResource(desc.ds.h);
 
 			s_GraphicsCommandList->AddBarrier(ds, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-			if (targets.ds.nextUsage != ResourceState::NONE)
+			if (desc.ds.nextUsage != ResourceState::NONE)
 			{
-				s_RenderPassEndBarriers.push_back(std::make_pair(&ds, TranslateToDX12(targets.ds.nextUsage)));
+				s_RenderPassEndBarriers.push_back(std::make_pair(&ds, TranslateToDX12(desc.ds.nextUsage)));
 			}
 
 			rpd.dsDesc.cpuDescriptor = ds.dsv.cpuHandle;
-			rpd.dsDesc.DepthBeginningAccess.Type = TranslateToDX12(targets.ds.loadOp);
+			rpd.dsDesc.DepthBeginningAccess.Type = TranslateToDX12(desc.ds.loadOp);
 			rpd.dsDesc.DepthBeginningAccess.Clear.ClearValue = ds.clearValue;
-			rpd.dsDesc.DepthEndingAccess.Type = TranslateToDX12(targets.ds.storeOp);
+			rpd.dsDesc.DepthEndingAccess.Type = TranslateToDX12(desc.ds.storeOp);
 			rpd.dsDesc.DepthEndingAccess.Resolve.pSrcResource = ds.resource;
 			rpd.dsDesc.DepthEndingAccess.Resolve.PreserveResolveSource = rpd.dsDesc.DepthEndingAccess.Type == D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 			if (IsTexFormatStencil(TranslateFromDX12(ds.clearValue.Format)))
@@ -261,7 +262,7 @@ namespace vast::gfx
 		s_GraphicsCommandList->BeginRenderPass(rpd);
 
 		// TODO: Figure out something more robust than this.
-		DX12Texture& rt = s_Textures->LookupResource(targets.rt[0].h);
+		DX12Texture& rt = s_Textures->LookupResource(desc.rt[0].h);
 		s_GraphicsCommandList->SetDefaultViewportAndScissor(uint2(rt.resource->GetDesc().Width, rt.resource->GetDesc().Height));
 	}
 
@@ -426,18 +427,18 @@ namespace vast::gfx
 
 	//
 
-	void CreateBuffer(BufferHandle h, const BufferDesc& desc)
+	void CreateBuffer(BufferHandle h, const BufferDesc& desc, const std::string& name /* = "" */)
 	{
 		DX12Buffer& buf = s_Buffers->AcquireResource(h);
 		s_Device->CreateBuffer(desc, buf);
-		buf.SetName(desc.name);
+		buf.SetName(name);
 	}
 
-	void CreateTexture(TextureHandle h, const TextureDesc& desc)
+	void CreateTexture(TextureHandle h, const TextureDesc& desc, const std::string& name /* = "" */)
 	{
 		DX12Texture& tex = s_Textures->AcquireResource(h);
 		s_Device->CreateTexture(desc, tex);
-		tex.SetName(desc.name);
+		tex.SetName(name);
 	}
 
 	void CreatePipeline(PipelineHandle h, const PipelineDesc& desc)
@@ -446,10 +447,10 @@ namespace vast::gfx
 		s_Device->CreateGraphicsPipeline(desc, pipeline);
 	}
 
-	void CreatePipeline(PipelineHandle h, const ShaderDesc& csDesc)
+	void CreatePipeline(PipelineHandle h, const ShaderDesc& desc)
 	{
 		DX12Pipeline& pipeline = s_Pipelines->AcquireResource(h);
-		s_Device->CreateComputePipeline(csDesc, pipeline);
+		s_Device->CreateComputePipeline(desc, pipeline);
 	}
 
 	void UpdateBuffer(BufferHandle h, const void* srcMem, size_t srcSize)
@@ -571,16 +572,6 @@ namespace vast::gfx
 			return pipeline.resourceProxyTable.LookupShaderResource(shaderResourceName);
 		}
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
-	}
-
-	void SetDebugName(BufferHandle h, const std::string& name)
-	{
-		s_Buffers->LookupResource(h).SetName(name);
-	}
-
-	void SetDebugName(TextureHandle h, const std::string& name)
-	{
-		s_Textures->LookupResource(h).SetName(name);
 	}
 
 	const uint8* GetBufferData(BufferHandle h)

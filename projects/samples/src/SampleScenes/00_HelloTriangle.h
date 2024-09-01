@@ -11,7 +11,8 @@ using namespace vast;
  * This sample implements the classic multi-color triangle as an introduction to the gfx API in
  * vast. As an extra, the triangle vertices can be edited from a simple graphical user interface.
  * 
- * All code for this sample is contained within this file plus a simple 'triangle.hlsl' shader file.
+ * All code for this sample is contained within this file plus a simple '00_Triangle.hlsl' shader 
+ * file.
  * 
  * Topics: render to back buffer, push constants, bindless vertex buffer, user interface
  * 
@@ -41,6 +42,8 @@ private:
 public:
 	HelloTriangle(GraphicsContext& ctx_) : ISample(ctx_)
 	{
+		// The GPU Resource Manager is the interface used to create and manage GPU resources such as
+		// buffers, textures and pipelines.
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
 		// Create triangle pipeline state object and prepare it to render to the back buffer.
@@ -59,9 +62,10 @@ public:
 			.size	= sizeof(m_TriangleVertexData),
 			.stride = sizeof(m_TriangleVertexData[0]),
 			.viewFlags = BufViewFlags::SRV,
-			.isRawAccess = true,
+			.usage = ResourceUsage::UPLOAD,
+			.bBindless = true,
 		};
-		m_TriangleVtxBuf = rm.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
+		m_TriangleVtxBuf = rm.CreateBuffer(vtxBufDesc, &m_TriangleVertexData, sizeof(m_TriangleVertexData), "Triangle Vertex Buffer");
 		// Query the bindless descriptor index for the vertex buffer.
 		m_TriangleVtxBufIdx = rm.GetBindlessSRV(m_TriangleVtxBuf);
 	}
@@ -77,22 +81,20 @@ public:
 
 	void Render() override
 	{
-		// Copy the updated vertex data to the GPU if necessary
+		// Copy the updated vertex data to the GPU if necessary.
 		if (m_bUpdateTriangle)
 		{
 			m_bUpdateTriangle = false;
-			ctx.GetGPUResourceManager().UpdateBuffer(m_TriangleVtxBuf, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
+			GPUResourceManager& rm = ctx.GetGPUResourceManager();
+			rm.UpdateBuffer(m_TriangleVtxBuf, &m_TriangleVertexData, sizeof(m_TriangleVertexData));
 		}
 
-		// Transition necessary resource barriers to begin a render pass onto the back buffer and 
-		// clear it.
+		// Transition necessary resource barriers to begin a render pass onto the back buffer and clear it.
 		ctx.BeginRenderPassToBackBuffer(m_TrianglePso, LoadOp::CLEAR);
-		{
-			// Set the bindless vertex buffer index as a push constant for the shader to read and 
-			// draw our vertices.
-			ctx.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
-			ctx.Draw(3);
-		}
+		// Set the bindless vertex buffer index as a push constant for the shader to read the vertex data.
+		ctx.SetPushConstants(&m_TriangleVtxBufIdx, sizeof(uint32));
+		// Draw the triangle.
+		ctx.Draw(3);
 		ctx.EndRenderPass();
 	}
 

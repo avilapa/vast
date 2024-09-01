@@ -84,7 +84,7 @@ namespace vast
 		return m_GpuProfiler->GetTimestampDuration(m_GpuFrameTimestampIdx);
 	}
 
-	void GraphicsContext::BeginRenderPass(PipelineHandle h, const RenderPassTargets targets)
+	void GraphicsContext::BeginRenderPass(PipelineHandle h, const RenderPassDesc desc)
 	{
 		VAST_PROFILE_TRACE_BEGIN("Render Pass");
 		VAST_PROFILE_TRACE_FUNCTION;
@@ -92,7 +92,7 @@ namespace vast
 		VAST_ASSERT(h.IsValid());
 
 		m_bHasRenderPassBegun = true;
-		gfx::BeginRenderPass(h, targets);
+		gfx::BeginRenderPass(h, desc);
 	}
 
 	void GraphicsContext::BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp /* = LoadOp::LOAD */, StoreOp storeOp /* = StoreOp::STORE */)

@@ -7,9 +7,13 @@ namespace vast
 {
 	// - Resource Handles ------------------------------------------------------------------------- //
 
-	using BufferHandle = Handle<class Buffer>;
-	using TextureHandle = Handle<class Texture>;
-	using PipelineHandle = Handle<class Pipeline>;
+	class Buffer {};
+	class Texture {};
+	class Pipeline {};
+
+	using BufferHandle = Handle<Buffer>;
+	using TextureHandle = Handle<Texture>;
+	using PipelineHandle = Handle<Pipeline>;
 
 	// - Resource Descriptors --------------------------------------------------------------------- //
 
@@ -19,12 +23,10 @@ namespace vast
 		uint32 stride = 0;
 		BufViewFlags viewFlags = BufViewFlags::NONE;
 		ResourceUsage usage = ResourceUsage::DEFAULT;
-		bool isRawAccess = false;
-
-		std::string name = "Unnamed Buffer";
+		bool bBindless = false;
 	};
 
-	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, ResourceUsage usage = ResourceUsage::DEFAULT, bool bBindless = true);
+	BufferDesc AllocVertexBufferDesc(uint32 size, uint32 stride, bool bBindless = true, ResourceUsage usage = ResourceUsage::DEFAULT);
 	BufferDesc AllocIndexBufferDesc(uint32 numIndices, IndexBufFormat format = IndexBufFormat::R16_UINT, ResourceUsage usage = ResourceUsage::DEFAULT);
 	BufferDesc AllocCbvBufferDesc(uint32 size, ResourceUsage usage = ResourceUsage::UPLOAD);
 	BufferDesc AllocStructuredBufferDesc(uint32 size, uint32 stride, ResourceUsage usage = ResourceUsage::DEFAULT);
@@ -48,8 +50,6 @@ namespace vast
 		uint32 mipCount = 1;
 		TexViewFlags viewFlags = TexViewFlags::NONE;
 		ClearValue clear = ClearValue(float4(1.0f, 1.0f, 1.0f, 1.0f));
-
-		std::string name = "Unnamed Texture";
 	};
 
 	TextureDesc AllocRenderTargetDesc(TexFormat format, uint2 dimensions, float4 clear = DEFAULT_CLEAR_COLOR_VALUE);
@@ -136,69 +136,10 @@ namespace vast
 		ResourceState nextUsage = ResourceState::NONE;
 	};
 
-	struct RenderPassTargets
+	struct RenderPassDesc
 	{
 		Array<RenderTargetDesc, MAX_RENDERTARGETS> rt = {};
 		RenderTargetDesc ds = {};
-	};
-
-	// - Internal Resources ----------------------------------------------------------------------- //
-
-	enum class ResourceType
-	{
-		UNKNOWN,
-		BUFFER,
-		TEXTURE,
-		PIPELINE,
-		COUNT,
-	};
-	static const char* g_ResourceTypeNames[]
-	{
-		"Unknown",
-		"Buffer",
-		"Texture",
-		"Pipeline",
-	};
-	static_assert(NELEM(g_ResourceTypeNames) == IDX(ResourceType::COUNT));	
-
-	template<typename T>
-	class Resource
-	{
-		template<typename T, typename H, const uint32 SIZE> friend class ResourceHandler;
-	public:
-		Resource(ResourceType type) : m_Type(type) {}
-
-		const ResourceType GetResourceType() { return m_Type; }
-		const char* GetResourceTypeName() { return g_ResourceTypeNames[IDX(m_Type)]; }
-
-	protected:
-		ResourceType m_Type;
-
-	private:
-		Handle<T> m_Handle;
-	};
-
-#define __VAST_RESOURCE_TYPE_COMMON_DECL(className, resourceType)										\
-	className() : Resource<className>(resourceType) {}													\
-	static const ResourceType GetStaticResourceType() { return resourceType; }							\
-	static const char* GetStaticResourceTypeName() { return g_ResourceTypeNames[IDX(resourceType)]; }
-
-	class Buffer : public Resource<Buffer>
-	{
-	public:
-		__VAST_RESOURCE_TYPE_COMMON_DECL(Buffer, ResourceType::BUFFER);
-	};
-
-	class Texture : public Resource<Texture>
-	{
-	public:
-		__VAST_RESOURCE_TYPE_COMMON_DECL(Texture, ResourceType::TEXTURE);
-	};
-
-	class Pipeline : public Resource<Pipeline>
-	{
-	public:
-		__VAST_RESOURCE_TYPE_COMMON_DECL(Pipeline, ResourceType::PIPELINE);
 	};
 
 }

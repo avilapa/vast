@@ -358,18 +358,18 @@ namespace vast
 			m_Device->CreateConstantBufferView(&cbvDesc, outBuf.cbv.cpuHandle);
 		}
 
-		const uint32 nelem = static_cast<uint32>(desc.stride > 0 ? desc.size / desc.stride : 1);
+		uint32 bufferNumElements = (desc.stride > 0) ? (desc.size / desc.stride) : 1;
 
 		if (hasSRV)
 		{
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.Format = desc.isRawAccess ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
+			srvDesc.Format = desc.bBindless ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / sizeof(uint32)) : nelem);
-			srvDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
-			srvDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
+			srvDesc.Buffer.NumElements = desc.bBindless ? (desc.size / sizeof(uint32)) : bufferNumElements;
+			srvDesc.Buffer.StructureByteStride = desc.bBindless ? 0 : desc.stride;
+			srvDesc.Buffer.Flags = desc.bBindless ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
 
 			outBuf.srv = m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateShaderResourceView(outBuf.resource, &srvDesc, outBuf.srv.cpuHandle);
@@ -384,12 +384,12 @@ namespace vast
 		{
 			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 			uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-			uavDesc.Format = desc.isRawAccess ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
+			uavDesc.Format = desc.bBindless ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
 			uavDesc.Buffer.CounterOffsetInBytes = 0;
 			uavDesc.Buffer.FirstElement = 0;
-			uavDesc.Buffer.NumElements = static_cast<uint32>(desc.isRawAccess ? (desc.size / sizeof(uint32)) : nelem);
-			uavDesc.Buffer.StructureByteStride = desc.isRawAccess ? 0 : desc.stride;
-			uavDesc.Buffer.Flags = desc.isRawAccess ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
+			uavDesc.Buffer.NumElements = desc.bBindless ? (desc.size / sizeof(uint32)) : bufferNumElements;
+			uavDesc.Buffer.StructureByteStride = desc.bBindless ? 0 : desc.stride;
+			uavDesc.Buffer.Flags = desc.bBindless ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
 
 			outBuf.uav = m_CBVSRVUAVStagingDescriptorHeap->GetNewDescriptor();
 			m_Device->CreateUnorderedAccessView(outBuf.resource, nullptr, &uavDesc, outBuf.uav.cpuHandle);
@@ -398,6 +398,8 @@ namespace vast
 		if (desc.usage == ResourceUsage::UPLOAD || desc.usage == ResourceUsage::READBACK)
 		{
 			outBuf.resource->Map(0, nullptr, reinterpret_cast<void**>(&outBuf.data));
+			// TODO: Can we do better?
+			outBuf.isReady = true;
 		}
 
 		outBuf.usage = desc.usage;
@@ -739,14 +741,14 @@ namespace vast
 		outPipeline.desc = psDesc;
 	}
 
-	void DX12Device::CreateComputePipeline(const ShaderDesc& csDesc, DX12Pipeline& outPipeline)
+	void DX12Device::CreateComputePipeline(const ShaderDesc& desc, DX12Pipeline& outPipeline)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC psDesc = {};
 
-		VAST_ASSERT(csDesc.type == ShaderType::COMPUTE);
-		outPipeline.cs = m_ShaderManager->LoadShader(csDesc);
+		VAST_ASSERT(desc.type == ShaderType::COMPUTE);
+		outPipeline.cs = m_ShaderManager->LoadShader(desc);
 		psDesc.CS.pShaderBytecode = outPipeline.cs->blob->GetBufferPointer();
 		psDesc.CS.BytecodeLength = outPipeline.cs->blob->GetBufferSize();
 

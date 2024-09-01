@@ -23,7 +23,7 @@ namespace vast
 		void CreateBuffer(const BufferDesc& desc, DX12Buffer& outBuf);
 		void CreateTexture(const TextureDesc& desc, DX12Texture& outTex);
 		void CreateGraphicsPipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline);
-		void CreateComputePipeline(const ShaderDesc& csDesc, DX12Pipeline& outPipeline);
+		void CreateComputePipeline(const ShaderDesc& desc, DX12Pipeline& outPipeline);
 
 		void ReloadShaders(DX12Pipeline& pipeline);
 

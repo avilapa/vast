@@ -90,7 +90,7 @@ void SamplesApp::Update(float dt)
 		m_SampleInitialized = true;
 	}
 
-	m_CurrentSample->Update();
+	m_CurrentSample->Update(dt);
 }
 
 void SamplesApp::Draw()

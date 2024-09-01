@@ -28,7 +28,7 @@ namespace vast
 		{
 			.size = 1024 * 1024,
 			.usage = ResourceUsage::UPLOAD,
-			.isRawAccess = true,
+			.bBindless = true,
 		};
 
 		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
@@ -77,12 +77,12 @@ namespace vast
 		m_TempFrameAllocators[frameId].Reset();
 	}
 
-	BufferHandle GPUResourceManager::CreateBuffer(const BufferDesc& desc, const void* initialData /*= nullptr*/, const size_t dataSize /*= 0*/)
+	BufferHandle GPUResourceManager::CreateBuffer(const BufferDesc& desc, const void* initialData /* = nullptr */, const size_t dataSize /* = 0 */, const std::string& name /* = "Unnamed Buffer" */)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		BufferHandle h = m_BufferHandles.AllocHandle();
-		gfx::CreateBuffer(h, desc);
+		gfx::CreateBuffer(h, desc, name);
 		if (initialData != nullptr)
 		{
 			gfx::UpdateBuffer(h, initialData, dataSize);
@@ -90,12 +90,12 @@ namespace vast
 		return h;
 	}
 
-	TextureHandle GPUResourceManager::CreateTexture(const TextureDesc& desc, const void* initialData /*= nullptr*/)
+	TextureHandle GPUResourceManager::CreateTexture(const TextureDesc& desc, const void* initialData /* = nullptr */, const std::string name /* = "Unnamed Texture" */)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		TextureHandle h = m_TextureHandles.AllocHandle();
-		gfx::CreateTexture(h, desc);
+		gfx::CreateTexture(h, desc, name);
 		if (initialData != nullptr)
 		{
 			gfx::UpdateTexture(h, initialData);
@@ -112,12 +112,12 @@ namespace vast
 		return h;
 	}
 
-	PipelineHandle GPUResourceManager::CreatePipeline(const ShaderDesc& csDesc)
+	PipelineHandle GPUResourceManager::CreatePipeline(const ShaderDesc& desc)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
 		PipelineHandle h = m_PipelineHandles.AllocHandle();
-		gfx::CreatePipeline(h, csDesc);
+		gfx::CreatePipeline(h, desc);
 		return h;
 	}
 
@@ -220,9 +220,8 @@ namespace vast
 			.depthOrArraySize = static_cast<uint32>((type == TexType::TEXTURE_3D) ? metaData.depth : metaData.arraySize),
 			.mipCount = static_cast<uint32>(metaData.mipLevels),
 			.viewFlags = TexViewFlags::SRV, // TODO: Provide option to add more flags when needed
-			.name = filePath,
 		};
-		return CreateTexture(texDesc, std::move(image.GetPixels()));
+		return CreateTexture(texDesc, std::move(image.GetPixels()), filePath);
 	}
 
 	void GPUResourceManager::UpdateBuffer(BufferHandle h, void* data, const size_t size)
@@ -319,18 +318,6 @@ namespace vast
 	{
 		VAST_ASSERT(h.IsValid());
 		return gfx::GetBufferData(h);
-	}
-
-	void GPUResourceManager::SetDebugName(BufferHandle h, const std::string& name)
-	{
-		VAST_ASSERT(h.IsValid());
-		gfx::SetDebugName(h, name);
-	}
-
-	void GPUResourceManager::SetDebugName(TextureHandle h, const std::string& name)
-	{
-		VAST_ASSERT(h.IsValid());
-		gfx::SetDebugName(h, name);
 	}
 
 	TexFormat GPUResourceManager::GetTextureFormat(TextureHandle h)

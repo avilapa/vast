@@ -14,7 +14,7 @@ namespace vast::gfx
 	uint32 GetFrameId();
 
 	void BeginRenderPassToBackBuffer(PipelineHandle h, LoadOp loadOp = LoadOp::LOAD, StoreOp storeOp = StoreOp::STORE);
-	void BeginRenderPass(PipelineHandle h, RenderPassTargets targets);
+	void BeginRenderPass(PipelineHandle h, RenderPassDesc desc);
 	void EndRenderPass();
 
 	void BindPipelineForCompute(PipelineHandle h);
@@ -50,10 +50,10 @@ namespace vast::gfx
 
 	// - GPU Resources ------------------------------------------------------------------------- //
 
-	void CreateBuffer(BufferHandle h, const BufferDesc& desc);
-	void CreateTexture(TextureHandle h, const TextureDesc& desc);
+	void CreateBuffer(BufferHandle h, const BufferDesc& desc, const std::string& name = "");
+	void CreateTexture(TextureHandle h, const TextureDesc& desc, const std::string& name = "");
 	void CreatePipeline(PipelineHandle h, const PipelineDesc& desc);
-	void CreatePipeline(PipelineHandle h, const ShaderDesc& csDesc);
+	void CreatePipeline(PipelineHandle h, const ShaderDesc& desc);
 
 	void DestroyBuffer(BufferHandle h);
 	void DestroyTexture(TextureHandle h);
@@ -64,9 +64,6 @@ namespace vast::gfx
 
 	void ReloadShaders(PipelineHandle h);
 	ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName);
-
-	void SetDebugName(BufferHandle h, const std::string& name);
-	void SetDebugName(TextureHandle h, const std::string& name);
 
 	const uint8* GetBufferData(BufferHandle h);
 

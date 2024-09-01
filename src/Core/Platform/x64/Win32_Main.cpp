@@ -75,7 +75,7 @@ int Win32_Main(int argc, char** argv, IApp* app)
 				VAST_PROFILE_TRACE_SCOPE("Update");
 				VAST_PROFILE_CPU_SCOPE("Update");
 				app->m_Window->Update();
-				app->Update(0.0f);
+				app->Update(1.0f); // TODO: Implement proper delta time
 			}
 			{
 				VAST_PROFILE_TRACE_SCOPE("Draw");
