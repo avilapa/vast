@@ -237,7 +237,7 @@ namespace vast::gfx
 		VAST_ASSERT(desc.ds.h.IsValid() == (pipeline.desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
 		if (desc.ds.h.IsValid())
 		{
-			auto ds = s_Textures->LookupResource(desc.ds.h);
+			DX12Texture& ds = s_Textures->LookupResource(desc.ds.h);
 
 			s_GraphicsCommandList->AddBarrier(ds, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 			if (desc.ds.nextUsage != ResourceState::NONE)

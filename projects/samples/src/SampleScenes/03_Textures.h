@@ -11,8 +11,14 @@ using namespace vast;
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Textures
  * --------
+ * This sample renders a textured cube and sphere rotating inside a skybox and reflecting the
+ * environment. The textures are loaded from disk. The cube uses point sampling while the sphere
+ * does bilinear filtering.
  * 
- * Topics:
+ * All code for this sample is contained within this file plus the shader files 'Fullscreen.hlsl'
+ * and '03_TexturedMesh.hlsl'.
+ * 
+ * Topics: texture loading, samplers, perspective camera, skybox
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 class Textures final : public ISample
@@ -63,18 +69,16 @@ public:
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
 		// Create full-screen pass PSO
-		m_FullscreenPso = rm.CreatePipeline(PipelineDesc{
+		m_FullscreenPso = rm.CreatePipeline(PipelineDesc
+		{
 			.vs = AllocVertexShaderDesc("Fullscreen.hlsl"),
 			.ps = AllocPixelShaderDesc("Fullscreen.hlsl"),
 			.depthStencilState = DepthStencilState::Preset::kDisabled,
 			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
-			});
+		});
 
 		// Create full-screen color and depth intermediate buffers to render our meshes to.
-		uint2 backBufferSize = ctx.GetBackBufferSize();
-		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
-		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, backBufferSize, clearColor));
-		m_DepthRT = rm.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, backBufferSize));
+		CreateIntermediateRenderTargets(ctx.GetBackBufferSize());
 
 		// Create perspective camera
 		float3 cameraPos = float3(0.0f, 1.0f, -5.0f);
@@ -89,7 +93,7 @@ public:
 		m_FrameCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
 		m_FrameCB.cameraPos = s_float3(cameraPos.x, cameraPos.y, cameraPos.z);
 		m_FrameCB.skyboxTexIdx = rm.GetBindlessSRV(m_EnvironmentCubeTex);
-		m_FrameCbvBuf = rm.CreateBuffer(AllocCbvBufferDesc(sizeof(FrameCB)), &m_FrameCB, sizeof(FrameCB));
+		m_FrameCbvBuf = rm.CreateBuffer(AllocCbvBufferDesc(sizeof(FrameCB)), &m_FrameCB, sizeof(FrameCB), "Frame Constant Buffer");
 
 		PipelineDesc pipelineDesc =
 		{
@@ -111,7 +115,7 @@ public:
 			auto vtxBufDesc = AllocVertexBufferDesc(sizeof(Cube::s_Vertices_PosNormalUv), sizeof(Cube::s_Vertices_PosNormalUv[0]));
 			auto cbvBufDesc = AllocCbvBufferDesc(sizeof(Drawable::CB));
 
-			m_TexturedDrawables[0].vtxBuf = rm.CreateBuffer(vtxBufDesc, &Cube::s_Vertices_PosNormalUv, sizeof(Cube::s_Vertices_PosNormalUv));
+			m_TexturedDrawables[0].vtxBuf = rm.CreateBuffer(vtxBufDesc, &Cube::s_Vertices_PosNormalUv, sizeof(Cube::s_Vertices_PosNormalUv), "Cube Vertex Buffer");
 			// Note: This time, we render the cube without an index buffer.
 			m_TexturedDrawables[0].numIndices = static_cast<uint32>(Cube::s_Vertices_PosNormalUv.size());
 
@@ -122,7 +126,7 @@ public:
 			m_TexturedDrawables[0].cb.colorTexIdx = rm.GetBindlessSRV(m_TexturedDrawables[0].colorTex);
 			m_TexturedDrawables[0].cb.colorSamplerIdx = IDX(SamplerState::POINT_CLAMP);
 
-			m_TexturedDrawables[0].cbvBuf = rm.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[0].cb, sizeof(Drawable::CB));
+			m_TexturedDrawables[0].cbvBuf = rm.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[0].cb, sizeof(Drawable::CB), "Cube Constant Buffer");
 		}
 
 		{
@@ -137,8 +141,8 @@ public:
 			auto idxBufDesc = AllocIndexBufferDesc(numIndices);
 			auto cbvBufDesc = AllocCbvBufferDesc(sizeof(Drawable::CB));
 
-			m_TexturedDrawables[1].vtxBuf = rm.CreateBuffer(vtxBufDesc, sphereVertexData.data(), sphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv));
-			m_TexturedDrawables[1].idxBuf = rm.CreateBuffer(idxBufDesc, sphereIndexData.data(), sphereIndexData.size() * sizeof(uint16));
+			m_TexturedDrawables[1].vtxBuf = rm.CreateBuffer(vtxBufDesc, sphereVertexData.data(), sphereVertexData.size() * sizeof(Vtx3fPos3fNormal2fUv), "Sphere Vertex Buffer");
+			m_TexturedDrawables[1].idxBuf = rm.CreateBuffer(idxBufDesc, sphereIndexData.data(), sphereIndexData.size() * sizeof(uint16), "Sphere Index Buffer");
 			m_TexturedDrawables[1].numIndices = numIndices;
 
 			m_TexturedDrawables[1].colorTex = rm.LoadTextureFromFile("2k_earth_daymap.jpg");
@@ -148,7 +152,7 @@ public:
 			m_TexturedDrawables[1].cb.colorTexIdx = rm.GetBindlessSRV(m_TexturedDrawables[1].colorTex);
 			m_TexturedDrawables[1].cb.colorSamplerIdx = IDX(SamplerState::LINEAR_CLAMP);
 
-			m_TexturedDrawables[1].cbvBuf = rm.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[1].cb, sizeof(Drawable::CB));
+			m_TexturedDrawables[1].cbvBuf = rm.CreateBuffer(cbvBufDesc, &m_TexturedDrawables[1].cb, sizeof(Drawable::CB), "Sphere Constant Buffer");
 		}
 	}
 
@@ -158,9 +162,9 @@ public:
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
 		rm.DestroyPipeline(m_FullscreenPso);
-		rm.DestroyTexture(m_ColorRT);
-		rm.DestroyTexture(m_DepthRT);
 		rm.DestroyTexture(m_EnvironmentCubeTex);
+
+		DestroyIntermediateRenderTargets();
 
 		rm.DestroyBuffer(m_FrameCbvBuf);
 		rm.DestroyPipeline(m_TexturedMeshPso);
@@ -193,12 +197,17 @@ public:
 			rm.UpdateBuffer(i.cbvBuf, &i.cb, sizeof(Drawable::CB));
 		}
 
+		VAST_PROFILE_GPU_BEGIN("Forward Render Pass", ctx);
+
 		// Transition and clear our intermediate color and depth targets and set the pipeline state
 		// to render the cube.
-		// TODO: NextUsage causes a crash when resizing the window multiple times.
-		RenderTargetDesc forwardRtDesc = { .h = m_ColorRT, .loadOp = LoadOp::CLEAR/*, .nextUsage = ResourceState::RENDER_TARGET*/ };
-		RenderTargetDesc forwardDsDesc = { .h = m_DepthRT, .loadOp = LoadOp::CLEAR/*, .nextUsage = ResourceState::DEPTH_WRITE */};
-		ctx.BeginRenderPass(m_TexturedMeshPso, RenderPassDesc{.rt = { forwardRtDesc }, .ds = forwardDsDesc });
+		const RenderPassDesc forwardPassDesc =
+		{
+			.rt = { RenderTargetDesc{.h = m_ColorRT, .loadOp = LoadOp::CLEAR, .nextUsage = ResourceState::RENDER_TARGET } },
+			.ds = {.h = m_DepthRT, .loadOp = LoadOp::CLEAR, .nextUsage = ResourceState::DEPTH_WRITE }
+		};
+
+		ctx.BeginRenderPass(m_TexturedMeshPso, forwardPassDesc);
 		{
 			ctx.BindConstantBuffer(m_FrameCbvProxy, m_FrameCbvBuf);
 
@@ -225,18 +234,27 @@ public:
 		}
 		ctx.EndRenderPass();
 
+		VAST_PROFILE_GPU_END();
+		VAST_PROFILE_GPU_BEGIN("Skybox Render Pass", ctx);
+
 		RenderTargetDesc skyboxRtDesc = { .h = m_ColorRT };
 		RenderTargetDesc skyboxDsDesc = { .h = m_DepthRT, .storeOp = StoreOp::DISCARD };
+
 		m_Skybox->Render(m_EnvironmentCubeTex, skyboxRtDesc, skyboxDsDesc, *m_Camera);
 
+		VAST_PROFILE_GPU_END();
+		VAST_PROFILE_GPU_BEGIN("BackBuffer Pass", ctx);
+
 		// Render our color target to the back buffer and gamma correct it.
-		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD, StoreOp::STORE);
+		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD);
 		{
 			uint32 srvIndex = rm.GetBindlessSRV(m_ColorRT);
 			ctx.SetPushConstants(&srvIndex, sizeof(uint32));
 			ctx.DrawFullscreenTriangle();
 		}
 		ctx.EndRenderPass();
+
+		VAST_PROFILE_GPU_END();
 	}
 
 	void OnWindowResizeEvent(const WindowResizeEvent& event) override
@@ -246,11 +264,8 @@ public:
 
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
-		rm.DestroyTexture(m_ColorRT);
-		rm.DestroyTexture(m_DepthRT);
-		float4 clearColor = float4(0.6f, 0.2f, 0.3f, 1.0f);
-		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, event.m_WindowSize, clearColor));
-		m_DepthRT = rm.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, event.m_WindowSize));
+		DestroyIntermediateRenderTargets();
+		CreateIntermediateRenderTargets(event.m_WindowSize);
 
 		m_Camera->SetAspectRatio(ctx.GetBackBufferAspectRatio());
 		m_FrameCB.viewProjMatrix = m_Camera->GetViewProjectionMatrix();
@@ -263,6 +278,23 @@ public:
 
 		rm.ReloadShaders(m_FullscreenPso);
 		rm.ReloadShaders(m_TexturedMeshPso);
+	}
+
+	void CreateIntermediateRenderTargets(uint2 dimensions)
+	{
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		m_ColorRT = rm.CreateTexture(AllocRenderTargetDesc(TexFormat::RGBA8_UNORM, dimensions), nullptr, "Color RT");
+		m_DepthRT = rm.CreateTexture(AllocDepthStencilTargetDesc(TexFormat::D32_FLOAT, dimensions), nullptr, "Depth RT");
+// 		m_ColorRTIdx = rm.GetBindlessSRV(m_ColorRT);
+	}
+
+	void DestroyIntermediateRenderTargets()
+	{
+		GPUResourceManager& rm = ctx.GetGPUResourceManager();
+
+		rm.DestroyTexture(m_ColorRT);
+		rm.DestroyTexture(m_DepthRT);
 	}
 
 };

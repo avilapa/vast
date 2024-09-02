@@ -143,7 +143,7 @@ public:
 
 		// Render our color target to the back buffer and gamma correct it. Because we render to all pixels
 		// every frame, we don't need to clear the back buffer.
-		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::LOAD, StoreOp::STORE);
+		ctx.BeginRenderPassToBackBuffer(m_FullscreenPso, LoadOp::DISCARD);
 		{
 			ctx.SetPushConstants(&m_ColorRTIdx, sizeof(uint32));
 			ctx.DrawFullscreenTriangle();
