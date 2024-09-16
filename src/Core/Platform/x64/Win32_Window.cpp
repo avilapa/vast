@@ -72,7 +72,8 @@ namespace vast
 		g_WindowSize.Get(m_WindowSize);
 
 		HINSTANCE hInst = GetModuleHandle(nullptr);
-		const wchar_t* windowClassName = L"vastWindowClass";
+		const wchar_t* windowClassName = L"vast";
+
 		{
 			VAST_PROFILE_TRACE_SCOPE("RegisterClass");
 			WNDCLASSEXW windowClass;
@@ -86,7 +87,7 @@ namespace vast
 			windowClass.hCursor = ::LoadCursor(NULL, IDC_ARROW);
 			windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 			windowClass.lpszMenuName = NULL;
-			windowClass.lpszClassName = L"vastWindowClass";
+			windowClass.lpszClassName = windowClassName;
 			windowClass.hIconSm = ::LoadIcon(hInst, NULL);
 
 			static ATOM atom = ::RegisterClassExW(&windowClass);
@@ -101,19 +102,13 @@ namespace vast
 			uint2 screenCenterPos = hlslpp::max(uint2(0), uint2((screenSize.x - windowSize.x) / 2, (screenSize.y - windowSize.y) / 2));
 
 			m_Handle = ::CreateWindowExW(NULL, windowClassName, windowTitle.c_str(), WS_OVERLAPPEDWINDOW,
-				screenCenterPos.x, screenCenterPos.y, windowSize.x, windowSize.y, NULL, NULL, hInst, nullptr);
+				screenCenterPos.x, screenCenterPos.y, windowSize.x, windowSize.y, NULL, NULL, hInst, NULL);
 			VAST_ASSERTF(m_Handle, "Failed to create window.");
 
 			// Pass a pointer to the Window to the WndProc function. This can also be done via WM_CREATE.
 			SetWindowLongPtr(m_Handle, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
 		}
-		{
-			VAST_PROFILE_TRACE_SCOPE("ShowWindow");
-			ShowWindow(m_Handle, SW_SHOW);
-		}
-		SetForegroundWindow(m_Handle);
-		SetFocus(m_Handle);
-		ShowCursor(true);
+
 		VAST_LOG_TRACE(L"[window] [win32] New window '{}' created successfully with resolution {}x{}.", windowTitle.c_str(), m_WindowSize.x, m_WindowSize.y);
 	}
 
@@ -123,6 +118,15 @@ namespace vast
 
 		DestroyWindow(m_Handle);
 		m_Handle = nullptr;
+	}
+
+	void WindowImpl_Win32::Show()
+	{
+		VAST_PROFILE_TRACE_SCOPE("ShowWindow");
+		ShowWindow(m_Handle, SW_SHOW);
+		SetForegroundWindow(m_Handle);
+		// TODO: Do we want to SetFocus(m_Handle); ?
+		ShowCursor(true);
 	}
 
 	void WindowImpl_Win32::Update()
@@ -155,16 +159,6 @@ namespace vast
 		::SetWindowPos(m_Handle, 0, 0, 0, windowSize.x, windowSize.y, SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
 		
 		OnWindowResize();
-	}
-
-	uint2 WindowImpl_Win32::GetSize() const
-	{
-		return m_WindowSize;
-	}
-
-	float WindowImpl_Win32::GetAspectRatio() const
-	{
-		return float(m_WindowSize.x) / float(m_WindowSize.y);
 	}
 
 	void WindowImpl_Win32::SetName(const std::string& name)

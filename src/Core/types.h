@@ -17,6 +17,10 @@
 
 namespace vast
 {
+	// - Engine types ----------------------------------------------------------------------------- //
+
+	using WindowHandle = void*;
+
 	// - Shader shared types ---------------------------------------------------------------------- //
 
 	// Note: Shader shared types (s_) are needed when using hlslpp types due to these being aligned to

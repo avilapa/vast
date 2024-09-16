@@ -8,8 +8,8 @@
 namespace vast
 {
 
-	Skybox::Skybox(GraphicsContext& ctx_, TexFormat rtFormat, TexFormat dsFormat, bool bUseReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
-		: ctx(ctx_)
+	Skybox::Skybox(GraphicsContext& ctx, TexFormat rtFormat, TexFormat dsFormat, bool bUseReverseZ /* = VAST_GFX_DEPTH_DEFAULT_USE_REVERSE_Z */)
+		: ctx(ctx)
 		, m_bUsingReverseZ(bUseReverseZ)
 	{
 		auto dsState = DepthStencilState::Preset::kEnabledReadOnly;

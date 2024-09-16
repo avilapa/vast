@@ -33,15 +33,15 @@ bool SamplesApp::Init()
 	m_CurrentSampleIdx = 0;
 	m_SampleInitialized = false;
 
-	m_Window = Window::Create();
+ 	m_Window = Window::Create();
 
 	GraphicsParams params;
 	params.swapChainSize = GetWindow().GetSize();
 	params.swapChainFormat = TexFormat::RGBA8_UNORM;
 	params.backBufferFormat = TexFormat::RGBA8_UNORM;
-	m_GraphicsContext = MakePtr<GraphicsContext>(params);
+	m_GraphicsContext = MakePtr<GraphicsContext>(GetWindow().GetNativeHandle(), params);
 
-	m_ImguiRenderer = MakePtr<ImguiRenderer>(*m_GraphicsContext);
+	m_ImguiRenderer = MakePtr<ImguiRenderer>(GetWindow().GetNativeHandle(), *m_GraphicsContext);
 
 	return true;
 }

@@ -64,7 +64,7 @@ private:
 	TextureHandle m_EnvironmentCubeTex;
 
 public:
-	Textures(GraphicsContext& ctx_) : ISample(ctx_)
+	Textures(GraphicsContext& ctx) : ISample(ctx)
 	{	
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 

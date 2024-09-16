@@ -131,7 +131,7 @@ namespace vast
 		}
 
 		m_SamplerRenderPassDescriptorHeap = MakePtr<DX12RenderPassDescriptorHeap>(m_Device, D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, 0, IDX(SamplerState::COUNT));
-		
+	
 		VAST_LOG_TRACE("[gfx] [dx12] Creating shader manager.");
 		m_ShaderManager = MakePtr<DX12ShaderManager>();
 
@@ -242,6 +242,15 @@ namespace vast
 #endif
 	}
 
+	void DX12Device::CopyDescriptorToReservedTable(DX12Descriptor srvHandle, uint32 heapIndex)
+	{
+		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
+		{
+			DX12Descriptor dstDesc = m_CBVSRVUAVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
+			m_Device->CopyDescriptorsSimple(1, dstDesc.cpuHandle, srvHandle.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		}
+	}
+
 	void DX12Device::CreateSamplers()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
@@ -310,7 +319,10 @@ namespace vast
 
 	void DX12Device::CreateBuffer(const BufferDesc& desc, DX12Buffer& outBuf)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
+		// TODO: Assert wrongful call
+
+		outBuf.usage = desc.usage;
+		outBuf.stride = desc.stride;
 
 		D3D12MA::ALLOCATION_DESC allocDesc = {};
 		switch (desc.usage)
@@ -401,9 +413,6 @@ namespace vast
 			// TODO: Can we do better?
 			outBuf.isReady = true;
 		}
-
-		outBuf.usage = desc.usage;
-		outBuf.stride = desc.stride;
 	}
 
 	static uint32 MipLevelCount(uint32 width, uint32 height, uint32 depth = 1)
@@ -425,7 +434,6 @@ namespace vast
 
 	void DX12Device::CreateTexture(const TextureDesc& desc, DX12Texture& outTex)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_ASSERTF(desc.width > 0 && desc.height > 0 && desc.depthOrArraySize > 0, "Invalid texture size.");
 		VAST_ASSERTF(desc.mipCount <= MipLevelCount(desc.width, desc.height, desc.depthOrArraySize), "Invalid mip count.");
 
@@ -495,7 +503,8 @@ namespace vast
 		D3D12MA::ALLOCATION_DESC allocationDesc = {};
 		allocationDesc.HeapType = D3D12_HEAP_TYPE_DEFAULT;
 		// TODO: For texture readback we need to treat the resource as a Buffer... or just use a Buffer.
-		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState, (!hasRTV && !hasDSV) ? nullptr : &outTex.clearValue, &outTex.allocation, IID_PPV_ARGS(&outTex.resource));
+		m_Allocator->CreateResource(&allocationDesc, &rscDesc, rscState,
+			(!hasRTV && !hasDSV) ? nullptr : &outTex.clearValue, &outTex.allocation, IID_PPV_ARGS(&outTex.resource));
 
 		// TODO: Should TextureDesc be more explicit in whether a texture is a cubemap or not?
 		bool bIsCubemap = (desc.type == TexType::TEXTURE_2D) && (desc.depthOrArraySize == 6);
@@ -627,8 +636,6 @@ namespace vast
 
 	void DX12Device::CreateGraphicsPipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psDesc = {};
 
 		if (desc.vs.type != ShaderType::UNKNOWN)
@@ -735,7 +742,7 @@ namespace vast
 		psDesc.NodeMask = 0;
 
 		{
-			VAST_PROFILE_TRACE_SCOPE("CreateGraphicsPipelineState (DX12)$");
+			VAST_PROFILE_TRACE_SCOPE("CreateGraphicsPipelineState (DX12)");
 			DX12Check(m_Device->CreateGraphicsPipelineState(&psDesc, IID_PPV_ARGS(&outPipeline.pipelineState)));
 		}
 		outPipeline.desc = psDesc;
@@ -743,8 +750,6 @@ namespace vast
 
 	void DX12Device::CreateComputePipeline(const ShaderDesc& desc, DX12Pipeline& outPipeline)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
 		D3D12_COMPUTE_PIPELINE_STATE_DESC psDesc = {};
 
 		VAST_ASSERT(desc.type == ShaderType::COMPUTE);
@@ -760,15 +765,13 @@ namespace vast
 		psDesc.NodeMask = 0;
 
 		{
-			VAST_PROFILE_TRACE_SCOPE("CreateComputePipelineState (DX12)$");
+			VAST_PROFILE_TRACE_SCOPE("CreateComputePipelineState (DX12)");
 			DX12Check(m_Device->CreateComputePipelineState(&psDesc, IID_PPV_ARGS(&outPipeline.pipelineState)));
 		}
 	}
 
 	void DX12Device::ReloadShaders(DX12Pipeline& pipeline)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
 		if (pipeline.IsCompute())
 		{
 			VAST_ASSERT(pipeline.cs != nullptr);
@@ -817,8 +820,6 @@ namespace vast
 
 	void DX12Device::DestroyBuffer(DX12Buffer& buf)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
 		if (buf.cbv.IsValid())
 		{
 			m_CBVSRVUAVStagingDescriptorHeap->FreeDescriptor(buf.cbv);
@@ -846,8 +847,6 @@ namespace vast
 
 	void DX12Device::DestroyTexture(DX12Texture& tex)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
 		if (tex.rtv.IsValid())
 		{
 			m_RTVStagingDescriptorHeap->FreeDescriptor(tex.rtv);
@@ -876,11 +875,9 @@ namespace vast
 		DX12SafeRelease(tex.resource);
 		DX12SafeRelease(tex.allocation);
 	}
-	
+
 	void DX12Device::DestroyPipeline(DX12Pipeline& pipeline)
 	{
-		VAST_PROFILE_TRACE_FUNCTION;
-
 		pipeline.vs = nullptr;
 		pipeline.ps = nullptr;
 		pipeline.cs = nullptr;
@@ -893,24 +890,41 @@ namespace vast
 		DX12SafeRelease(pipeline.pipelineState);
 	}
 
-	ID3D12Device5* DX12Device::GetDevice() const
+	IDXGISwapChain1* DX12Device::CreateSwapChain(ID3D12CommandQueue* graphicsQueue, WindowHandle windowHandle, uint32 bufferCount, uint2 size, DXGI_FORMAT format)
 	{
-		return m_Device;
-	}
+		VAST_ASSERTF(size.x != 0 && size.y != 0, "Failed to create swapchain. Invalid swapchain size.");
 
-	IDXGIFactory7* DX12Device::GetDXGIFactory() const
-	{
-		return m_DXGIFactory;
-	}
+		auto CheckTearingSupport = [this]() -> bool
+		{
+			BOOL allowTearing = FALSE;
+			if (FAILED(m_DXGIFactory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing))))
+			{
+				allowTearing = FALSE;
+			}
+			return allowTearing == TRUE;
+		};
 
-	DX12RenderPassDescriptorHeap& DX12Device::GetSRVDescriptorHeap(uint32 frameId) const
-	{
-		return *m_CBVSRVUAVRenderPassDescriptorHeaps[frameId];
-	}
+		DXGI_SWAP_CHAIN_DESC1 desc = {};
+		ZeroMemory(&desc, sizeof(desc));
+		desc.Width = size.x;
+		desc.Height = size.y;
+		desc.Format = format;
+		desc.Stereo = false;
+		desc.SampleDesc = { 1, 0 };
+		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		desc.BufferCount = bufferCount;
+		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		desc.Flags = CheckTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+		desc.Scaling = DXGI_SCALING_NONE;
+		desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
 
-	DX12RenderPassDescriptorHeap& DX12Device::GetSamplerDescriptorHeap() const
-	{
-		return *m_SamplerRenderPassDescriptorHeap;
+#ifdef VAST_PLATFORM_WINDOWS
+		IDXGISwapChain1* swapChain = nullptr;
+		DX12Check(m_DXGIFactory->CreateSwapChainForHwnd(graphicsQueue, static_cast<HWND>(windowHandle), &desc, nullptr, nullptr, &swapChain));
+#else
+		VAST_ASSERTF(0, "Invalid Platform: Unknown Platform");
+#endif
+		return swapChain;
 	}
 
 	DX12Descriptor DX12Device::CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format)
@@ -928,17 +942,4 @@ namespace vast
 		return rtv;
 	}
 
-	void DX12Device::CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType)
-	{
-		m_Device->CopyDescriptorsSimple(numDesc, destDescRangeStart, srcDescRangeStart, descType);
-	}
-
-	void DX12Device::CopyDescriptorToReservedTable(DX12Descriptor srcDesc, uint32 heapIndex)
-	{
-		for (uint32 i = 0; i < NUM_FRAMES_IN_FLIGHT; ++i)
-		{
-			DX12Descriptor dstDesc = m_CBVSRVUAVRenderPassDescriptorHeaps[i]->GetReservedDescriptor(heapIndex);
-			CopyDescriptorsSimple(1, dstDesc.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		}
-	}
 }

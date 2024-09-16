@@ -20,6 +20,8 @@ namespace vast
 		DX12Device();
 		~DX12Device();
 
+		ID3D12Device5* GetDevice() const { return m_Device; };
+
 		void CreateBuffer(const BufferDesc& desc, DX12Buffer& outBuf);
 		void CreateTexture(const TextureDesc& desc, DX12Texture& outTex);
 		void CreateGraphicsPipeline(const PipelineDesc& desc, DX12Pipeline& outPipeline);
@@ -31,15 +33,11 @@ namespace vast
 		void DestroyTexture(DX12Texture& tex);
 		void DestroyPipeline(DX12Pipeline& pipeline);
 
-		ID3D12Device5* GetDevice() const;
-		IDXGIFactory7* GetDXGIFactory() const;
-		DX12RenderPassDescriptorHeap& GetSRVDescriptorHeap(uint32 frameId) const;
-		DX12RenderPassDescriptorHeap& GetSamplerDescriptorHeap() const;
-	
-		// For internal use of the DX12SwapChain
+		IDXGISwapChain1* CreateSwapChain(ID3D12CommandQueue* graphicsQueue, WindowHandle windowHandle, uint32 bufferCount, uint2 size, DXGI_FORMAT format);
 		DX12Descriptor CreateBackBufferRTV(ID3D12Resource* backBuffer, DXGI_FORMAT format);
 
-		void CopyDescriptorsSimple(uint32 numDesc, D3D12_CPU_DESCRIPTOR_HANDLE destDescRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE srcDescRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE descType);
+		DX12RenderPassDescriptorHeap& GetSRVDescriptorHeap(uint32 frameId) const { return *m_CBVSRVUAVRenderPassDescriptorHeaps[frameId]; }
+		DX12RenderPassDescriptorHeap& GetSamplerDescriptorHeap() const { return *m_SamplerRenderPassDescriptorHeap; }
 
 	private:
 		IDXGIAdapter4* SelectMainAdapter(GPUAdapterPreferenceCriteria pref);

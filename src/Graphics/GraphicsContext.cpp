@@ -20,7 +20,7 @@ namespace vast
 		}
 	}
 
-	GraphicsContext::GraphicsContext(const GraphicsParams& params /* = GraphicsParams() */)
+	GraphicsContext::GraphicsContext(WindowHandle windowHandle, const GraphicsParams& params /* = GraphicsParams() */)
 		: m_GPUResourceManager(nullptr)
 		, m_GpuProfiler(nullptr)
 		, m_bHasFrameBegun(false)
@@ -30,7 +30,7 @@ namespace vast
 		VAST_PROFILE_TRACE_FUNCTION;
 		VAST_LOG_INFO("[gfx] Initializing GraphicsContext...");
 
-		gfx::Init(params);
+		gfx::Init(windowHandle, params);
 
 		m_GPUResourceManager = MakePtr<GPUResourceManager>();
 		m_GpuProfiler = MakePtr<GPUProfiler>(*m_GPUResourceManager);

@@ -13,9 +13,8 @@ namespace vast
 	class DX12SwapChain
 	{
 	public:
-		// TODO: HWND is platform specific!
 		DX12SwapChain(const uint2& size, const TexFormat& format, const TexFormat& backBufferFormat,
-			DX12Device& device, ID3D12CommandQueue& graphicsQueue, HWND windowHandle = ::GetActiveWindow());
+			DX12Device& device, ID3D12CommandQueue& graphicsQueue, WindowHandle windowHandle);
 		~DX12SwapChain();
 
 		DX12Texture& GetCurrentBackBuffer() const;
@@ -31,8 +30,6 @@ namespace vast
 	private:
 		void CreateBackBuffers();
 		void DestroyBackBuffers();
-
-		bool CheckTearingSupport();
 
 		DX12Device& m_Device;
 

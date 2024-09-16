@@ -11,8 +11,7 @@ namespace vast
 	class ImguiRenderer
 	{
 	public:
-		// TODO: HWND is platform specific!
-		ImguiRenderer(GraphicsContext& ctx, HWND windowHandle = ::GetActiveWindow());
+		ImguiRenderer(WindowHandle windowHandle, GraphicsContext& ctx);
 		~ImguiRenderer();
 
 		void BeginCommandRecording();
@@ -21,6 +20,7 @@ namespace vast
 
 	private:
 		GraphicsContext& ctx;
+
 		PipelineHandle m_Pipeline;
 		ShaderResourceProxy m_CbvProxy;
 		TextureHandle m_FontTex;

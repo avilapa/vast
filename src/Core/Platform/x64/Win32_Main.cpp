@@ -9,8 +9,8 @@
 
 using namespace vast;
 
-vast::Arg g_ProjectDir("ProjectDir", "");
-vast::Arg g_OutputDir("OutputDir", "");
+Arg g_ProjectDir("ProjectDir", "");
+Arg g_OutputDir("OutputDir", "");
 
 int Win32_Main(int argc, char** argv, IApp* app)
 {
@@ -19,9 +19,9 @@ int Win32_Main(int argc, char** argv, IApp* app)
 	// Initialize debug output logging first.
 	VAST_LOGGING_ONLY(Log::Init());
 
+	// Process input arguments next, since most systems depend on it.
 	if (argc > 1)
 	{
-		// Process input arguments, since most systems depend on it.
 		std::string argsFileName = argv[1];
 		if (!Arg::ParseArgsFile(argsFileName))
 		{
@@ -36,15 +36,15 @@ int Win32_Main(int argc, char** argv, IApp* app)
 
 	std::string outputDir;
 	g_OutputDir.Get(outputDir);
+
 	// Initialize tracing as soon as possible so we can track systems init timings.
 	VAST_TRACING_ONLY(Trace::Init(outputDir + "trace.json"));
+	// Start logging to file.
+	VAST_LOGGING_ONLY(Log::CreateFileSink(outputDir + "vast.log"));
 
 	// - Init ------------------------------------------------------------------------------------- //
 	{
 		VAST_PROFILE_TRACE_SCOPE("Main Init");
-
-		// Start logging to file.
-		VAST_LOGGING_ONLY(Log::CreateFileSink(outputDir + "vast.log"));
 
 		if (!app->Init()
 			|| !VAST_VERIFYF(app->m_Window, "App must initialize 'm_Window' via vast::Window::Create().")
@@ -56,6 +56,8 @@ int Win32_Main(int argc, char** argv, IApp* app)
 
 			return EXIT_FAILURE;
 		}
+
+		app->m_Window->Show();
 	}
 
 	// - Loop ------------------------------------------------------------------------------------- //

@@ -14,8 +14,8 @@
 namespace vast
 {
 
-	ImguiRenderer::ImguiRenderer(GraphicsContext& ctx_, HWND windowHandle /*= ::GetActiveWindow()*/)
-		: ctx(ctx_)
+	ImguiRenderer::ImguiRenderer(WindowHandle windowHandle, GraphicsContext& ctx)
+		: ctx(ctx)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 

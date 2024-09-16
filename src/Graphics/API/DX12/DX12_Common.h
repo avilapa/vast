@@ -164,10 +164,7 @@ namespace vast
 
 	// - Helpers ---------------------------------------------------------------------------------- //
 
-	inline void DX12Check(HRESULT hr)
-	{
-		VAST_ASSERT(SUCCEEDED(hr));
-	}
+#define DX12Check(hr) VAST_ASSERT(SUCCEEDED(hr))
 
 	template <typename T>
 	inline void DX12SafeRelease(T& p)

@@ -17,14 +17,17 @@ namespace vast
 		WindowImpl_Win32();
 		virtual ~WindowImpl_Win32();
 
+		void Show() override;
+
 		void Update() override;
 
-		void SetSize(uint2 newSize) override;
-		uint2 GetSize() const override;
-		float GetAspectRatio() const override;
-
-		void SetName(const std::string& name) override;
+		WindowHandle GetNativeHandle() const override { return static_cast<WindowHandle>(m_Handle); }
+		float GetAspectRatio() const override { return float(m_WindowSize.x) / float(m_WindowSize.y); }
+		uint2 GetSize() const override { return m_WindowSize; }
 		std::string GetName() const override;
+
+		void SetSize(uint2 newSize) override;
+		void SetName(const std::string& name) override;
 
 	private:
 		static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM lparam);

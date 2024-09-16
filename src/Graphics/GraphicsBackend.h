@@ -6,7 +6,7 @@ namespace vast::gfx
 {
 	// - Graphics Context ---------------------------------------------------------------------- //
 
-	void Init(const GraphicsParams& params);
+	void Init(WindowHandle windowHandle, const GraphicsParams& params);
 	void Shutdown();
 
 	void BeginFrame();

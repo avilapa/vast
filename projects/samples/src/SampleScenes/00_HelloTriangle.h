@@ -40,7 +40,7 @@ private:
 	bool m_bUpdateTriangle = false;
 
 public:
-	HelloTriangle(GraphicsContext& ctx_) : ISample(ctx_)
+	HelloTriangle(GraphicsContext& ctx) : ISample(ctx)
 	{
 		// The GPU Resource Manager is the interface used to create and manage GPU resources such as
 		// buffers, textures and pipelines.

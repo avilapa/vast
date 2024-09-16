@@ -27,7 +27,7 @@ namespace vast
 	class GraphicsContext
 	{
 	public:
-		GraphicsContext(const GraphicsParams& params = GraphicsParams());
+		GraphicsContext(WindowHandle windowHandle, const GraphicsParams& params = GraphicsParams());
 		~GraphicsContext();
 
 		void BeginFrame();

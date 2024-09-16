@@ -44,7 +44,7 @@ namespace vast::gfx
 	static Ptr<ResourceHandler<DX12Texture, Texture, NUM_TEXTURES>> s_Textures = nullptr;
 	static Ptr<ResourceHandler<DX12Pipeline, Pipeline, NUM_PIPELINES>> s_Pipelines = nullptr;
 
-	void Init(const GraphicsParams& params)
+	void Init(WindowHandle windowHandle, const GraphicsParams& params)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
@@ -61,7 +61,7 @@ namespace vast::gfx
  		s_CommandQueues[IDX(QueueType::UPLOAD)] = MakePtr<DX12CommandQueue>(s_Device->GetDevice(), D3D12_COMMAND_LIST_TYPE_COPY);
 
 		m_SwapChain = MakePtr<DX12SwapChain>(params.swapChainSize, params.swapChainFormat, params.backBufferFormat, 
-			*s_Device, *s_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue());
+			*s_Device, *s_CommandQueues[IDX(QueueType::GRAPHICS)]->GetQueue(), windowHandle);
 
 		s_GraphicsCommandList = MakePtr<DX12GraphicsCommandList>(*s_Device);
 		// TODO: Async Compute (s_ComputeCommandList = MakePtr<DX12ComputeCommandList>(*s_Device);)
@@ -197,8 +197,8 @@ namespace vast::gfx
 	void BeginRenderPass(PipelineHandle h, const RenderPassDesc desc)
 	{
 		VAST_ASSERT(s_Pipelines);
-		DX12Pipeline& pipeline = s_Pipelines->LookupResource(h);
-		s_GraphicsCommandList->SetPipeline(&pipeline);
+		DX12Pipeline& pso = s_Pipelines->LookupResource(h);
+		s_GraphicsCommandList->SetPipeline(&pso);
 
 #ifdef VAST_DEBUG
 		// Validate user bindings against PSO.
@@ -209,15 +209,15 @@ namespace vast::gfx
 			if (desc.rt[i].h.IsValid())
 				rtCount++;
 		}
-		VAST_ASSERT(rtCount == pipeline.desc.NumRenderTargets);
+		VAST_ASSERT(rtCount == pso.desc.NumRenderTargets);
 #endif
 
 		// Set up transitions
 		DX12RenderPassData rpd;
-		rpd.rtCount = pipeline.desc.NumRenderTargets;
+		rpd.rtCount = pso.desc.NumRenderTargets;
 		for (uint32 i = 0; i < rpd.rtCount; ++i)
 		{
-			VAST_ASSERT(pipeline.desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);
+			VAST_ASSERT(pso.desc.RTVFormats[i] != DXGI_FORMAT_UNKNOWN);
 			VAST_ASSERT(desc.rt[i].h.IsValid());
 			DX12Texture& rt = s_Textures->LookupResource(desc.rt[i].h);
 
@@ -234,7 +234,7 @@ namespace vast::gfx
 			// TODO: Multisample support (EndingAccess.Resolve)
 		}
 
-		VAST_ASSERT(desc.ds.h.IsValid() == (pipeline.desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
+		VAST_ASSERT(desc.ds.h.IsValid() == (pso.desc.DSVFormat != DXGI_FORMAT_UNKNOWN));
 		if (desc.ds.h.IsValid())
 		{
 			DX12Texture& ds = s_Textures->LookupResource(desc.ds.h);
@@ -282,8 +282,8 @@ namespace vast::gfx
 	void BindPipelineForCompute(PipelineHandle h)
 	{
 		VAST_ASSERT(s_Pipelines);
-		DX12Pipeline& pipeline = s_Pipelines->LookupResource(h);
-		s_GraphicsCommandList->SetPipeline(&pipeline);
+		DX12Pipeline& pso = s_Pipelines->LookupResource(h);
+		s_GraphicsCommandList->SetPipeline(&pso);
 	}
 
 	void WaitForIdle()
@@ -338,7 +338,7 @@ namespace vast::gfx
 		VAST_ASSERT(srcDesc.IsValid());
 		// TODO TEMP: We should accumulate all SRV/UAV per shader space and combine them into a single descriptor table.
 		DX12Descriptor blockStart = s_Device->GetSRVDescriptorHeap(s_FrameId).GetUserDescriptorBlockStart(1);
-		s_Device->CopyDescriptorsSimple(1, blockStart.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		s_Device->GetDevice()->CopyDescriptorsSimple(1, blockStart.cpuHandle, srcDesc.cpuHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		s_GraphicsCommandList->SetDescriptorTable(blockStart.gpuHandle);
 	}
 
@@ -429,6 +429,8 @@ namespace vast::gfx
 
 	void CreateBuffer(BufferHandle h, const BufferDesc& desc, const std::string& name /* = "" */)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12Buffer& buf = s_Buffers->AcquireResource(h);
 		s_Device->CreateBuffer(desc, buf);
 		buf.SetName(name);
@@ -436,6 +438,8 @@ namespace vast::gfx
 
 	void CreateTexture(TextureHandle h, const TextureDesc& desc, const std::string& name /* = "" */)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12Texture& tex = s_Textures->AcquireResource(h);
 		s_Device->CreateTexture(desc, tex);
 		tex.SetName(name);
@@ -443,14 +447,18 @@ namespace vast::gfx
 
 	void CreatePipeline(PipelineHandle h, const PipelineDesc& desc)
 	{
-		DX12Pipeline& pipeline = s_Pipelines->AcquireResource(h);
-		s_Device->CreateGraphicsPipeline(desc, pipeline);
+		VAST_PROFILE_TRACE_FUNCTION;
+
+		DX12Pipeline& pso = s_Pipelines->AcquireResource(h);
+		s_Device->CreateGraphicsPipeline(desc, pso);
 	}
 
 	void CreatePipeline(PipelineHandle h, const ShaderDesc& desc)
 	{
-		DX12Pipeline& pipeline = s_Pipelines->AcquireResource(h);
-		s_Device->CreateComputePipeline(desc, pipeline);
+		VAST_PROFILE_TRACE_FUNCTION;
+
+		DX12Pipeline& pso = s_Pipelines->AcquireResource(h);
+		s_Device->CreateComputePipeline(desc, pso);
 	}
 
 	void UpdateBuffer(BufferHandle h, const void* srcMem, size_t srcSize)
@@ -539,11 +547,16 @@ namespace vast::gfx
 
 	void ReloadShaders(PipelineHandle h)
 	{
-		s_Device->ReloadShaders(s_Pipelines->LookupResource(h));
+		VAST_PROFILE_TRACE_FUNCTION;
+
+		DX12Pipeline& pso = s_Pipelines->LookupResource(h);
+		s_Device->ReloadShaders(pso);
 	}
 
 	void DestroyBuffer(BufferHandle h)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12Buffer& buf = s_Buffers->ReleaseResource(h);
 		s_Device->DestroyBuffer(buf);
 		buf.Reset();
@@ -551,6 +564,8 @@ namespace vast::gfx
 
 	void DestroyTexture(TextureHandle h)
 	{
+		VAST_PROFILE_TRACE_FUNCTION;
+
 		DX12Texture& tex = s_Textures->ReleaseResource(h);
 		s_Device->DestroyTexture(tex);
 		tex.Reset();
@@ -558,18 +573,20 @@ namespace vast::gfx
 
 	void DestroyPipeline(PipelineHandle h)
 	{
-		DX12Pipeline& pipeline = s_Pipelines->ReleaseResource(h);
-		s_Device->DestroyPipeline(pipeline);
-		pipeline.Reset();
+		VAST_PROFILE_TRACE_FUNCTION;
+
+		DX12Pipeline& pso = s_Pipelines->ReleaseResource(h);
+		s_Device->DestroyPipeline(pso);
+		pso.Reset();
 	}
 
 	ShaderResourceProxy LookupShaderResource(PipelineHandle h, const std::string& shaderResourceName)
 	{
 		VAST_ASSERT(h.IsValid());
-		DX12Pipeline& pipeline = s_Pipelines->LookupResource(h);
-		if (pipeline.resourceProxyTable.IsRegistered(shaderResourceName))
+		DX12Pipeline& pso = s_Pipelines->LookupResource(h);
+		if (pso.resourceProxyTable.IsRegistered(shaderResourceName))
 		{
-			return pipeline.resourceProxyTable.LookupShaderResource(shaderResourceName);
+			return pso.resourceProxyTable.LookupShaderResource(shaderResourceName);
 		}
 		return ShaderResourceProxy{ kInvalidShaderResourceProxy };
 	}

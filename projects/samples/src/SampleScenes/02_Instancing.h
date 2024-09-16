@@ -64,7 +64,7 @@ private:
 	bool m_bDepthUseReverseZ = true;
 
 public:
-	Instancing(GraphicsContext& ctx_) : ISample(ctx_)
+	Instancing(GraphicsContext& ctx) : ISample(ctx)
 	{
 		// Create camera object
 		const float3 cameraPos = float3(0.0f, 30.0f, -20.0f);

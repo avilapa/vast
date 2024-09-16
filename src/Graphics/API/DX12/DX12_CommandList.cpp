@@ -355,19 +355,16 @@ namespace vast
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		BufferDesc uploadBufferDesc;
-		uploadBufferDesc.size = 10 * 1024 * 1024;
-		uploadBufferDesc.usage = ResourceUsage::UPLOAD;
+		BufferDesc bufDesc;
+		bufDesc.usage = ResourceUsage::UPLOAD;
 
-		BufferDesc uploadTextureDesc;
-		uploadTextureDesc.size = 40 * 1024 * 1024;
-		uploadTextureDesc.usage = ResourceUsage::UPLOAD;
-
+		bufDesc.size = 10 * 1024 * 1024;
 		m_BufferUploadHeap = MakePtr<DX12Buffer>();
-		m_Device.CreateBuffer(uploadBufferDesc, *m_BufferUploadHeap);
+		m_Device.CreateBuffer(bufDesc, *m_BufferUploadHeap);
 
+		bufDesc.size = 40 * 1024 * 1024;
 		m_TextureUploadHeap = MakePtr<DX12Buffer>();
-		m_Device.CreateBuffer(uploadTextureDesc, *m_TextureUploadHeap);
+		m_Device.CreateBuffer(bufDesc, *m_TextureUploadHeap);
 	}
 
 	DX12UploadCommandList::~DX12UploadCommandList()
@@ -376,9 +373,9 @@ namespace vast
 		VAST_ASSERT(m_BufferUploadHeap && m_TextureUploadHeap);
 
 		m_Device.DestroyBuffer(*m_BufferUploadHeap);
-		m_Device.DestroyBuffer(*m_TextureUploadHeap);
-
 		m_BufferUploadHeap = nullptr;
+
+		m_Device.DestroyBuffer(*m_TextureUploadHeap);
 		m_TextureUploadHeap = nullptr;
 	}
 

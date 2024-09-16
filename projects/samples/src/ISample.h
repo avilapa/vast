@@ -7,7 +7,7 @@ using namespace vast;
 class ISample
 {
 public:
-	ISample(GraphicsContext& ctx_) : ctx(ctx_) {}
+	ISample(GraphicsContext& ctx) : ctx(ctx) {}
 	virtual ~ISample() {}
 
 	virtual void BeginFrame() 

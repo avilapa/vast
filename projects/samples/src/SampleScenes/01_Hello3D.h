@@ -44,7 +44,7 @@ private:
 	float4x4 m_CubeModelMatrix;
 
 public:
-	Hello3D(GraphicsContext& ctx_) : ISample(ctx_)
+	Hello3D(GraphicsContext& ctx) : ISample(ctx)
 	{	
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 

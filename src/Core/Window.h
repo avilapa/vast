@@ -11,7 +11,11 @@ namespace vast
 		static Ptr<Window> Create();
 		virtual ~Window() = default;
 
+		virtual void Show() = 0;
+
 		virtual void Update() = 0;
+
+		virtual WindowHandle GetNativeHandle() const = 0;
 
 		// Size here refers to the client area rather than the total dimensions of the window.
 		virtual void SetSize(uint2 newSize) = 0;
