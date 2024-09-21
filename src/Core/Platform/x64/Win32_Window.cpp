@@ -5,18 +5,16 @@
 
 #ifdef VAST_PLATFORM_WINDOWS
 
-#include "imgui/backends/imgui_impl_win32.h" // TODO: USE_IMGUI_STOCK_IMPL_WIN32
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 namespace vast
 {
+	extern LRESULT Imgui_WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	Arg g_WindowSize("WindowSize", int2(1280, 720));
 	Arg g_WindowTitle("WindowTitle", "vast Engine");
 
 	LRESULT CALLBACK WindowImpl_Win32::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lparam)
 	{
-		if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lparam))
+		if (Imgui_WndProc(hWnd, msg, wParam, lparam))
 		{
 			return true;
 		}
@@ -49,12 +47,13 @@ namespace vast
 				window->OnWindowResize();
 			}
 			break;
+		case WM_MENUCHAR: 
+			// Turn off MessageBeep sound on Alt+Enter
+			return MNC_CLOSE << 16;
 		case WM_DESTROY:
 		case WM_CLOSE:
 			PostQuitMessage(0);
-			break;
-		default:
-			break;
+			return 0;
 		}
 
 		return DefWindowProcW(hWnd, msg, wParam, lparam);

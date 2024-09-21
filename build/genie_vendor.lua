@@ -6,15 +6,12 @@ project "imgui"
 	includedirs
 	{
 		path.join(ROOT_DIR, "src/"),
-		path.join(ROOT_DIR, "vendor/imgui"), -- Only necessary while we use Imgui stock implementation on win32
 	}
 	
 	files
 	{
 		path.join(ROOT_DIR, "vendor/imgui/im*.h"),
 		path.join(ROOT_DIR, "vendor/imgui/im*.cpp"),
-		path.join(ROOT_DIR, "vendor/imgui/backends/imgui_impl_win32.h"),
-		path.join(ROOT_DIR, "vendor/imgui/backends/imgui_impl_win32.cpp"),
 	}
 
 	defines { 'IMGUI_USER_CONFIG="Rendering/Imgui.h"', "IMGUI_LIB"  }

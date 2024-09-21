@@ -2,62 +2,64 @@
 #include "Rendering/ImguiRenderer.h"
 #include "Rendering/Imgui.h"
 
+#include "Core/Window.h"
+
 #include "Graphics/GraphicsContext.h"
 #include "Graphics/GPUResourceManager.h"
-
-#define USE_IMGUI_STOCK_IMPL_WIN32	1
-
-#if USE_IMGUI_STOCK_IMPL_WIN32
-#include "imgui/backends/imgui_impl_win32.h"
-#endif
 
 namespace vast
 {
 
-	ImguiRenderer::ImguiRenderer(WindowHandle windowHandle, GraphicsContext& ctx)
+	ImguiRenderer::ImguiRenderer(GraphicsContext& ctx, Window& window)
 		: ctx(ctx)
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		ImGui::StyleColorsDark();
-
-#if USE_IMGUI_STOCK_IMPL_WIN32
-		ImGui_ImplWin32_Init(windowHandle);
-#endif
-
-		BlendState bs = BlendState::Preset::kAdditive;
-		bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
+		Event::Subscribe<WindowResizeEvent>("ImguiRenderer", VAST_EVENT_HANDLER(ImguiRenderer::OnWindowResizeEvent, WindowResizeEvent));
 
 		GPUResourceManager& rm = ctx.GetGPUResourceManager();
 
-		PipelineDesc pipelineDesc =
-		{
-			.vs = {.type = ShaderType::VERTEX, .shaderName = "Imgui.hlsl", .entryPoint = "VS_Imgui"},
-			.ps = {.type = ShaderType::PIXEL,  .shaderName = "Imgui.hlsl", .entryPoint = "PS_Imgui"},
-			.blendStates = { bs },
-			.depthStencilState = DepthStencilState::Preset::kDisabled,
-			.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
-		};
-		m_Pipeline = rm.CreatePipeline(pipelineDesc);
-		m_CbvProxy = rm.LookupShaderResource(m_Pipeline, "ImguiCB");
-
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
 		ImGuiIO& io = ImGui::GetIO();
-		unsigned char* texData;
-		int32 texWidth, texHeight;
-		io.Fonts->GetTexDataAsRGBA32(&texData, &texWidth, &texHeight);
 
-		TextureDesc texDesc =
+		uint2 windowSize = window.GetSize();
+		io.DisplaySize = ImVec2(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y));
+
 		{
-			.format = TexFormat::RGBA8_UNORM_SRGB,
-			.width = static_cast<uint32>(texWidth),
-			.height = static_cast<uint32>(texHeight),
-			.viewFlags = TexViewFlags::SRV,
-		};
-		m_FontTex = rm.CreateTexture(texDesc, texData);
+			// Create and upload font texture for default font atlas (see CreateContext()).
+			unsigned char* texData;
+			int32 texWidth, texHeight;
+			io.Fonts->GetTexDataAsRGBA32(&texData, &texWidth, &texHeight);
 
-		io.Fonts->SetTexID(&m_FontTex);
+			TextureDesc fontAtlasDesc =
+			{
+				.format = TexFormat::RGBA8_UNORM_SRGB,
+				.width = static_cast<uint32>(texWidth),
+				.height = static_cast<uint32>(texHeight),
+				.viewFlags = TexViewFlags::SRV,
+			};
+			m_FontTex = rm.CreateTexture(fontAtlasDesc, texData);
+			io.Fonts->SetTexID(&m_FontTex);
+		}
+		{
+			// Create ImGui shaders and pipeline
+			BlendState bs = BlendState::Preset::kAdditive;
+			bs.dstBlendAlpha = Blend::INV_SRC_ALPHA;
+
+			PipelineDesc pipelineDesc =
+			{
+				.vs = {.type = ShaderType::VERTEX, .shaderName = "Imgui.hlsl", .entryPoint = "VS_Imgui"},
+				.ps = {.type = ShaderType::PIXEL,  .shaderName = "Imgui.hlsl", .entryPoint = "PS_Imgui"},
+				.blendStates = { bs },
+				.depthStencilState = DepthStencilState::Preset::kDisabled,
+				.renderPassLayout = {.rtFormats = { ctx.GetBackBufferFormat() } },
+			};
+			m_Pipeline = rm.CreatePipeline(pipelineDesc);
+			m_CbvProxy = rm.LookupShaderResource(m_Pipeline, "ImguiCB");
+		}
+
+		ImGui::StyleColorsDark();
 	}
 
 	ImguiRenderer::~ImguiRenderer()
@@ -68,19 +70,12 @@ namespace vast
 
 		rm.DestroyTexture(m_FontTex);
 		rm.DestroyPipeline(m_Pipeline);
-
-#if USE_IMGUI_STOCK_IMPL_WIN32
-		ImGui_ImplWin32_Shutdown();
-#endif
 	}
 
 	void ImguiRenderer::BeginCommandRecording()
 	{
 		VAST_PROFILE_TRACE_FUNCTION;
 
-#if USE_IMGUI_STOCK_IMPL_WIN32
-		ImGui_ImplWin32_NewFrame();
-#endif
 		ImGui::NewFrame();
 	}
 
@@ -198,6 +193,12 @@ namespace vast
 			VAST_PROFILE_TRACE_END("Draw Loop");
 		}
 		ctx.EndRenderPass();
+	}
+
+	void ImguiRenderer::OnWindowResizeEvent(const WindowResizeEvent& event)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.DisplaySize = ImVec2(static_cast<float>(event.m_WindowSize.x), static_cast<float>(event.m_WindowSize.y));
 	}
 
 }

@@ -41,7 +41,7 @@ bool SamplesApp::Init()
 	params.backBufferFormat = TexFormat::RGBA8_UNORM;
 	m_GraphicsContext = MakePtr<GraphicsContext>(GetWindow().GetNativeHandle(), params);
 
-	m_ImguiRenderer = MakePtr<ImguiRenderer>(GetWindow().GetNativeHandle(), *m_GraphicsContext);
+	m_ImguiRenderer = MakePtr<ImguiRenderer>(*m_GraphicsContext, *m_Window);
 
 	return true;
 }

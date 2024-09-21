@@ -22,7 +22,6 @@ project "vast"
 	{
 		path.join(ROOT_DIR, "src"),
 		path.join(ROOT_DIR, "vendor"),
-		path.join(ROOT_DIR, "vendor/imgui"), -- Only necessary while we use Imgui stock implementation on win32
 	}
 
 	links {	"imgui" }

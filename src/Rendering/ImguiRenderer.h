@@ -11,12 +11,15 @@ namespace vast
 	class ImguiRenderer
 	{
 	public:
-		ImguiRenderer(WindowHandle windowHandle, GraphicsContext& ctx);
+		ImguiRenderer(GraphicsContext& ctx, Window& window);
 		~ImguiRenderer();
 
 		void BeginCommandRecording();
 		void EndCommandRecording();
 		void Render();
+
+	private:
+		void OnWindowResizeEvent(const WindowResizeEvent& event);
 
 	private:
 		GraphicsContext& ctx;
