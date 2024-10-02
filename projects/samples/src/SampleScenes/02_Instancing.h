@@ -59,6 +59,7 @@ private:
 
 	static const uint32 s_NumInstances = 50000;
 	Array<InstanceData, s_NumInstances> m_InstanceData;
+	int s_NumInstancesToRender = s_NumInstances;
 
 	bool m_bViewChanged = false;
 	bool m_bDepthUseReverseZ = true;
@@ -212,7 +213,7 @@ public:
 				ctx.BindSRV(m_InstBufProxy, m_CubeInstBuf);
 				// Set the index buffer and draw all instances in a single draw call.
 				ctx.BindIndexBuffer(m_CubeIdxBuf, 0, IndexBufFormat::R16_UINT);
-				ctx.DrawIndexedInstanced(static_cast<uint32>(Cube::s_Indices.size()), s_NumInstances, 0, 0, 0);
+				ctx.DrawIndexedInstanced(static_cast<uint32>(Cube::s_Indices.size()), s_NumInstancesToRender, 0, 0, 0);
 			}
 		}
 		ctx.EndRenderPass();
@@ -265,9 +266,10 @@ public:
 
 	void OnGUI() override
 	{
-		if (ImGui::Begin("Depth Buffer Settings"))
+		if (ImGui::Begin("Instancing UI", 0, ImGuiWindowFlags_AlwaysAutoResize))
 		{
-			if (ImGui::Checkbox("Use Reverse-Z", &m_bDepthUseReverseZ))
+			ImGui::SliderInt("Num Instances to Render", &s_NumInstancesToRender, 0, s_NumInstances);
+			if (ImGui::Checkbox("Depth Buffer Use Reverse-Z", &m_bDepthUseReverseZ))
 			{
 				m_Camera->SetIsReverseZ(m_bDepthUseReverseZ);
 				m_bViewChanged = true;

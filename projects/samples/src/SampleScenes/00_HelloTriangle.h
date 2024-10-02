@@ -103,14 +103,16 @@ public:
 		if (ImGui::Begin("Hello Triangle UI", 0, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::PushItemWidth(300);
-			ImGui::Text("Triangle Vertex Positions");
-			if (ImGui::SliderFloat2("##1", (float*)&m_TriangleVertexData[0].pos, -1.0f, 1.0f)) m_bUpdateTriangle = true;
-			if (ImGui::SliderFloat2("##2", (float*)&m_TriangleVertexData[1].pos, -1.0f, 1.0f)) m_bUpdateTriangle = true;
-			if (ImGui::SliderFloat2("##3", (float*)&m_TriangleVertexData[2].pos, -1.0f, 1.0f)) m_bUpdateTriangle = true;
-			ImGui::Text("Triangle Vertex Colors");
-			if (ImGui::ColorEdit3("##1", (float*)&m_TriangleVertexData[0].col)) m_bUpdateTriangle = true;
-			if (ImGui::ColorEdit3("##2", (float*)&m_TriangleVertexData[1].col)) m_bUpdateTriangle = true;
-			if (ImGui::ColorEdit3("##3", (float*)&m_TriangleVertexData[2].col)) m_bUpdateTriangle = true;
+			for (uint32 i = 0; i < 3; ++i)
+			{
+				if (ImGui::SliderFloat2(("##" + std::to_string(i)).c_str(), (float*)&m_TriangleVertexData[i].pos, -1.0f, 1.0f)) 
+					m_bUpdateTriangle = true;
+				
+				ImGui::SameLine();
+
+				if (ImGui::ColorEdit3(("##" + std::to_string(i)).c_str(), (float*)&m_TriangleVertexData[i].col, ImGuiColorEditFlags_NoInputs)) 
+					m_bUpdateTriangle = true;
+			}
 			ImGui::PopItemWidth();
 		}
 		ImGui::End();

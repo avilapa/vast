@@ -18,7 +18,7 @@ static constexpr int PUSH_CONSTANT_REGISTER_INDEX = 999;
 
 namespace vast
 {
-	Arg g_AdditionalShaderIncludeDirectories("AdditionalShaderIncludeDirectories", "");
+	Arg g_AdditionalShaderIncludeDirectories("AdditionalShaderIncludeDirectories", std::string());
 
 	DX12ShaderManager::DX12ShaderManager()
 		: m_ShaderCompiler(nullptr)

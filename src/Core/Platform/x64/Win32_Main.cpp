@@ -9,8 +9,8 @@
 
 using namespace vast;
 
-Arg g_ProjectDir("ProjectDir", "");
-Arg g_OutputDir("OutputDir", "");
+Arg g_ProjectDir("ProjectDir", std::string());
+Arg g_OutputDir("OutputDir", std::string());
 
 int Win32_Main(int argc, char** argv, IApp* app)
 {

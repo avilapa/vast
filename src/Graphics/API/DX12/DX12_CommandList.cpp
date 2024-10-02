@@ -381,13 +381,15 @@ namespace vast
 
 	void DX12UploadCommandList::UploadBuffer(Ptr<BufferUpload> upload)
 	{
-		VAST_ASSERT(upload->size <= m_BufferUploadHeap->resource->GetDesc().Width);
+		const auto heapSize = m_BufferUploadHeap->resource->GetDesc().Width;
+		VAST_ASSERTF(upload->size <= heapSize, "Not enough memory in the BufferUploadHeap to upload {} MB (max: {} MB)", B_TO_MB(upload->size), B_TO_MB(heapSize));
 		m_BufferUploads.push_back(std::move(upload));
 	}
 	
 	void DX12UploadCommandList::UploadTexture(Ptr<TextureUpload> upload)
 	{
-		VAST_ASSERT(upload->size <= m_TextureUploadHeap->resource->GetDesc().Width);
+		const auto heapSize = m_TextureUploadHeap->resource->GetDesc().Width;
+		VAST_ASSERTF(upload->size <= heapSize, "Not enough memory in the TextureUploadHeap to upload {} MB (max: {} MB)", B_TO_MB(upload->size), B_TO_MB(heapSize));
 		m_TextureUploads.push_back(std::move(upload));
 	}
 

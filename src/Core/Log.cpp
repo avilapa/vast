@@ -47,6 +47,6 @@ namespace vast
 		Ref<spdlog::sinks::sink> fileSink = MakeRef<spdlog::sinks::basic_file_sink_mt>(filePath, bTruncateFile);
 		fileSink->set_pattern("[%T] [%l] %n: %v");
 		s_Logger->sinks().push_back(fileSink);
-		VAST_LOG_TRACE("[log] Created output file '{}'", filePath);
+		VAST_LOG_INFO("[log] Created output file '{}'", filePath);
 	}
 }

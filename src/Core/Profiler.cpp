@@ -535,7 +535,9 @@ namespace vast
 		{
 			if (ImGui::BeginTabItem("Frame Timings"))
 			{
+				ImGui::PushID("Frame");
 				DrawPlotHistory(s_FramePlot, s_FrameStats.tAvg, s_FrameStats.tMax);
+				ImGui::PopID();
 				ImGui::Separator();
 				// TODO: FPS
 				ImGui::EndTabItem();
@@ -543,7 +545,9 @@ namespace vast
 			
 			if (ImGui::BeginTabItem("CPU Timings"))
 			{
+				ImGui::PushID("CPU");
 				DrawPlotHistory(s_CpuPlot, s_CpuStats.tAvg, s_CpuStats.tMax);
+				ImGui::PopID();
 				ImGui::Separator();
 				DrawNestedProfilesTable(s_CpuProfiles, s_CpuProfileCount, s_CpuStats);
 				ImGui::EndTabItem();
@@ -551,7 +555,9 @@ namespace vast
 
 			if (ImGui::BeginTabItem("GPU Timings"))
 			{
+				ImGui::PushID("GPU");
 				DrawPlotHistory(s_GpuPlot, s_GpuStats.tAvg, s_GpuStats.tMax);
+				ImGui::PopID();
 				ImGui::Separator();
 				DrawNestedProfilesTable(s_GpuProfiles, s_GpuProfileCount, s_GpuStats);
 				ImGui::EndTabItem();

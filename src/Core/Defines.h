@@ -94,5 +94,7 @@ constexpr unsigned int CountBits(unsigned int x) { return (x < 2) ? x : 1 + Coun
 
 #define PI 3.14159265358979323846264338327950288
 
-#define DEG_TO_RAD(x) (x * float(PI/180.0))
-#define RAD_TO_DEG(x) (x * float(180.0/PI))
+#define DEG_TO_RAD(x) (x * float(PI / 180.0))
+#define RAD_TO_DEG(x) (x * float(180.0 / PI))
+
+#define B_TO_MB(x) (x * float(1.0 / 1e6))
